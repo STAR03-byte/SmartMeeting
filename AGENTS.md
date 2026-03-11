@@ -1,231 +1,179 @@
-# AGENTS.md - SmartMeeting 开发规范
+# AGENTS.md
 
-## 项目概述
+This document defines build/test commands and coding conventions for agentic coding tools
+working in `D:\SmartMeeting`.
 
-SmartMeeting 是一个智能会议管理系统，采用 **FastAPI + Vue3 + MySQL + Whisper + LLM** 技术栈。
+## Repository Status
 
-## 目录结构
+- Current repo is mostly scaffold-level (limited source code committed so far).
+- Stack target: FastAPI + Vue 3 + MySQL + Whisper + LLM.
+- Follow existing structure and extend it incrementally; do not regenerate whole modules.
 
-```
+## Project Structure (Expected)
+
+```text
 SmartMeeting/
-├── backend/          # FastAPI 后端 (Python)
-│   ├── app/
-│   │   ├── api/      # API 路由
-│   │   ├── models/   # Pydantic 模型
-│   │   ├── services/ # 业务逻辑
-│   │   └── utils/    # 工具函数
-│   ├── main.py       # 入口文件
-│   └── requirements.txt
-├── frontend/         # Vue3 前端
-│   ├── src/
-│   │   ├── views/    # 页面
-│   │   ├── components/ # 组件
-│   │   ├── stores/   # Pinia 状态
-│   │   └── api/      # 接口封装
-│   └── package.json
-├── database/         # 数据库脚本
-└── docs/             # 文档
+├─ backend/                 # FastAPI service
+│  ├─ app/
+│  │  ├─ api/               # Route handlers
+│  │  ├─ models/            # Pydantic schemas / ORM models
+│  │  ├─ services/          # Business logic
+│  │  └─ utils/             # Helpers
+│  ├─ tests/
+│  ├─ main.py
+│  └─ requirements.txt
+├─ frontend/                # Vue 3 + TypeScript app
+│  ├─ src/
+│  │  ├─ api/
+│  │  ├─ components/
+│  │  ├─ stores/
+│  │  └─ views/
+│  └─ package.json
+├─ database/                # SQL scripts / migrations
+└─ docs/
 ```
 
-## 1. 构建与测试命令
+## Build, Lint, Test Commands
 
-### 后端 (Python/FastAPI)
+Use these commands from repository root unless noted otherwise.
+
+### Backend (FastAPI / Python)
 
 ```bash
-# 安装依赖
-cd backend
-pip install -r requirements.txt
+# install
+python -m pip install -r backend/requirements.txt
 
-# 运行开发服务器
-python -m uvicorn main:app --reload
+# run dev server
+python -m uvicorn backend.main:app --reload
 
-# 运行单个测试
-pytest tests/test_api.py::TestMeeting::test_create_meeting -v
+# run all tests
+pytest backend/tests -v
 
-# 运行所有测试
-pytest
+# run single test file
+pytest backend/tests/test_meeting_api.py -v
 
-# 代码检查
-flake8 app/ --max-line-length=100
-ruff check app/
-mypy app/
+# run single test case
+pytest backend/tests/test_meeting_api.py::TestMeetingAPI::test_create_meeting -v
 
-# 格式化
-black app/
-isort app/
+# lint / format / type-check
+ruff check backend/app backend/tests
+black backend/app backend/tests
+isort backend/app backend/tests
+mypy backend/app
 ```
 
-### 前端 (Vue3/TypeScript)
+### Frontend (Vue 3 / TypeScript)
 
 ```bash
-# 安装依赖
-cd frontend
-npm install
+# install
+npm --prefix frontend install
 
-# 开发模式
-npm run dev
+# dev / build / preview
+npm --prefix frontend run dev
+npm --prefix frontend run build
+npm --prefix frontend run preview
 
-# 构建生产版本
-npm run build
+# tests
+npm --prefix frontend run test:unit
 
-# 运行单元测试
-npm run test:unit
+# run single unit test file (Vitest)
+npm --prefix frontend run test:unit -- src/components/__tests__/MeetingList.spec.ts
 
-# 运行单个测试文件
-npm run test:unit -- tests/api/meeting.spec.ts
-
-# Lint 检查
-npm run lint
-npm run lint:fix
-
-# 类型检查
-npm run typecheck
+# lint / type-check / format
+npm --prefix frontend run lint
+npm --prefix frontend run typecheck
+npm --prefix frontend run format
 ```
 
-## 2. 代码规范
+### Database (MySQL)
 
-### 2.1 Python 后端
-
-**命名规范**
-- 模块/函数: `snake_case` (如 `get_meeting_list`)
-- 类名: `PascalCase` (如 `MeetingService`)
-- 常量: `UPPER_SNAKE_CASE` (如 `MAX_UPLOAD_SIZE`)
-- 私有方法: `_private_method`
-
-**类型注解**
-```python
-from typing import Optional, List
-
-def get_meeting(id: int) -> Optional[Meeting]:
-    ...
-
-def create_meeting(data: CreateMeetingDTO) -> Meeting:
-    ...
+```bash
+# example local migration execution
+mysql -u <user> -p <database> < database/init.sql
 ```
 
-**错误处理**
-```python
-from fastapi import HTTPException
+If Alembic or another migration tool is added later, document and prefer that flow.
 
-@app.get("/meetings/{id}")
-async def get_meeting(id: int) -> Meeting:
-    meeting = await service.get(id)
-    if not meeting:
-        raise HTTPException(status_code=404, detail="Meeting not found")
-    return meeting
-```
+## Code Style Guidelines
 
-**API 响应格式**
-```python
-from pydantic import BaseModel
+## 1) General
 
-class ApiResponse(BaseModel):
-    code: int = 200
-    message: str = "success"
-    data: Optional[Any] = None
-```
+- Keep changes minimal and localized; edit existing files first.
+- Avoid broad refactors unless required by the task.
+- Keep functions focused; extract complex logic into services/utilities.
+- Do not hardcode secrets, tokens, or connection strings.
 
-**Imports 顺序**
-1. 标准库 (`from typing import ...`)
-2. 第三方库 (`from fastapi import ...`)
-3. 本地模块 (`from .models import ...`)
+## 2) Python / FastAPI
 
-### 2.2 Vue3 前端
+- **Formatting**: Black defaults, max line length 88 unless project config says otherwise.
+- **Imports**: stdlib, third-party, local modules (grouped with blank lines).
+- **Naming**:
+  - modules/functions/variables: `snake_case`
+  - classes: `PascalCase`
+  - constants: `UPPER_SNAKE_CASE`
+- **Types**:
+  - add type hints for public functions and service interfaces.
+  - prefer explicit return types.
+  - use Pydantic models for request/response contracts.
+- **API design**:
+  - use dependency injection for DB/session/auth where possible.
+  - validate inputs at schema level first.
+  - keep route handlers thin; move logic to `services/`.
+- **Error handling**:
+  - raise `HTTPException` with accurate status code and actionable detail.
+  - do not swallow exceptions silently.
+  - log internal errors with context; avoid leaking sensitive internals.
 
-**命名规范**
-- 组件文件: `PascalCase` (如 `MeetingList.vue`)
-- 组合式函数: `useXxx.ts` (如 `useMeeting.ts)
-- 工具函数: `camelCase` (如 `formatDate.ts)
-- CSS 类: `kebab-case`
+## 3) Vue 3 / TypeScript
 
-**TypeScript 类型**
-```typescript
-interface Meeting {
-  id: number;
-  title: string;
-  createdAt: string;
-}
+- Use `<script setup lang="ts">` and Composition API.
+- **Naming**:
+  - components: `PascalCase.vue`
+  - composables: `useXxx.ts`
+  - utilities and variables: `camelCase`
+  - CSS classes: `kebab-case`
+- **Types**:
+  - type all props/emits/API payloads.
+  - avoid `any`; prefer explicit interfaces/types.
+- **State**:
+  - keep global state in Pinia stores.
+  - avoid duplicating server state across unrelated components.
+- **Error handling**:
+  - handle API errors in a user-visible and recoverable way.
+  - avoid empty `catch` blocks.
 
-const props = defineProps<{
-  meetings: Meeting[];
-}>();
-```
+## 4) MySQL / Data
 
-**API 封装**
-```typescript
-// src/api/meeting.ts
-import axios from './axios';
+- Table and column names use `snake_case`.
+- Standard timestamp fields: `created_at`, `updated_at`.
+- Prefer migrations over manual schema edits in production workflows.
+- Add indexes for high-frequency filters/joins.
 
-export const getMeetingList = (params: QueryParams) =>
-  axios.get<ApiResponse<Meeting[]>>('/meetings', { params });
-```
+## 5) Testing Guidelines
 
-**组件编写**
-```vue
-<template>
-  <div class="meeting-card">
-    {{ meeting.title }}
-  </div>
-</template>
+- Add/adjust tests for behavior changes.
+- Keep tests deterministic and isolated.
+- For bug fixes, include a regression test that fails before and passes after fix.
+- Prefer one focused assertion block per scenario.
 
-<script setup lang="ts">
-interface Props {
-  meeting: Meeting;
-}
+## 6) Git & PR Conventions
 
-const props = defineProps<Props>();
-</script>
+- Commit types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`.
+- Example: `feat(meeting): add meeting summary endpoint`.
+- Commit after each coherent change and push promptly.
+- Do not rewrite shared history unless explicitly requested.
 
-<style scoped>
-.meeting-card {
-  padding: 16px;
-}
-</style>
-```
+## 7) Agent-Specific Rules
 
-**Pinia Store**
-```typescript
-// src/stores/meeting.ts
-import { defineStore } from 'pinia';
+- Always check for existing conventions before introducing new patterns.
+- If command/tooling differs from this file, follow actual project config files first.
+- When commands fail due to missing files (common in early scaffold), report clearly and
+  propose the minimal setup needed.
 
-export const useMeetingStore = defineStore('meeting', {
-  state: () => ({
-    meetings: [] as Meeting[],
-  }),
-  actions: {
-    async fetchMeetings() {
-      const res = await getMeetingList();
-      this.meetings = res.data;
-    },
-  },
-});
-```
+## Cursor / Copilot Rules Discovery
 
-### 2.3 数据库
-
-**表命名**: `snake_case` (如 `meeting_records`)
-**字段命名**: `snake_case` (如 `created_at`)
-**主键**: `id` (INT, 自增)
-**时间戳**: `created_at`, `updated_at` (DATETIME)
-
-### 2.4 Git 提交规范
-
-```
-feat: 新功能
-fix: 修复 bug
-docs: 文档更新
-refactor: 重构
-test: 测试
-chore: 杂项
-
-示例: feat(meeting): 添加会议创建接口
-```
-
-## 3. 开发注意事项
-
-- 优先修改现有代码而非重新生成
-- 保持工程结构规范
-- 修改后立即提交并推送
-- API 接口需有清晰的错误信息
-- 前端组件保持单向数据流
-- 敏感信息使用环境变量管理
+- Checked `.cursor/rules/`: not found.
+- Checked `.cursorrules`: not found.
+- Checked `.github/copilot-instructions.md`: not found.
+- If these files are added later, merge their rules into this document and prioritize
+  repository-specific instructions over generic guidance.
