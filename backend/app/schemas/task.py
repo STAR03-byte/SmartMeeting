@@ -1,0 +1,53 @@
+"""任务 Schema 定义。"""
+
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+
+class TaskCreate(BaseModel):
+    """创建任务请求。"""
+
+    meeting_id: int
+    transcript_id: int | None = None
+    title: str = Field(..., min_length=1, max_length=200)
+    description: str | None = None
+    assignee_id: int | None = None
+    reporter_id: int | None = None
+    priority: str = Field(default="medium")
+    status: str = Field(default="todo")
+    due_at: datetime | None = None
+
+
+class TaskUpdate(BaseModel):
+    """更新任务请求。"""
+
+    transcript_id: int | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = None
+    assignee_id: int | None = None
+    reporter_id: int | None = None
+    priority: str | None = None
+    status: str | None = None
+    due_at: datetime | None = None
+    completed_at: datetime | None = None
+
+
+class TaskOut(BaseModel):
+    """任务响应。"""
+
+    id: int
+    meeting_id: int
+    transcript_id: int | None
+    title: str
+    description: str | None
+    assignee_id: int | None
+    reporter_id: int | None
+    priority: str
+    status: str
+    due_at: datetime | None
+    completed_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
