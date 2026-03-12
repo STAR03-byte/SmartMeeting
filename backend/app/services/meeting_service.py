@@ -1,5 +1,7 @@
 """会议服务层。"""
 
+from datetime import UTC, datetime
+
 from sqlalchemy.orm import Session
 
 from app.models.meeting import Meeting
@@ -107,3 +109,20 @@ def generate_tasks_from_transcripts(
     for task in generated:
         db.refresh(task)
     return generated
+
+
+def save_postprocess_result(
+    db: Session,
+    meeting: Meeting,
+    summary: str,
+    version: str = "rule-v1",
+) -> Meeting:
+    """持久化会议后处理结果。"""
+
+    meeting.summary = summary
+    meeting.postprocessed_at = datetime.now(UTC)
+    meeting.postprocess_version = version
+    db.add(meeting)
+    db.commit()
+    db.refresh(meeting)
+    return meeting

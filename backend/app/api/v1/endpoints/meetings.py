@@ -13,6 +13,7 @@ from app.services.meeting_service import (
     generate_tasks_from_transcripts,
     get_meeting,
     list_meetings,
+    save_postprocess_result,
     update_meeting,
 )
 
@@ -95,5 +96,6 @@ def postprocess_meeting_api(
         transcripts,
         force_regenerate=force_regenerate,
     )
+    save_postprocess_result(db, meeting, summary, version="rule-v1")
 
     return MeetingPostprocessOut(meeting_id=meeting_id, summary=summary, tasks=tasks)

@@ -145,6 +145,12 @@ def test_meeting_postprocess_generates_summary_and_tasks(client) -> None:
     assert body["tasks"][0]["assignee_id"] == zhangsan_id
     assert body["tasks"][0]["priority"] == "high"
 
+    meeting_detail = client.get(f"/api/v1/meetings/{meeting_id}")
+    assert meeting_detail.status_code == 200
+    assert meeting_detail.json()["summary"] == body["summary"]
+    assert meeting_detail.json()["postprocessed_at"] is not None
+    assert meeting_detail.json()["postprocess_version"] == "rule-v1"
+
 
 def test_meeting_postprocess_requires_transcripts(client) -> None:
     """无转写数据时后处理应拒绝。"""
@@ -240,3 +246,9 @@ def test_meeting_postprocess_idempotent_and_force_regenerate(client) -> None:
     )
     assert force_process_resp.status_code == 200
     assert len(force_process_resp.json()["tasks"]) == 2
+
+    meeting_detail = client.get(f"/api/v1/meetings/{meeting_id}")
+    assert meeting_detail.status_code == 200
+    assert meeting_detail.json()["summary"]
+    assert meeting_detail.json()["postprocessed_at"] is not None
+    assert meeting_detail.json()["postprocess_version"] == "rule-v1"

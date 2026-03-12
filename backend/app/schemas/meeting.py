@@ -44,6 +44,9 @@ class MeetingOut(BaseModel):
     actual_end_at: datetime | None
     location: str | None
     status: str
+    summary: str | None
+    postprocessed_at: datetime | None
+    postprocess_version: str | None
     created_at: datetime
     updated_at: datetime
 
