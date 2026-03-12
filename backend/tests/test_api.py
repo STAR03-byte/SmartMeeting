@@ -333,3 +333,96 @@ def test_transcribe_latest_audio_generates_transcript(client) -> None:
     list_resp = client.get(f"/api/v1/transcripts?meeting_id={meeting_id}")
     assert list_resp.status_code == 200
     assert len(list_resp.json()) >= 1
+
+
+def test_task_status_transition_and_completed_at(client) -> None:
+    """任务状态流转合法时自动维护完成时间。"""
+
+    user_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "task01",
+            "email": "task01@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Task Owner",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "任务状态会",
+            "organizer_id": organizer_id,
+        },
+    )
+    meeting_id = meeting_resp.json()["id"]
+
+    task_resp = client.post(
+        "/api/v1/tasks",
+        json={
+            "meeting_id": meeting_id,
+            "title": "完成接口联调",
+            "assignee_id": organizer_id,
+        },
+    )
+    assert task_resp.status_code == 201
+    task_id = task_resp.json()["id"]
+
+    start_resp = client.patch(f"/api/v1/tasks/{task_id}", json={"status": "in_progress"})
+    assert start_resp.status_code == 200
+    assert start_resp.json()["status"] == "in_progress"
+    assert start_resp.json()["completed_at"] is None
+
+    done_resp = client.patch(f"/api/v1/tasks/{task_id}", json={"status": "done"})
+    assert done_resp.status_code == 200
+    assert done_resp.json()["status"] == "done"
+    assert done_resp.json()["completed_at"] is not None
+
+    reopen_resp = client.patch(f"/api/v1/tasks/{task_id}", json={"status": "todo"})
+    assert reopen_resp.status_code == 200
+    assert reopen_resp.json()["status"] == "todo"
+    assert reopen_resp.json()["completed_at"] is None
+
+
+def test_task_status_transition_rejects_invalid_flow(client) -> None:
+    """非法状态流转应返回 400。"""
+
+    user_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "task02",
+            "email": "task02@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Task Owner 2",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "非法流转会",
+            "organizer_id": organizer_id,
+        },
+    )
+    meeting_id = meeting_resp.json()["id"]
+
+    task_resp = client.post(
+        "/api/v1/tasks",
+        json={
+            "meeting_id": meeting_id,
+            "title": "直接完成",
+            "assignee_id": organizer_id,
+        },
+    )
+    assert task_resp.status_code == 201
+    task_id = task_resp.json()["id"]
+
+    invalid_resp = client.patch(f"/api/v1/tasks/{task_id}", json={"status": "done"})
+    assert invalid_resp.status_code == 400
+    assert invalid_resp.json()["detail"] == "Invalid task status transition: todo -> done"

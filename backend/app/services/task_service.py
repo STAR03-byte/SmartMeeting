@@ -1,5 +1,8 @@
 """任务服务层。"""
 
+from datetime import UTC, datetime
+
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -8,6 +11,11 @@ from app.schemas.task import TaskCreate, TaskUpdate
 
 
 ASSIGNEE_MARKERS = ("请", "由", "让")
+ALLOWED_STATUS_TRANSITIONS: dict[str, set[str]] = {
+    "todo": {"in_progress"},
+    "in_progress": {"done", "todo"},
+    "done": {"todo"},
+}
 
 
 def create_task(db: Session, payload: TaskCreate) -> Task:
@@ -39,6 +47,22 @@ def update_task(db: Session, task: Task, payload: TaskUpdate) -> Task:
     """更新任务。"""
 
     data = payload.model_dump(exclude_unset=True)
+
+    if "status" in data:
+        next_status = data["status"]
+        if next_status != task.status:
+            allowed = ALLOWED_STATUS_TRANSITIONS.get(task.status, set())
+            if next_status not in allowed:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid task status transition: {task.status} -> {next_status}",
+                )
+
+        if next_status == "done":
+            data["completed_at"] = datetime.now(UTC)
+        elif task.status == "done" and next_status != "done":
+            data["completed_at"] = None
+
     for key, value in data.items():
         setattr(task, key, value)
     db.add(task)
