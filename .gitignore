@@ -210,15 +210,10 @@ __marimo__/
 frontend/node_modules/
 .npm-cache/
 backend/storage/audio/
-tmp/# 忽略npm缓存目录（关键）
-.npm-cache/
-# 忽略node_modules（体积大，可通过npm install重建）
+tmp/
 node_modules/
-# 忽略其他无用缓存
 .DS_Store
 *.log
-.npm-cache/
-node_modules/
 *.exe
 *.dll
 *.zip
