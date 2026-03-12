@@ -2,11 +2,12 @@
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.task import Task
 from app.schemas.task import TaskCreate, TaskUpdate
 
 
-ACTION_KEYWORDS = ("请", "负责", "需要", "完成", "提交", "跟进")
+ASSIGNEE_MARKERS = ("请", "由", "让")
 
 
 def create_task(db: Session, payload: TaskCreate) -> Task:
@@ -62,6 +63,55 @@ def extract_action_items(content: str) -> list[str]:
     for clause in clauses:
         if not clause:
             continue
-        if any(keyword in clause for keyword in ACTION_KEYWORDS):
+        if any(keyword in clause for keyword in settings.action_keyword_list):
             items.append(clause)
     return items
+
+
+def infer_task_priority(content: str) -> str:
+    """根据语句内容推断任务优先级。"""
+
+    if any(keyword in content for keyword in settings.high_priority_keyword_list):
+        return "high"
+    return "medium"
+
+
+def infer_assignee_name(content: str) -> str | None:
+    """根据语句内容抽取负责人姓名。"""
+
+    for marker in ASSIGNEE_MARKERS:
+        if marker not in content:
+            continue
+        candidate = content.split(marker, 1)[1].strip()
+        if not candidate:
+            continue
+        for stop_word in (
+            "负责",
+            "完成",
+            "提交",
+            "跟进",
+            "本周",
+            "下周",
+            "今天",
+            "今日",
+            "明天",
+            "后天",
+            "前",
+            "在",
+            "于",
+        ):
+            if stop_word in candidate:
+                candidate = candidate.split(stop_word, 1)[0].strip()
+        if 1 <= len(candidate) <= 12:
+            return candidate
+
+    if "负责" in content:
+        prefix = content.split("负责", 1)[0].strip()
+        if prefix:
+            tail = prefix[-4:]
+            for size in (3, 2):
+                if len(tail) >= size:
+                    name = tail[-size:]
+                    if all(ch not in name for ch in ("，", "。", "；", ":", "：", " ")):
+                        return name
+    return None

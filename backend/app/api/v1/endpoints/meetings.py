@@ -1,6 +1,6 @@
 """会议 REST API。"""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -68,7 +68,11 @@ def delete_meeting_api(meeting_id: int, db: Session = Depends(get_db)) -> None:
 
 
 @router.post("/{meeting_id}/postprocess", response_model=MeetingPostprocessOut)
-def postprocess_meeting_api(meeting_id: int, db: Session = Depends(get_db)) -> MeetingPostprocessOut:
+def postprocess_meeting_api(
+    meeting_id: int,
+    force_regenerate: bool = Query(default=False),
+    db: Session = Depends(get_db),
+) -> MeetingPostprocessOut:
     """对会议转写进行后处理并生成摘要与任务。"""
 
     meeting = get_meeting(db, meeting_id)
@@ -85,6 +89,11 @@ def postprocess_meeting_api(meeting_id: int, db: Session = Depends(get_db)) -> M
         raise HTTPException(status_code=400, detail="No transcripts found for meeting")
 
     summary = build_meeting_summary(transcripts)
-    tasks = generate_tasks_from_transcripts(db, meeting_id, transcripts)
+    tasks = generate_tasks_from_transcripts(
+        db,
+        meeting_id,
+        transcripts,
+        force_regenerate=force_regenerate,
+    )
 
     return MeetingPostprocessOut(meeting_id=meeting_id, summary=summary, tasks=tasks)

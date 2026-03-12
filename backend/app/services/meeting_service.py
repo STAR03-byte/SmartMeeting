@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 from app.models.meeting import Meeting
 from app.models.meeting_transcript import MeetingTranscript
 from app.models.task import Task
+from app.models.user import User
 from app.schemas.meeting import MeetingCreate, MeetingUpdate
-from app.services.task_service import extract_action_items
+from app.services.task_service import extract_action_items, infer_assignee_name, infer_task_priority
 
 
 def create_meeting(db: Session, payload: MeetingCreate) -> Meeting:
@@ -65,25 +66,38 @@ def generate_tasks_from_transcripts(
     db: Session,
     meeting_id: int,
     transcripts: list[MeetingTranscript],
+    force_regenerate: bool = False,
 ) -> list[Task]:
     """从转写中抽取行动项并创建任务。"""
 
     existing = db.query(Task).filter(Task.meeting_id == meeting_id).all()
-    if existing:
+    if existing and not force_regenerate:
         return existing
+
+    if existing and force_regenerate:
+        for task in existing:
+            db.delete(task)
+        db.commit()
 
     generated: list[Task] = []
     for transcript in transcripts:
         action_items = extract_action_items(transcript.content)
         for action in action_items:
+            assignee_id = transcript.speaker_user_id
+            assignee_name = infer_assignee_name(action)
+            if assignee_name:
+                user = db.query(User).filter(User.full_name == assignee_name).first()
+                if user:
+                    assignee_id = user.id
+
             task = Task(
                 meeting_id=meeting_id,
                 transcript_id=transcript.id,
                 title=action[:200],
                 description=action,
-                assignee_id=transcript.speaker_user_id,
+                assignee_id=assignee_id,
                 reporter_id=None,
-                priority="medium",
+                priority=infer_task_priority(action),
                 status="todo",
             )
             db.add(task)
