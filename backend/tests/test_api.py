@@ -426,3 +426,46 @@ def test_task_status_transition_rejects_invalid_flow(client) -> None:
     invalid_resp = client.patch(f"/api/v1/tasks/{task_id}", json={"status": "done"})
     assert invalid_resp.status_code == 400
     assert invalid_resp.json()["detail"] == "Invalid task status transition: todo -> done"
+
+
+def test_list_tasks_can_filter_by_meeting_id(client) -> None:
+    """任务列表支持按 meeting_id 过滤。"""
+
+    user_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "task03",
+            "email": "task03@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Task Owner 3",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_a_resp = client.post(
+        "/api/v1/meetings",
+        json={"title": "过滤会议A", "organizer_id": organizer_id},
+    )
+    meeting_b_resp = client.post(
+        "/api/v1/meetings",
+        json={"title": "过滤会议B", "organizer_id": organizer_id},
+    )
+    meeting_a_id = meeting_a_resp.json()["id"]
+    meeting_b_id = meeting_b_resp.json()["id"]
+
+    client.post(
+        "/api/v1/tasks",
+        json={"meeting_id": meeting_a_id, "title": "A任务1", "assignee_id": organizer_id},
+    )
+    client.post(
+        "/api/v1/tasks",
+        json={"meeting_id": meeting_b_id, "title": "B任务1", "assignee_id": organizer_id},
+    )
+
+    filter_resp = client.get(f"/api/v1/tasks?meeting_id={meeting_a_id}")
+    assert filter_resp.status_code == 200
+    data = filter_resp.json()
+    assert len(data) == 1
+    assert data[0]["meeting_id"] == meeting_a_id

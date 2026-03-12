@@ -20,11 +20,12 @@ def create_task_api(payload: TaskCreate, db: Session = Depends(get_db)) -> TaskO
 @router.get("", response_model=list[TaskOut])
 def list_tasks_api(
     assignee_id: int | None = Query(default=None),
+    meeting_id: int | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> list[TaskOut]:
     """查询任务列表。"""
 
-    return list_tasks(db, assignee_id=assignee_id)
+    return list_tasks(db, assignee_id=assignee_id, meeting_id=meeting_id)
 
 
 @router.get("/{task_id}", response_model=TaskOut)

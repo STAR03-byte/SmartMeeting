@@ -28,12 +28,18 @@ def create_task(db: Session, payload: TaskCreate) -> Task:
     return task
 
 
-def list_tasks(db: Session, assignee_id: int | None = None) -> list[Task]:
+def list_tasks(
+    db: Session,
+    assignee_id: int | None = None,
+    meeting_id: int | None = None,
+) -> list[Task]:
     """查询任务列表，可按执行人筛选。"""
 
     query = db.query(Task)
     if assignee_id is not None:
         query = query.filter(Task.assignee_id == assignee_id)
+    if meeting_id is not None:
+        query = query.filter(Task.meeting_id == meeting_id)
     return query.order_by(Task.id.desc()).all()
 
 
