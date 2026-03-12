@@ -1,11 +1,14 @@
 """会议 REST API。"""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.schemas.meeting_audio import MeetingAudioOut
 from app.models.meeting_transcript import MeetingTranscript
 from app.schemas.meeting import MeetingCreate, MeetingOut, MeetingPostprocessOut, MeetingUpdate
+from app.schemas.meeting_transcript import MeetingTranscriptOut
+from app.services.audio_service import save_meeting_audio, transcribe_latest_audio
 from app.services.meeting_service import (
     build_meeting_summary,
     create_meeting,
@@ -99,3 +102,36 @@ def postprocess_meeting_api(
     save_postprocess_result(db, meeting, summary, version="rule-v1")
 
     return MeetingPostprocessOut(meeting_id=meeting_id, summary=summary, tasks=tasks)
+
+
+@router.post("/{meeting_id}/audio", response_model=MeetingAudioOut, status_code=status.HTTP_201_CREATED)
+def upload_meeting_audio_api(
+    meeting_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+) -> MeetingAudioOut:
+    """上传会议音频文件。"""
+
+    meeting = get_meeting(db, meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    return save_meeting_audio(db, meeting_id, file)
+
+
+@router.post(
+    "/{meeting_id}/audio/transcribe",
+    response_model=MeetingTranscriptOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def transcribe_meeting_audio_api(meeting_id: int, db: Session = Depends(get_db)) -> MeetingTranscriptOut:
+    """对最新上传音频执行占位语音识别。"""
+
+    meeting = get_meeting(db, meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    transcript = transcribe_latest_audio(db, meeting_id)
+    if not transcript:
+        raise HTTPException(status_code=400, detail="No audio found for meeting")
+    return transcript

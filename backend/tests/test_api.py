@@ -252,3 +252,84 @@ def test_meeting_postprocess_idempotent_and_force_regenerate(client) -> None:
     assert meeting_detail.json()["summary"]
     assert meeting_detail.json()["postprocessed_at"] is not None
     assert meeting_detail.json()["postprocess_version"] == "rule-v1"
+
+
+def test_audio_upload_for_meeting(client) -> None:
+    """会议音频可上传并返回元数据。"""
+
+    user_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "audio01",
+            "email": "audio01@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Audio User",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "音频上传会",
+            "organizer_id": organizer_id,
+        },
+    )
+    meeting_id = meeting_resp.json()["id"]
+
+    upload_resp = client.post(
+        f"/api/v1/meetings/{meeting_id}/audio",
+        files={"file": ("demo.wav", b"RIFF....WAVEfmt", "audio/wav")},
+    )
+    assert upload_resp.status_code == 201
+    body = upload_resp.json()
+    assert body["meeting_id"] == meeting_id
+    assert body["filename"] == "demo.wav"
+    assert body["size_bytes"] > 0
+    assert body["content_type"] == "audio/wav"
+    assert body["storage_path"]
+
+
+def test_transcribe_latest_audio_generates_transcript(client) -> None:
+    """占位语音识别可将最新音频写入转写记录。"""
+
+    user_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "asr01",
+            "email": "asr01@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "ASR User",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "语音识别会",
+            "organizer_id": organizer_id,
+        },
+    )
+    meeting_id = meeting_resp.json()["id"]
+
+    upload_resp = client.post(
+        f"/api/v1/meetings/{meeting_id}/audio",
+        files={"file": ("speech.wav", b"RIFF....WAVEfmt", "audio/wav")},
+    )
+    assert upload_resp.status_code == 201
+
+    transcribe_resp = client.post(f"/api/v1/meetings/{meeting_id}/audio/transcribe")
+    assert transcribe_resp.status_code == 201
+    transcribe_body = transcribe_resp.json()
+    assert transcribe_body["meeting_id"] == meeting_id
+    assert transcribe_body["source"] == "mock-asr"
+    assert transcribe_body["content"]
+
+    list_resp = client.get(f"/api/v1/transcripts?meeting_id={meeting_id}")
+    assert list_resp.status_code == 200
+    assert len(list_resp.json()) >= 1
