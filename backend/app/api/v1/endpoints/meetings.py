@@ -4,10 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.schemas.meeting import MeetingCreate, MeetingOut, MeetingUpdate
+from app.models.meeting_transcript import MeetingTranscript
+from app.schemas.meeting import MeetingCreate, MeetingOut, MeetingPostprocessOut, MeetingUpdate
 from app.services.meeting_service import (
+    build_meeting_summary,
     create_meeting,
     delete_meeting,
+    generate_tasks_from_transcripts,
     get_meeting,
     list_meetings,
     update_meeting,
@@ -62,3 +65,26 @@ def delete_meeting_api(meeting_id: int, db: Session = Depends(get_db)) -> None:
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
     delete_meeting(db, meeting)
+
+
+@router.post("/{meeting_id}/postprocess", response_model=MeetingPostprocessOut)
+def postprocess_meeting_api(meeting_id: int, db: Session = Depends(get_db)) -> MeetingPostprocessOut:
+    """对会议转写进行后处理并生成摘要与任务。"""
+
+    meeting = get_meeting(db, meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    transcripts = (
+        db.query(MeetingTranscript)
+        .filter(MeetingTranscript.meeting_id == meeting_id)
+        .order_by(MeetingTranscript.segment_index.asc(), MeetingTranscript.id.asc())
+        .all()
+    )
+    if not transcripts:
+        raise HTTPException(status_code=400, detail="No transcripts found for meeting")
+
+    summary = build_meeting_summary(transcripts)
+    tasks = generate_tasks_from_transcripts(db, meeting_id, transcripts)
+
+    return MeetingPostprocessOut(meeting_id=meeting_id, summary=summary, tasks=tasks)

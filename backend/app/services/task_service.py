@@ -6,6 +6,9 @@ from app.models.task import Task
 from app.schemas.task import TaskCreate, TaskUpdate
 
 
+ACTION_KEYWORDS = ("请", "负责", "需要", "完成", "提交", "跟进")
+
+
 def create_task(db: Session, payload: TaskCreate) -> Task:
     """创建任务。"""
 
@@ -48,3 +51,17 @@ def delete_task(db: Session, task: Task) -> None:
 
     db.delete(task)
     db.commit()
+
+
+def extract_action_items(content: str) -> list[str]:
+    """从转写文本中提取待办句子。"""
+
+    normalized = content.replace("；", "。").replace(";", ".")
+    clauses = [clause.strip(" ，。") for clause in normalized.split("。")]
+    items: list[str] = []
+    for clause in clauses:
+        if not clause:
+            continue
+        if any(keyword in clause for keyword in ACTION_KEYWORDS):
+            items.append(clause)
+    return items

@@ -4,6 +4,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.schemas.task import TaskOut
+
 
 class MeetingCreate(BaseModel):
     """创建会议请求。"""
@@ -46,3 +48,11 @@ class MeetingOut(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class MeetingPostprocessOut(BaseModel):
+    """会议后处理响应。"""
+
+    meeting_id: int
+    summary: str
+    tasks: list[TaskOut]
