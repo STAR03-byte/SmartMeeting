@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 
-import DashboardView from "../views/DashboardView.vue";
-import MeetingDetailView from "../views/MeetingDetailView.vue";
+const DashboardView = () => import("../views/DashboardView.vue");
+const MeetingDetailView = () => import("../views/MeetingDetailView.vue");
 
 const router = createRouter({
   history: createWebHistory(),
