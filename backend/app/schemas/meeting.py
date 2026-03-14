@@ -1,11 +1,14 @@
 """会议 Schema 定义。"""
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from app.schemas.task import TaskOut
 from app.schemas.user import UserOut
+
+MeetingStatus = Literal["planned", "ongoing", "done", "cancelled"]
 
 
 class MeetingCreate(BaseModel):
@@ -29,7 +32,7 @@ class MeetingUpdate(BaseModel):
     actual_start_at: datetime | None = None
     actual_end_at: datetime | None = None
     location: str | None = Field(default=None, max_length=255)
-    status: str | None = None
+    status: MeetingStatus | None = None
 
 
 class MeetingOut(BaseModel):

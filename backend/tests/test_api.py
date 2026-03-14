@@ -1,5 +1,7 @@
 """后端核心接口测试。"""
 
+from app.services.llm_service import LLMServiceError
+
 
 def test_health_check(client) -> None:
     """健康检查接口可用。"""
@@ -750,3 +752,167 @@ def test_create_participant_rejects_nonexistent_meeting_or_user(client) -> None:
     )
     assert invalid_user_resp.status_code == 404
     assert invalid_user_resp.json()["detail"] == "User not found"
+
+
+def test_postprocess_returns_structured_ai_error_when_ai_service_fails(safe_client, monkeypatch) -> None:
+    user_resp = safe_client.post(
+        "/api/v1/users",
+        json={
+            "username": "ai_error_owner",
+            "email": "ai_error_owner@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "AI Error Owner",
+            "role": "member",
+        },
+    )
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = safe_client.post(
+        "/api/v1/meetings",
+        json={"title": "AI 异常会议", "organizer_id": organizer_id},
+    )
+    meeting_id = meeting_resp.json()["id"]
+
+    safe_client.post(
+        "/api/v1/transcripts",
+        json={
+            "meeting_id": meeting_id,
+            "speaker_user_id": organizer_id,
+            "speaker_name": "AI Error Owner",
+            "segment_index": 1,
+            "content": "请张三今天完成接口文档。",
+        },
+    )
+
+    async def raise_llm_error(*args, **kwargs):
+        raise LLMServiceError("upstream llm unavailable")
+
+    monkeypatch.setattr(
+        "app.api.v1.endpoints.meetings.build_meeting_summary_with_llm",
+        raise_llm_error,
+    )
+
+    response = safe_client.post(f"/api/v1/meetings/{meeting_id}/postprocess")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "detail": "AI service unavailable",
+        "error_code": "AI_SERVICE_UNAVAILABLE",
+    }
+
+
+def test_upload_returns_structured_internal_error(safe_client, monkeypatch) -> None:
+    user_resp = safe_client.post(
+        "/api/v1/users",
+        json={
+            "username": "internal_error_owner",
+            "email": "internal_error_owner@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Internal Error Owner",
+            "role": "member",
+        },
+    )
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = safe_client.post(
+        "/api/v1/meetings",
+        json={"title": "内部异常会议", "organizer_id": organizer_id},
+    )
+    meeting_id = meeting_resp.json()["id"]
+
+    def raise_runtime_error(*args, **kwargs):
+        raise RuntimeError("disk write failed")
+
+    monkeypatch.setattr(
+        "app.api.v1.endpoints.meetings.save_meeting_audio",
+        raise_runtime_error,
+    )
+
+    response = safe_client.post(
+        f"/api/v1/meetings/{meeting_id}/audio",
+        files={"file": ("demo.wav", b"RIFF....WAVEfmt", "audio/wav")},
+    )
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "detail": "Internal server error",
+        "error_code": "INTERNAL_SERVER_ERROR",
+    }
+
+
+def test_create_user_rejects_invalid_role(client) -> None:
+    response = client.post(
+        "/api/v1/users",
+        json={
+            "username": "invalid_role_user",
+            "email": "invalid_role_user@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Invalid Role User",
+            "role": "super-admin",
+        },
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error_code"] == "REQUEST_VALIDATION_ERROR"
+
+
+def test_update_meeting_rejects_invalid_status_value(client) -> None:
+    user_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "meeting_status_owner",
+            "email": "meeting_status_owner@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Meeting Status Owner",
+            "role": "member",
+        },
+    )
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={"title": "状态校验会议", "organizer_id": organizer_id},
+    )
+    meeting_id = meeting_resp.json()["id"]
+
+    response = client.patch(
+        f"/api/v1/meetings/{meeting_id}",
+        json={"status": "archived"},
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error_code"] == "REQUEST_VALIDATION_ERROR"
+
+
+def test_create_task_rejects_nonexistent_related_resources(client) -> None:
+    response = client.post(
+        "/api/v1/tasks",
+        json={
+            "meeting_id": 9999,
+            "transcript_id": 9998,
+            "title": "无效关联任务",
+            "assignee_id": 9997,
+            "reporter_id": 9996,
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Meeting not found"
+
+
+def test_create_task_rejects_invalid_priority_and_status(client) -> None:
+    response = client.post(
+        "/api/v1/tasks",
+        json={
+            "meeting_id": 1,
+            "title": "非法枚举任务",
+            "priority": "urgent",
+            "status": "blocked",
+        },
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error_code"] == "REQUEST_VALIDATION_ERROR"

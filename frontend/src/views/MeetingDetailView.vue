@@ -5,6 +5,9 @@
     <el-card v-if="store.currentMeeting" class="base-card">
       <h2>{{ store.currentMeeting.title }}</h2>
       <p>{{ store.currentMeeting.description || "暂无描述" }}</p>
+      <p class="organizer-line">
+        组织者：{{ store.currentMeeting.organizer.full_name }} · 状态：{{ store.currentMeeting.status }}
+      </p>
       <div class="action-row">
         <el-upload
           :auto-upload="false"
@@ -18,6 +21,14 @@
       </div>
       <p class="summary-block">{{ store.currentMeeting.summary || "暂无会议摘要" }}</p>
     </el-card>
+
+    <el-alert
+      v-if="store.error"
+      :title="store.error"
+      type="error"
+      show-icon
+      :closable="false"
+    />
 
     <div class="panel-grid">
       <el-card class="base-card">
@@ -70,13 +81,21 @@ async function onFilePicked(file: { raw?: File }) {
   if (!file.raw) {
     return;
   }
-  await store.uploadAudioAndTranscribe(meetingId, file.raw);
-  ElMessage.success("音频上传并转写完成");
+  try {
+    await store.uploadAudioAndTranscribe(meetingId, file.raw);
+    ElMessage.success("音频上传并转写完成");
+  } catch {
+    ElMessage.error(store.error || "音频处理失败");
+  }
 }
 
 async function runPostprocess() {
-  await store.runPostprocess(meetingId);
-  ElMessage.success("已生成会议纪要与任务");
+  try {
+    await store.runPostprocess(meetingId);
+    ElMessage.success("已生成会议纪要与任务");
+  } catch {
+    ElMessage.error(store.error || "会议后处理失败");
+  }
 }
 </script>
 
@@ -101,6 +120,11 @@ async function runPostprocess() {
   display: flex;
   gap: 10px;
   margin: 14px 0;
+}
+
+.organizer-line {
+  margin: 0;
+  color: #486078;
 }
 
 .summary-block {

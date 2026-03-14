@@ -7,6 +7,8 @@
       </div>
       <nav>
         <RouterLink to="/">会议总览</RouterLink>
+        <RouterLink to="/tasks">任务中心</RouterLink>
+        <RouterLink to="/users">用户管理</RouterLink>
       </nav>
     </aside>
     <main class="main-stage">
@@ -56,7 +58,8 @@ nav a {
   text-decoration: none;
   padding: 8px 12px;
   border-radius: 10px;
-  display: inline-block;
+  display: block;
+  margin-bottom: 6px;
 }
 
 nav a.router-link-active {

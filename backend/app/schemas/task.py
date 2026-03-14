@@ -1,8 +1,12 @@
 """任务 Schema 定义。"""
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
+
+TaskPriority = Literal["high", "medium", "low"]
+TaskStatus = Literal["todo", "in_progress", "done"]
 
 
 class TaskCreate(BaseModel):
@@ -14,8 +18,8 @@ class TaskCreate(BaseModel):
     description: str | None = None
     assignee_id: int | None = None
     reporter_id: int | None = None
-    priority: str = Field(default="medium")
-    status: str = Field(default="todo")
+    priority: TaskPriority = Field(default="medium")
+    status: TaskStatus = Field(default="todo")
     due_at: datetime | None = None
 
 
@@ -27,8 +31,8 @@ class TaskUpdate(BaseModel):
     description: str | None = None
     assignee_id: int | None = None
     reporter_id: int | None = None
-    priority: str | None = None
-    status: str | None = None
+    priority: TaskPriority | None = None
+    status: TaskStatus | None = None
     due_at: datetime | None = None
     completed_at: datetime | None = None
 

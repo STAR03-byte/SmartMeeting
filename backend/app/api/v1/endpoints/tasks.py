@@ -4,8 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.services.meeting_service import get_meeting
+from app.services.meeting_transcript_service import get_transcript
 from app.schemas.task import TaskCreate, TaskOut, TaskUpdate
 from app.services.task_service import create_task, delete_task, get_task, list_tasks, update_task
+from app.services.user_service import get_user
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -13,6 +16,21 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 @router.post("", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
 def create_task_api(payload: TaskCreate, db: Session = Depends(get_db)) -> TaskOut:
     """创建任务。"""
+
+    meeting = get_meeting(db, payload.meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    if payload.transcript_id is not None:
+        transcript = get_transcript(db, payload.transcript_id)
+        if not transcript or transcript.meeting_id != payload.meeting_id:
+            raise HTTPException(status_code=404, detail="Transcript not found")
+
+    if payload.assignee_id is not None and not get_user(db, payload.assignee_id):
+        raise HTTPException(status_code=404, detail="Assignee not found")
+
+    if payload.reporter_id is not None and not get_user(db, payload.reporter_id):
+        raise HTTPException(status_code=404, detail="Reporter not found")
 
     return create_task(db, payload)
 

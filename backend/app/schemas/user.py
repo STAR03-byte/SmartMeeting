@@ -1,8 +1,11 @@
 """用户 Schema 定义。"""
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
+
+UserRole = Literal["admin", "member"]
 
 
 class UserCreate(BaseModel):
@@ -12,7 +15,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password_hash: str = Field(..., min_length=8, max_length=255)
     full_name: str = Field(..., min_length=1, max_length=100)
-    role: str = Field(default="member")
+    role: UserRole = Field(default="member")
 
 
 class UserUpdate(BaseModel):
@@ -21,7 +24,7 @@ class UserUpdate(BaseModel):
     email: EmailStr | None = None
     password_hash: str | None = Field(default=None, min_length=8, max_length=255)
     full_name: str | None = Field(default=None, min_length=1, max_length=100)
-    role: str | None = None
+    role: UserRole | None = None
     is_active: bool | None = None
 
 

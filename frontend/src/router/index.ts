@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from "vue-router";
 
 const DashboardView = () => import("../views/DashboardView.vue");
 const MeetingDetailView = () => import("../views/MeetingDetailView.vue");
+const TasksView = () => import("../views/TasksView.vue");
+const UsersView = () => import("../views/UsersView.vue");
 
 const router = createRouter({
   history: createWebHistory(),
@@ -16,6 +18,16 @@ const router = createRouter({
       name: "meeting-detail",
       component: MeetingDetailView,
       props: true,
+    },
+    {
+      path: "/tasks",
+      name: "tasks",
+      component: TasksView,
+    },
+    {
+      path: "/users",
+      name: "users",
+      component: UsersView,
     },
   ],
 });

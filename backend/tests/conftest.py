@@ -23,8 +23,6 @@ from app import models  # noqa: F401
 
 @pytest.fixture()
 def client() -> Generator[TestClient, None, None]:
-    """创建测试客户端并注入测试数据库。"""
-
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -43,6 +41,31 @@ def client() -> Generator[TestClient, None, None]:
     app.dependency_overrides[get_db] = override_get_db
 
     with TestClient(app) as test_client:
+        yield test_client
+
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def safe_client() -> Generator[TestClient, None, None]:
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    Base.metadata.create_all(bind=engine)
+
+    def override_get_db() -> Generator[Session, None, None]:
+        db = testing_session_local()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client
 
     app.dependency_overrides.clear()
