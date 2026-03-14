@@ -583,3 +583,40 @@ def test_list_meetings_supports_filters_and_pagination(client) -> None:
     limit_offset_data = limit_offset_resp.json()
     assert len(limit_offset_data) == 1
     assert limit_offset_data[0]["id"] == meeting_b_id
+
+
+def test_get_meeting_detail_includes_organizer_object(client) -> None:
+    user_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "meeting_detail_owner",
+            "email": "meeting_detail_owner@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Meeting Detail Owner",
+            "role": "admin",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "详情增强会议",
+            "description": "检查 organizer 嵌套对象",
+            "organizer_id": organizer_id,
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    detail_resp = client.get(f"/api/v1/meetings/{meeting_id}")
+    assert detail_resp.status_code == 200
+    body = detail_resp.json()
+    assert body["id"] == meeting_id
+    assert body["organizer_id"] == organizer_id
+    assert body["organizer"]["id"] == organizer_id
+    assert body["organizer"]["username"] == "meeting_detail_owner"
+    assert body["organizer"]["email"] == "meeting_detail_owner@example.com"
+    assert body["organizer"]["full_name"] == "Meeting Detail Owner"
+    assert body["organizer"]["role"] == "admin"

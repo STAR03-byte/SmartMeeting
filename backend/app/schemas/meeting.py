@@ -5,6 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from app.schemas.task import TaskOut
+from app.schemas.user import UserOut
 
 
 class MeetingCreate(BaseModel):
@@ -51,6 +52,10 @@ class MeetingOut(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class MeetingDetailOut(MeetingOut):
+    organizer: UserOut
 
 
 class MeetingPostprocessOut(BaseModel):

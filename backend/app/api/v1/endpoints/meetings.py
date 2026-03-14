@@ -6,7 +6,13 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.schemas.meeting_audio import MeetingAudioOut
 from app.models.meeting_transcript import MeetingTranscript
-from app.schemas.meeting import MeetingCreate, MeetingOut, MeetingPostprocessOut, MeetingUpdate
+from app.schemas.meeting import (
+    MeetingCreate,
+    MeetingDetailOut,
+    MeetingOut,
+    MeetingPostprocessOut,
+    MeetingUpdate,
+)
 from app.schemas.meeting_transcript import MeetingTranscriptOut
 from app.services.audio_service import save_meeting_audio, transcribe_latest_audio
 from app.services.meeting_service import (
@@ -62,14 +68,23 @@ def list_meetings_api(
     )
 
 
-@router.get("/{meeting_id}", response_model=MeetingOut)
-def get_meeting_api(meeting_id: int, db: Session = Depends(get_db)) -> MeetingOut:
+@router.get("/{meeting_id}", response_model=MeetingDetailOut)
+def get_meeting_api(meeting_id: int, db: Session = Depends(get_db)) -> MeetingDetailOut:
     """查询会议详情。"""
 
     meeting = get_meeting(db, meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
-    return meeting
+    organizer = get_user(db, meeting.organizer_id)
+    if not organizer:
+        raise HTTPException(status_code=404, detail="Organizer not found")
+
+    return MeetingDetailOut.model_validate(
+        {
+            **meeting.__dict__,
+            "organizer": organizer,
+        }
+    )
 
 
 @router.patch("/{meeting_id}", response_model=MeetingOut)
