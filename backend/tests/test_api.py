@@ -620,3 +620,69 @@ def test_get_meeting_detail_includes_organizer_object(client) -> None:
     assert body["organizer"]["email"] == "meeting_detail_owner@example.com"
     assert body["organizer"]["full_name"] == "Meeting Detail Owner"
     assert body["organizer"]["role"] == "admin"
+
+
+def test_update_meeting_rejects_invalid_scheduled_range(client) -> None:
+    user_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "meeting_patch_schedule",
+            "email": "meeting_patch_schedule@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Meeting Patch Schedule",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={"title": "Patch Scheduled 校验", "organizer_id": organizer_id},
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    patch_resp = client.patch(
+        f"/api/v1/meetings/{meeting_id}",
+        json={
+            "scheduled_start_at": "2026-03-14T10:00:00Z",
+            "scheduled_end_at": "2026-03-14T09:00:00Z",
+        },
+    )
+
+    assert patch_resp.status_code == 400
+    assert patch_resp.json()["detail"] == "scheduled_end_at must be after or equal to scheduled_start_at"
+
+
+def test_update_meeting_rejects_invalid_actual_range(client) -> None:
+    user_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "meeting_patch_actual",
+            "email": "meeting_patch_actual@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Meeting Patch Actual",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={"title": "Patch Actual 校验", "organizer_id": organizer_id},
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    patch_resp = client.patch(
+        f"/api/v1/meetings/{meeting_id}",
+        json={
+            "actual_start_at": "2026-03-14T10:00:00Z",
+            "actual_end_at": "2026-03-14T09:00:00Z",
+        },
+    )
+
+    assert patch_resp.status_code == 400
+    assert patch_resp.json()["detail"] == "actual_end_at must be after or equal to actual_start_at"

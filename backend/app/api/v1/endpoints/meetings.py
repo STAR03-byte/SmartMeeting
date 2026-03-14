@@ -98,6 +98,39 @@ def update_meeting_api(
     meeting = get_meeting(db, meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+
+    scheduled_start_at = payload.scheduled_start_at
+    scheduled_end_at = payload.scheduled_end_at
+    if scheduled_start_at is None:
+        scheduled_start_at = meeting.scheduled_start_at
+    if scheduled_end_at is None:
+        scheduled_end_at = meeting.scheduled_end_at
+    if (
+        scheduled_start_at is not None
+        and scheduled_end_at is not None
+        and scheduled_end_at < scheduled_start_at
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="scheduled_end_at must be after or equal to scheduled_start_at",
+        )
+
+    actual_start_at = payload.actual_start_at
+    actual_end_at = payload.actual_end_at
+    if actual_start_at is None:
+        actual_start_at = meeting.actual_start_at
+    if actual_end_at is None:
+        actual_end_at = meeting.actual_end_at
+    if (
+        actual_start_at is not None
+        and actual_end_at is not None
+        and actual_end_at < actual_start_at
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="actual_end_at must be after or equal to actual_start_at",
+        )
+
     return update_meeting(db, meeting, payload)
 
 
