@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     app_name: str = "SmartMeeting API"
     app_env: str = "dev"
 
+    # Database
     db_host: str = "127.0.0.1"
     db_port: int = 3306
     db_user: str = "root"
@@ -18,8 +19,23 @@ class Settings(BaseSettings):
     db_auto_fallback_sqlite: bool = True
     sqlite_path: str = "backend/dev.db"
 
+    # Task extraction keywords (fallback when LLM unavailable)
     action_keywords: str = "请,负责,需要,完成,提交,跟进"
     high_priority_keywords: str = "今天,今日,本周,尽快,立即,截止,风险"
+
+    # LLM Settings
+    llm_provider: str = "openai"  # openai | local | mock
+    llm_api_key: str = ""  # OPENAI_API_KEY
+    llm_base_url: str = ""  # Optional: for Azure/custom endpoints
+    llm_model: str = "gpt-4o-mini"
+    llm_temperature: float = 0.3
+    llm_max_tokens: int = 2000
+    llm_timeout: int = 60  # seconds
+
+    # Whisper Settings
+    whisper_model: str = "base"  # tiny | base | small | medium | large
+    whisper_device: str = "cpu"  # cpu | cuda | auto
+    whisper_language: str = "zh"  # Chinese
 
     model_config = SettingsConfigDict(env_file="backend/.env", env_file_encoding="utf-8")
 

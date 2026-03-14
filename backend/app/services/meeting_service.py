@@ -10,6 +10,12 @@ from app.models.task import Task
 from app.models.user import User
 from app.schemas.meeting import MeetingCreate, MeetingUpdate
 from app.services.task_service import extract_action_items, infer_assignee_name, infer_task_priority
+from app.services.llm_service import (
+    ExtractedTask,
+    LLMServiceError,
+    extract_action_items as llm_extract_action_items,
+    generate_meeting_summary as llm_generate_meeting_summary,
+)
 
 
 def create_meeting(db: Session, payload: MeetingCreate) -> Meeting:
@@ -83,6 +89,22 @@ def build_meeting_summary(transcripts: list[MeetingTranscript]) -> str:
     return f"{lines[0]}\n{lines[1]}"
 
 
+async def build_meeting_summary_with_llm(
+    meeting: Meeting,
+    transcripts: list[MeetingTranscript],
+) -> tuple[str, str]:
+    lines = [item.content.strip() for item in transcripts if item.content.strip()]
+    if not lines:
+        return "", "empty-v1"
+    try:
+        summary = await llm_generate_meeting_summary(lines, meeting.title)
+        if summary.strip():
+            return summary.strip(), "llm-summary-v1"
+    except LLMServiceError:
+        pass
+    return build_meeting_summary(transcripts), "rule-v1"
+
+
 def generate_tasks_from_transcripts(
     db: Session,
     meeting_id: int,
@@ -128,6 +150,94 @@ def generate_tasks_from_transcripts(
     for task in generated:
         db.refresh(task)
     return generated
+
+
+async def generate_tasks_from_transcripts_with_llm(
+    db: Session,
+    meeting_id: int,
+    transcripts: list[MeetingTranscript],
+    force_regenerate: bool = False,
+) -> tuple[list[Task], str]:
+    existing = db.query(Task).filter(Task.meeting_id == meeting_id).all()
+    if existing and not force_regenerate:
+        return existing, "existing-v1"
+
+    if existing and force_regenerate:
+        for task in existing:
+            db.delete(task)
+        db.commit()
+
+    used_llm = False
+    generated: list[Task] = []
+    participants = [
+        user.full_name
+        for user in db.query(User).all()
+        if getattr(user, "full_name", None)
+    ]
+
+    for transcript in transcripts:
+        llm_items: list[ExtractedTask] = []
+        try:
+            llm_items = await llm_extract_action_items(transcript.content, participants)
+        except LLMServiceError:
+            llm_items = []
+
+        if llm_items:
+            used_llm = True
+            for item in llm_items:
+                assignee_id = transcript.speaker_user_id
+                assignee_name = item["assignee_name"]
+                if assignee_name:
+                    user = db.query(User).filter(User.full_name == assignee_name).first()
+                    if user:
+                        assignee_id = user.id
+
+                priority = (
+                    item["priority"]
+                    if item["priority"] in {"high", "medium", "low"}
+                    else infer_task_priority(transcript.content)
+                )
+                task = Task(
+                    meeting_id=meeting_id,
+                    transcript_id=transcript.id,
+                    title=item["title"][:200],
+                    description=item["description"] or transcript.content,
+                    assignee_id=assignee_id,
+                    reporter_id=None,
+                    priority=priority,
+                    status="todo",
+                )
+                db.add(task)
+                generated.append(task)
+            continue
+
+        action_items = extract_action_items(transcript.content)
+        for action in action_items:
+            assignee_id = transcript.speaker_user_id
+            assignee_name = infer_assignee_name(action)
+            if assignee_name:
+                user = db.query(User).filter(User.full_name == assignee_name).first()
+                if user:
+                    assignee_id = user.id
+
+            task = Task(
+                meeting_id=meeting_id,
+                transcript_id=transcript.id,
+                title=action[:200],
+                description=action,
+                assignee_id=assignee_id,
+                reporter_id=None,
+                priority=infer_task_priority(action),
+                status="todo",
+            )
+            db.add(task)
+            generated.append(task)
+
+    db.commit()
+    for task in generated:
+        db.refresh(task)
+    version = "llm-task-v1" if used_llm else "rule-v1"
+    return generated, version
 
 
 def save_postprocess_result(

@@ -14,12 +14,13 @@ from app.schemas.meeting import (
     MeetingUpdate,
 )
 from app.schemas.meeting_transcript import MeetingTranscriptOut
+from app.schemas.task import TaskOut
 from app.services.audio_service import save_meeting_audio, transcribe_latest_audio
 from app.services.meeting_service import (
-    build_meeting_summary,
+    build_meeting_summary_with_llm,
     create_meeting,
     delete_meeting,
-    generate_tasks_from_transcripts,
+    generate_tasks_from_transcripts_with_llm,
     get_meeting,
     list_meetings,
     save_postprocess_result,
@@ -59,13 +60,14 @@ def list_meetings_api(
 ) -> list[MeetingOut]:
     """查询会议列表。"""
 
-    return list_meetings(
+    meetings = list_meetings(
         db,
         status=status,
         organizer_id=organizer_id,
         limit=limit,
         offset=offset,
     )
+    return [MeetingOut.model_validate(meeting) for meeting in meetings]
 
 
 @router.get("/{meeting_id}", response_model=MeetingDetailOut)
@@ -145,7 +147,7 @@ def delete_meeting_api(meeting_id: int, db: Session = Depends(get_db)) -> None:
 
 
 @router.post("/{meeting_id}/postprocess", response_model=MeetingPostprocessOut)
-def postprocess_meeting_api(
+async def postprocess_meeting_api(
     meeting_id: int,
     force_regenerate: bool = Query(default=False),
     db: Session = Depends(get_db),
@@ -165,16 +167,21 @@ def postprocess_meeting_api(
     if not transcripts:
         raise HTTPException(status_code=400, detail="No transcripts found for meeting")
 
-    summary = build_meeting_summary(transcripts)
-    tasks = generate_tasks_from_transcripts(
+    summary, summary_version = await build_meeting_summary_with_llm(meeting, transcripts)
+    tasks, task_version = await generate_tasks_from_transcripts_with_llm(
         db,
         meeting_id,
         transcripts,
         force_regenerate=force_regenerate,
     )
-    save_postprocess_result(db, meeting, summary, version="rule-v1")
+    version = summary_version if "llm" in summary_version else task_version
+    save_postprocess_result(db, meeting, summary, version=version)
 
-    return MeetingPostprocessOut(meeting_id=meeting_id, summary=summary, tasks=tasks)
+    return MeetingPostprocessOut(
+        meeting_id=meeting_id,
+        summary=summary,
+        tasks=[TaskOut.model_validate(task) for task in tasks],
+    )
 
 
 @router.post("/{meeting_id}/audio", response_model=MeetingAudioOut, status_code=status.HTTP_201_CREATED)
@@ -197,14 +204,17 @@ def upload_meeting_audio_api(
     response_model=MeetingTranscriptOut,
     status_code=status.HTTP_201_CREATED,
 )
-def transcribe_meeting_audio_api(meeting_id: int, db: Session = Depends(get_db)) -> MeetingTranscriptOut:
-    """对最新上传音频执行占位语音识别。"""
+async def transcribe_meeting_audio_api(
+    meeting_id: int,
+    db: Session = Depends(get_db),
+) -> MeetingTranscriptOut:
+    """对最新上传音频执行 Whisper 语音识别。"""
 
     meeting = get_meeting(db, meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
 
-    transcript = transcribe_latest_audio(db, meeting_id)
-    if not transcript:
+    transcripts = await transcribe_latest_audio(db, meeting_id)
+    if not transcripts:
         raise HTTPException(status_code=400, detail="No audio found for meeting")
-    return transcript
+    return MeetingTranscriptOut.model_validate(transcripts[0])

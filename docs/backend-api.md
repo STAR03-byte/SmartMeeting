@@ -41,10 +41,11 @@
 }
 ```
 
-### 2.4 转写最新音频（占位 ASR）
+### 2.4 转写最新音频（Whisper ASR）
 
 - `POST /api/v1/meetings/{meeting_id}/audio/transcribe`
-- 逻辑: 对该会议最新上传音频生成一条 `meeting_transcripts` 记录
+- 逻辑: 对该会议最新上传音频执行 Whisper 转写，生成多条 `meeting_transcripts` 记录
+- 返回: `MeetingTranscriptOut`
 - 成功返回 `201`，失败场景:
   - 会议不存在: `404 Meeting not found`
   - 无音频: `400 No audio found for meeting`
@@ -55,8 +56,8 @@
 - Query:
   - `force_regenerate`（可选，默认 `false`）
 - 行为:
-  - 从转写中生成摘要并落库到会议
-  - 规则抽取任务
+  - 优先使用 LLM 从转写中生成摘要并落库到会议
+  - 优先使用 LLM 抽取任务，失败时回退到规则抽取
   - 默认幂等；`force_regenerate=true` 时重建任务
 
 ## 3. 任务接口
@@ -90,12 +91,13 @@
 ## 4. 错误码约定
 
 - `400`: 业务前置条件不满足（无音频、无转写、非法状态流转）
+- `500`: AI 服务不可用且无可恢复降级路径
 - `404`: 资源不存在（meeting/task/transcript/user）
 - `422`: 请求参数校验失败
 
 ## 5. 当前 AI 能力说明
 
-- ASR: `mock-asr`（占位实现）
-- 摘要: 规则摘要（取前两段有效转写）
-- 任务抽取: 基于关键词和句式规则，支持优先级与负责人基础推断
-- 版本标记: `postprocess_version = rule-v1`
+- ASR: 本地 `Whisper`
+- 摘要: 优先 LLM 生成，失败时回退规则摘要（取前两段有效转写）
+- 任务抽取: 优先 LLM 抽取，失败时回退关键词和句式规则
+- 版本标记: `postprocess_version` 根据实际链路写入 `llm-summary-v1` / `llm-task-v1` / `rule-fallback-v1`
