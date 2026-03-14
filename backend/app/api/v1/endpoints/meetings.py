@@ -19,13 +19,26 @@ from app.services.meeting_service import (
     save_postprocess_result,
     update_meeting,
 )
+from app.services.user_service import get_user
 
 router = APIRouter(prefix="/meetings", tags=["meetings"])
 
 
 @router.post("", response_model=MeetingOut, status_code=status.HTTP_201_CREATED)
 def create_meeting_api(payload: MeetingCreate, db: Session = Depends(get_db)) -> MeetingOut:
-    """创建会议。"""
+    organizer = get_user(db, payload.organizer_id)
+    if not organizer:
+        raise HTTPException(status_code=404, detail="Organizer not found")
+
+    if (
+        payload.scheduled_start_at is not None
+        and payload.scheduled_end_at is not None
+        and payload.scheduled_end_at < payload.scheduled_start_at
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="scheduled_end_at must be after or equal to scheduled_start_at",
+        )
 
     return create_meeting(db, payload)
 

@@ -73,6 +73,48 @@ def test_meeting_crud_flow(client) -> None:
     assert len(list_resp.json()) == 1
 
 
+def test_create_meeting_rejects_nonexistent_organizer(client) -> None:
+    create_resp = client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "无效组织者会议",
+            "description": "组织者不存在",
+            "organizer_id": 9999,
+        },
+    )
+
+    assert create_resp.status_code == 404
+    assert create_resp.json()["detail"] == "Organizer not found"
+
+
+def test_create_meeting_rejects_invalid_schedule_range(client) -> None:
+    user_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "schedule_owner",
+            "email": "schedule_owner@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Schedule Owner",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    create_resp = client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "时间非法会议",
+            "organizer_id": organizer_id,
+            "scheduled_start_at": "2026-03-14T10:00:00Z",
+            "scheduled_end_at": "2026-03-14T09:00:00Z",
+        },
+    )
+
+    assert create_resp.status_code == 400
+    assert create_resp.json()["detail"] == "scheduled_end_at must be after or equal to scheduled_start_at"
+
+
 def test_meeting_postprocess_generates_summary_and_tasks(client) -> None:
     """会议转写后处理可生成摘要和任务。"""
 
