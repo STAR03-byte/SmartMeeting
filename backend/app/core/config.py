@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     db_user: str = "root"
     db_password: str = "root"
     db_name: str = "smartmeeting"
+    db_backend: str = "mysql"
+    db_auto_fallback_sqlite: bool = True
+    sqlite_path: str = "backend/dev.db"
 
     action_keywords: str = "请,负责,需要,完成,提交,跟进"
     high_priority_keywords: str = "今天,今日,本周,尽快,立即,截止,风险"
@@ -28,6 +31,12 @@ class Settings(BaseSettings):
             f"mysql+pymysql://{self.db_user}:{self.db_password}@"
             f"{self.db_host}:{self.db_port}/{self.db_name}?charset=utf8mb4"
         )
+
+    @property
+    def sqlite_database_uri(self) -> str:
+        """返回 SQLAlchemy SQLite 连接串。"""
+
+        return f"sqlite:///{self.sqlite_path}"
 
     @property
     def action_keyword_list(self) -> tuple[str, ...]:
