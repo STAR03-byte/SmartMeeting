@@ -22,10 +22,29 @@ def create_meeting(db: Session, payload: MeetingCreate) -> Meeting:
     return meeting
 
 
-def list_meetings(db: Session) -> list[Meeting]:
+def list_meetings(
+    db: Session,
+    status: str | None = None,
+    organizer_id: int | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> list[Meeting]:
     """查询会议列表。"""
 
-    return db.query(Meeting).order_by(Meeting.id.desc()).all()
+    query = db.query(Meeting)
+
+    if status is not None:
+        query = query.filter(Meeting.status == status)
+
+    if organizer_id is not None:
+        query = query.filter(Meeting.organizer_id == organizer_id)
+
+    query = query.order_by(Meeting.id.desc()).offset(offset)
+
+    if limit is not None:
+        query = query.limit(limit)
+
+    return query.all()
 
 
 def get_meeting(db: Session, meeting_id: int) -> Meeting | None:

@@ -44,10 +44,22 @@ def create_meeting_api(payload: MeetingCreate, db: Session = Depends(get_db)) ->
 
 
 @router.get("", response_model=list[MeetingOut])
-def list_meetings_api(db: Session = Depends(get_db)) -> list[MeetingOut]:
+def list_meetings_api(
+    status: str | None = Query(default=None),
+    organizer_id: int | None = Query(default=None),
+    limit: int | None = Query(default=None, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+) -> list[MeetingOut]:
     """查询会议列表。"""
 
-    return list_meetings(db)
+    return list_meetings(
+        db,
+        status=status,
+        organizer_id=organizer_id,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/{meeting_id}", response_model=MeetingOut)

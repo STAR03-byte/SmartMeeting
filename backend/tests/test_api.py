@@ -511,3 +511,75 @@ def test_list_tasks_can_filter_by_meeting_id(client) -> None:
     data = filter_resp.json()
     assert len(data) == 1
     assert data[0]["meeting_id"] == meeting_a_id
+
+
+def test_list_meetings_supports_filters_and_pagination(client) -> None:
+    owner_a_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "meeting_filter_a",
+            "email": "meeting_filter_a@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Meeting Filter A",
+            "role": "member",
+        },
+    )
+    assert owner_a_resp.status_code == 201
+    owner_a_id = owner_a_resp.json()["id"]
+
+    owner_b_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "meeting_filter_b",
+            "email": "meeting_filter_b@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Meeting Filter B",
+            "role": "member",
+        },
+    )
+    assert owner_b_resp.status_code == 201
+    owner_b_id = owner_b_resp.json()["id"]
+
+    meeting_a_resp = client.post(
+        "/api/v1/meetings",
+        json={"title": "筛选会议A", "organizer_id": owner_a_id},
+    )
+    assert meeting_a_resp.status_code == 201
+    meeting_a_id = meeting_a_resp.json()["id"]
+
+    meeting_b_resp = client.post(
+        "/api/v1/meetings",
+        json={"title": "筛选会议B", "organizer_id": owner_b_id},
+    )
+    assert meeting_b_resp.status_code == 201
+    meeting_b_id = meeting_b_resp.json()["id"]
+
+    meeting_c_resp = client.post(
+        "/api/v1/meetings",
+        json={"title": "筛选会议C", "organizer_id": owner_a_id},
+    )
+    assert meeting_c_resp.status_code == 201
+    meeting_c_id = meeting_c_resp.json()["id"]
+
+    patch_a_resp = client.patch(f"/api/v1/meetings/{meeting_a_id}", json={"status": "ongoing"})
+    assert patch_a_resp.status_code == 200
+    patch_c_resp = client.patch(f"/api/v1/meetings/{meeting_c_id}", json={"status": "done"})
+    assert patch_c_resp.status_code == 200
+
+    organizer_filter_resp = client.get(f"/api/v1/meetings?organizer_id={owner_a_id}")
+    assert organizer_filter_resp.status_code == 200
+    organizer_data = organizer_filter_resp.json()
+    assert len(organizer_data) == 2
+    assert [item["id"] for item in organizer_data] == [meeting_c_id, meeting_a_id]
+
+    status_filter_resp = client.get("/api/v1/meetings?status=ongoing")
+    assert status_filter_resp.status_code == 200
+    status_data = status_filter_resp.json()
+    assert len(status_data) == 1
+    assert status_data[0]["id"] == meeting_a_id
+
+    limit_offset_resp = client.get("/api/v1/meetings?limit=1&offset=1")
+    assert limit_offset_resp.status_code == 200
+    limit_offset_data = limit_offset_resp.json()
+    assert len(limit_offset_data) == 1
+    assert limit_offset_data[0]["id"] == meeting_b_id
