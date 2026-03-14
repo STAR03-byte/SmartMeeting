@@ -686,3 +686,67 @@ def test_update_meeting_rejects_invalid_actual_range(client) -> None:
 
     assert patch_resp.status_code == 400
     assert patch_resp.json()["detail"] == "actual_end_at must be after or equal to actual_start_at"
+
+
+def test_create_transcript_rejects_nonexistent_meeting(client) -> None:
+    transcript_resp = client.post(
+        "/api/v1/transcripts",
+        json={
+            "meeting_id": 9999,
+            "speaker_name": "Ghost Speaker",
+            "segment_index": 1,
+            "content": "不存在的会议转写",
+        },
+    )
+
+    assert transcript_resp.status_code == 404
+    assert transcript_resp.json()["detail"] == "Meeting not found"
+
+
+def test_create_participant_rejects_nonexistent_meeting_or_user(client) -> None:
+    user_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "participant_guard",
+            "email": "participant_guard@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Participant Guard",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    user_id = user_resp.json()["id"]
+
+    invalid_meeting_resp = client.post(
+        "/api/v1/participants",
+        json={"meeting_id": 9999, "user_id": user_id},
+    )
+    assert invalid_meeting_resp.status_code == 404
+    assert invalid_meeting_resp.json()["detail"] == "Meeting not found"
+
+    owner_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "participant_owner",
+            "email": "participant_owner@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Participant Owner",
+            "role": "member",
+        },
+    )
+    assert owner_resp.status_code == 201
+    organizer_id = owner_resp.json()["id"]
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={"title": "参与人校验会议", "organizer_id": organizer_id},
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    invalid_user_resp = client.post(
+        "/api/v1/participants",
+        json={"meeting_id": meeting_id, "user_id": 9999},
+    )
+    assert invalid_user_resp.status_code == 404
+    assert invalid_user_resp.json()["detail"] == "User not found"

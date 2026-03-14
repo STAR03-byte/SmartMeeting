@@ -16,6 +16,8 @@ from app.services.meeting_participant_service import (
     list_participants,
     update_participant,
 )
+from app.services.meeting_service import get_meeting
+from app.services.user_service import get_user
 
 router = APIRouter(prefix="/participants", tags=["participants"])
 
@@ -26,6 +28,14 @@ def create_participant_api(
     db: Session = Depends(get_db),
 ) -> MeetingParticipantOut:
     """创建会议参与人。"""
+
+    meeting = get_meeting(db, payload.meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    user = get_user(db, payload.user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
     return create_participant(db, payload)
 

@@ -16,6 +16,7 @@ from app.services.meeting_transcript_service import (
     list_transcripts,
     update_transcript,
 )
+from app.services.meeting_service import get_meeting
 
 router = APIRouter(prefix="/transcripts", tags=["transcripts"])
 
@@ -26,6 +27,10 @@ def create_transcript_api(
     db: Session = Depends(get_db),
 ) -> MeetingTranscriptOut:
     """创建会议转写。"""
+
+    meeting = get_meeting(db, payload.meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
 
     return create_transcript(db, payload)
 
