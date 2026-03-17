@@ -1,208 +1,97 @@
-# AGENTS.md
+# PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-03-14
-**Commit:** a297229
+**Generated:** 2026-03-17
+**Commit:** 369a823
 **Branch:** main
 
-This document defines build/test commands and coding conventions for agentic coding tools
-working in `D:\SmartMeeting`.
+## OVERVIEW
 
-## Repository Status
+SmartMeeting 主工程是 FastAPI + Vue 3 + MySQL 的会议系统（MVP 阶段）。
+仓库同时包含两个外部技能工程（`skills-main/`、`ui-ux-pro-max-skill-main/`），与主业务代码分域维护。
 
-- MVP stage: Backend CRUD + audio upload + mock ASR + summary/task extraction ready.
-- Stack: FastAPI + Vue 3 + MySQL + Whisper + LLM.
-- Frontend dashboard/detail pages ready for local integration.
-- See `backend/AGENTS.md` for backend-specific conventions.
-
-## Project Structure
+## STRUCTURE
 
 ```text
 SmartMeeting/
-├─ backend/                 # FastAPI service (see backend/AGENTS.md)
-│  ├─ app/
-│  │  ├─ api/v1/endpoints/  # Route handlers (REST endpoints)
-│  │  ├─ core/              # Config, DB engine
-│  │  ├─ models/            # SQLAlchemy ORM models
-│  │  ├─ schemas/           # Pydantic validation schemas
-│  │  ├─ services/          # Business logic (ASR, LLM, CRUD)
-│  │  └─ main.py            # App entry
-│  ├─ tests/
-│  └─ storage/audio/        # Local audio files
-├─ frontend/                # Vue 3 + TypeScript app
-│  ├─ src/
-│  │  ├─ api/               # Axios client & API functions
-│  │  ├─ components/        # Reusable Vue components
-│  │  ├─ stores/            # Pinia state management
-│  │  └─ views/             # Page components
-│  └─ package.json
-├─ database/                # SQL scripts / migrations
-│  ├─ migrations/           # Schema migrations (001-005)
-│  ├─ seeds/                # Seed data
-│  └─ rollback/             # Rollback scripts
-└─ docs/
+├── backend/                   # 主后端服务（有独立 AGENTS）
+├── frontend/                  # 主前端应用（新增独立 AGENTS）
+├── database/                  # SQL 迁移/种子/回滚（新增独立 AGENTS）
+├── docs/                      # 业务与运行文档
+├── scripts/                   # 辅助脚本（含 DB 批量执行脚本）
+├── skills-main/               # 外部技能仓（新增独立 AGENTS）
+└── ui-ux-pro-max-skill-main/  # UI/UX 技能仓（新增独立 AGENTS）
 ```
 
-## Build, Lint, Test Commands
+## WHERE TO LOOK
 
-Use these commands from repository root unless noted otherwise.
-
-### Backend (FastAPI / Python)
-
-```bash
-# install
-python -m pip install -r backend/requirements.txt
-
-# run dev server
-python -m uvicorn backend.main:app --reload
-
-# run all tests
-pytest backend/tests -v
-
-# run single test file
-pytest backend/tests/test_meeting_api.py -v
-
-# run single test case
-pytest backend/tests/test_meeting_api.py::TestMeetingAPI::test_create_meeting -v
-
-# lint / format / type-check
-ruff check backend/app backend/tests
-black backend/app backend/tests
-isort backend/app backend/tests
-mypy backend/app
-```
-
-### Frontend (Vue 3 / TypeScript)
-
-```bash
-# install
-npm --prefix frontend install
-
-# dev / build / preview
-npm --prefix frontend run dev
-npm --prefix frontend run build
-npm --prefix frontend run preview
-
-# tests
-npm --prefix frontend run test:unit
-
-# run single unit test file (Vitest)
-npm --prefix frontend run test:unit -- src/components/__tests__/MeetingList.spec.ts
-
-# lint / type-check / format
-npm --prefix frontend run lint
-npm --prefix frontend run typecheck
-npm --prefix frontend run format
-```
-
-### Database (MySQL)
-
-```bash
-# example local migration execution
-mysql -u <user> -p <database> < database/init.sql
-```
-
-If Alembic or another migration tool is added later, document and prefer that flow.
-
-## Code Style Guidelines
-
-### 1) General
-
-- Keep changes minimal and localized; edit existing files first.
-- Avoid broad refactors unless required by the task.
-- Keep functions focused; extract complex logic into services/utilities.
-- Do not hardcode secrets, tokens, or connection strings.
-
-### 2) Python / FastAPI
-
-- **Formatting**: Black defaults, max line length 88 unless project config says otherwise.
-- **Imports**: stdlib, third-party, local modules (grouped with blank lines).
-- **Naming**:
-  - modules/functions/variables: `snake_case`
-  - classes: `PascalCase`
-  - constants: `UPPER_SNAKE_CASE`
-- **Types**:
-  - add type hints for public functions and service interfaces.
-  - prefer explicit return types.
-  - use Pydantic models for request/response contracts.
-- **API design**:
-  - use dependency injection for DB/session/auth where possible.
-  - validate inputs at schema level first.
-  - keep route handlers thin; move logic to `services/`.
-- **Error handling**:
-  - raise `HTTPException` with accurate status code and actionable detail.
-  - do not swallow exceptions silently.
-  - log internal errors with context; avoid leaking sensitive internals.
-
-### 3) Vue 3 / TypeScript
-
-- Use `<script setup lang="ts">` and Composition API.
-- **Naming**:
-  - components: `PascalCase.vue`
-  - composables: `useXxx.ts`
-  - utilities and variables: `camelCase`
-  - CSS classes: `kebab-case`
-- **Types**:
-  - type all props/emits/API payloads.
-  - avoid `any`; prefer explicit interfaces/types.
-- **State**:
-  - keep global state in Pinia stores.
-  - avoid duplicating server state across unrelated components.
-- **Error handling**:
-  - handle API errors in a user-visible and recoverable way.
-  - avoid empty `catch` blocks.
-
-### 4) MySQL / Data
-
-- Table and column names use `snake_case`.
-- Standard timestamp fields: `created_at`, `updated_at`.
-- Prefer migrations over manual schema edits in production workflows.
-- Add indexes for high-frequency filters/joins.
-
-### 5) Testing Guidelines
-
-- Add/adjust tests for behavior changes.
-- Keep tests deterministic and isolated.
-- For bug fixes, include a regression test that fails before and passes after fix.
-- Prefer one focused assertion block per scenario.
-
-### 6) Git & PR Conventions
-
-- Commit types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`.
-- Example: `feat(meeting): add meeting summary endpoint`.
-- Commit after each coherent change and push promptly.
-- Do not rewrite shared history unless explicitly requested.
-
-### 7) Agent-Specific Rules
-
-- Always check for existing conventions before introducing new patterns.
-- If command/tooling differs from this file, follow actual project config files first.
-- When commands fail due to missing files (common in early scaffold), report clearly and
-  propose the minimal setup needed.
+| Task | Location | Notes |
+|------|----------|-------|
+| 新增/修改后端 API | `backend/app/api/v1/endpoints/` | 业务逻辑下沉到 `backend/app/services/` |
+| 调整后端模型/校验 | `backend/app/models/`, `backend/app/schemas/` | Model 与 Schema 分离 |
+| 前端页面/路由/状态 | `frontend/src/views/`, `frontend/src/router/`, `frontend/src/stores/` | Vue 3 + Pinia |
+| DB 结构变更 | `database/migrations/` | 回滚在 `database/rollback/` |
+| DB 初始化/健康检查 | `scripts/db/` | 对应 `database/README.md` 顺序 |
+| 技能工程修改 | `skills-main/`, `ui-ux-pro-max-skill-main/` | 按各自子目录 AGENTS 执行 |
 
 ## CODE MAP
 
 | Symbol | Type | Location | Role |
 |--------|------|----------|------|
-| `app` | FastAPI | `backend/app/main.py` | Application instance |
-| `get_db` | Dep | `backend/app/core/database.py` | DB session injection |
-| `Meeting` | Model | `backend/app/models/meeting.py` | Meeting ORM |
-| `MeetingService` | Service | `backend/app/services/meeting_service.py` | Meeting business logic |
-| `AudioService` | Service | `backend/app/services/audio_service.py` | Whisper ASR integration |
-| `meetingStore` | Store | `frontend/src/stores/meetingStore.ts` | Meeting state |
-| `api` | Client | `frontend/src/api/client.ts` | Axios instance |
+| `app` | FastAPI app | `backend/app/main.py` | 应用实例与异常处理挂载 |
+| `lifespan` | function | `backend/app/main.py` | 启停生命周期日志与资源处理 |
+| `router` | Vue Router | `frontend/src/router/index.ts` | 前端路由入口 |
+| `meetingStore` | Pinia store | `frontend/src/stores/meetingStore.ts` | 会议状态管理 |
+| `api` | Axios client | `frontend/src/api/client.ts` | 统一 HTTP 客户端 |
 
-## Cursor / Copilot Rules Discovery
+## CONVENTIONS
 
-- Checked `.cursor/rules/`: not found.
-- Checked `.cursorrules`: not found.
-- Checked `.github/copilot-instructions.md`: **found** — merged rules below.
-- If these files are added later, merge their rules into this document and prioritize
-  repository-specific instructions over generic guidance.
+- 中文沟通；代码/命令/路径保持英文。
+- 变更尽量最小化，优先改现有文件；避免无关重构。
+- 后端保持“路由薄、服务厚”模式；`/api/v1` 版本化入口。
+- 前端使用 `<script setup lang="ts">` + Composition API + Pinia。
+- 禁止硬编码 secrets/token/password。
 
-## Copilot Instructions (from .github/copilot-instructions.md)
+## ANTI-PATTERNS (THIS PROJECT)
 
-- 始终使用中文（简体）与用户沟通。
-- 变更尽量最小化，优先修改现有文件。
-- 严禁提交或硬编码密钥、令牌、账号密码。
-- 不得在未确认影响时执行破坏性命令。
-- 不得擅自删除用户已有改动。
+- 未确认影响前执行破坏性命令（reset/覆盖历史等）。
+- 擅自删除用户已有改动。
+- 在前端/后端中引入 `any`、空 `catch`、无类型服务接口。
+- 在后端 endpoint 中直接写复杂业务或大量 DB 操作（应放 services）。
+
+## UNIQUE STYLES
+
+- 主工程 + 外部技能工程共仓：改动时先确认目标域，避免跨域误改。
+- `database/` 采用“migrations + seeds + rollback”三段式，而非 alembic。
+- 前端构建脚本内置类型检查：`build = vue-tsc --noEmit && vite build`。
+
+## COMMANDS
+
+```bash
+# backend
+python -m pip install -r backend/requirements.txt
+python -m uvicorn backend.main:app --reload
+pytest backend/tests -v
+ruff check backend/app backend/tests
+black backend/app backend/tests
+isort backend/app backend/tests
+mypy backend/app
+
+# frontend
+npm --prefix frontend install --cache "D:\SmartMeeting\.npm-cache"
+npm --prefix frontend run dev
+npm --prefix frontend run typecheck
+npm --prefix frontend run build
+
+# database
+mysql -u <user> -p < scripts/db/run_all.sql
+mysql -u <user> -p < scripts/db/check_health.sql
+```
+
+## HIERARCHY
+
+- `./AGENTS.md`（本文件）
+  - `./backend/AGENTS.md`
+  - `./frontend/AGENTS.md`
+  - `./database/AGENTS.md`
+  - `./skills-main/AGENTS.md`
+  - `./ui-ux-pro-max-skill-main/AGENTS.md`
