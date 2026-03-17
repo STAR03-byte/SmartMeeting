@@ -213,6 +213,7 @@ backend/storage/audio/
 backend/*.db
 tmp/
 node_modules/
+.worktrees/
 .DS_Store
 *.log
 *.exe
