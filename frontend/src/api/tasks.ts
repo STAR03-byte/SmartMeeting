@@ -1,11 +1,14 @@
 import { apiClient } from "./client";
-import type { TaskItem, TaskStatus } from "./types";
+import type { TaskItem, TaskPriority, TaskStatus } from "./types";
 
-export type { TaskItem, TaskStatus } from "./types";
+export type { TaskItem, TaskPriority, TaskStatus } from "./types";
 
 export interface ListTasksParams {
   assigneeId?: number;
   meetingId?: number;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  keyword?: string;
 }
 
 export async function getTasks(params: ListTasksParams = {}): Promise<TaskItem[]> {
@@ -15,6 +18,18 @@ export async function getTasks(params: ListTasksParams = {}): Promise<TaskItem[]
   }
   if (typeof params.meetingId === "number") {
     searchParams.set("meeting_id", String(params.meetingId));
+  }
+  if (typeof params.status === "string") {
+    searchParams.set("status", params.status);
+  }
+  if (typeof params.priority === "string") {
+    searchParams.set("priority", params.priority);
+  }
+  if (typeof params.keyword === "string") {
+    const normalizedKeyword = params.keyword.trim();
+    if (normalizedKeyword.length > 0) {
+      searchParams.set("keyword", normalizedKeyword);
+    }
   }
   const query = searchParams.toString();
   const url = query ? `/api/v1/tasks?${query}` : "/api/v1/tasks";

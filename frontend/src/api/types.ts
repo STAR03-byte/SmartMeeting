@@ -63,6 +63,8 @@ export interface TaskItem {
   status: TaskStatus;
   due_at: string | null;
   completed_at: string | null;
+  is_overdue: boolean;
+  is_due_soon: boolean;
   created_at: string;
   updated_at: string;
 }

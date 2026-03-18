@@ -1,6 +1,7 @@
 """任务服务层。"""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from typing import Literal
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -32,6 +33,9 @@ def list_tasks(
     db: Session,
     assignee_id: int | None = None,
     meeting_id: int | None = None,
+    status: Literal["todo", "in_progress", "done"] | None = None,
+    priority: Literal["high", "medium", "low"] | None = None,
+    keyword: str | None = None,
 ) -> list[Task]:
     """查询任务列表，可按执行人筛选。"""
 
@@ -40,7 +44,48 @@ def list_tasks(
         query = query.filter(Task.assignee_id == assignee_id)
     if meeting_id is not None:
         query = query.filter(Task.meeting_id == meeting_id)
+    if status is not None:
+        query = query.filter(Task.status == status)
+    if priority is not None:
+        query = query.filter(Task.priority == priority)
+    if keyword:
+        normalized_keyword = keyword.strip()
+        if normalized_keyword:
+            query = query.filter(Task.title.ilike(f"%{normalized_keyword}%"))
     return query.order_by(Task.id.desc()).all()
+
+
+def serialize_task_out(task: Task) -> dict[str, object]:
+    now = datetime.now(UTC)
+    due_soon_deadline = now + timedelta(hours=48)
+
+    is_done = task.status == "done"
+    due_at = task.due_at
+    is_overdue = False
+    is_due_soon = False
+
+    if due_at is not None and not is_done:
+        due_at_utc = due_at if due_at.tzinfo is not None else due_at.replace(tzinfo=UTC)
+        is_overdue = due_at_utc < now
+        is_due_soon = now <= due_at_utc < due_soon_deadline
+
+    return {
+        "id": task.id,
+        "meeting_id": task.meeting_id,
+        "transcript_id": task.transcript_id,
+        "title": task.title,
+        "description": task.description,
+        "assignee_id": task.assignee_id,
+        "reporter_id": task.reporter_id,
+        "priority": task.priority,
+        "status": task.status,
+        "due_at": task.due_at,
+        "completed_at": task.completed_at,
+        "is_overdue": is_overdue,
+        "is_due_soon": is_due_soon,
+        "created_at": task.created_at,
+        "updated_at": task.updated_at,
+    }
 
 
 def get_task(db: Session, task_id: int) -> Task | None:

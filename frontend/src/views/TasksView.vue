@@ -10,11 +10,51 @@
 
     <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" />
 
+    <el-card class="base-card filter-card">
+      <div class="filter-row">
+        <el-select v-model="filters.status" placeholder="状态" clearable style="width: 140px" @change="refreshTasks">
+          <el-option label="待办" value="todo" />
+          <el-option label="进行中" value="in_progress" />
+          <el-option label="已完成" value="done" />
+        </el-select>
+
+        <el-select
+          v-model="filters.priority"
+          placeholder="优先级"
+          clearable
+          style="width: 140px"
+          @change="refreshTasks"
+        >
+          <el-option label="高" value="high" />
+          <el-option label="中" value="medium" />
+          <el-option label="低" value="low" />
+        </el-select>
+
+        <el-input
+          v-model="filters.keyword"
+          placeholder="搜索任务标题"
+          clearable
+          style="max-width: 280px"
+          @keyup.enter="refreshTasks"
+          @clear="refreshTasks"
+        />
+
+        <el-button type="primary" @click="refreshTasks">应用筛选</el-button>
+      </div>
+    </el-card>
+
     <el-card class="base-card" v-loading="loading">
       <el-table :data="tasks" stripe>
         <el-table-column prop="title" label="任务" min-width="240" />
         <el-table-column prop="meeting_id" label="会议ID" width="100" />
         <el-table-column prop="priority" label="优先级" width="120" />
+        <el-table-column label="提醒" width="120">
+          <template #default="scope">
+            <el-tag v-if="scope.row.is_overdue" type="danger">已逾期</el-tag>
+            <el-tag v-else-if="scope.row.is_due_soon" type="warning">即将到期</el-tag>
+            <span v-else class="muted-text">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="160">
           <template #default="scope">
             <el-select
@@ -34,21 +74,48 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 
 import { getApiErrorMessage } from "../api/client";
-import { getTasks, updateTaskStatus, type TaskItem, type TaskStatus } from "../api/tasks";
+import {
+  getTasks,
+  updateTaskStatus,
+  type ListTasksParams,
+  type TaskItem,
+  type TaskPriority,
+  type TaskStatus,
+} from "../api/tasks";
 
 const tasks = ref<TaskItem[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
+const filters = reactive<{
+  status: TaskStatus | undefined;
+  priority: TaskPriority | undefined;
+  keyword: string;
+}>({
+  status: undefined,
+  priority: undefined,
+  keyword: "",
+});
 
 async function refreshTasks() {
   loading.value = true;
   error.value = null;
   try {
-    tasks.value = await getTasks();
+    const params: ListTasksParams = {};
+    if (filters.status) {
+      params.status = filters.status;
+    }
+    if (filters.priority) {
+      params.priority = filters.priority;
+    }
+    const normalizedKeyword = filters.keyword.trim();
+    if (normalizedKeyword.length > 0) {
+      params.keyword = normalizedKeyword;
+    }
+    tasks.value = await getTasks(params);
   } catch (err) {
     error.value = getApiErrorMessage(err);
   } finally {
@@ -106,5 +173,20 @@ onMounted(async () => {
 
 .base-card {
   border-radius: 12px;
+}
+
+.filter-card {
+  padding-bottom: 0;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.muted-text {
+  color: #8aa0b8;
 }
 </style>

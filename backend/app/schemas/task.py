@@ -51,6 +51,8 @@ class TaskOut(BaseModel):
     status: str
     due_at: datetime | None
     completed_at: datetime | None
+    is_overdue: bool = False
+    is_due_soon: bool = False
     created_at: datetime
     updated_at: datetime
 

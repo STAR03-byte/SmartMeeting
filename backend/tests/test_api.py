@@ -515,6 +515,115 @@ def test_list_tasks_can_filter_by_meeting_id(client) -> None:
     assert data[0]["meeting_id"] == meeting_a_id
 
 
+def test_list_tasks_filters_and_sets_reminder_flags(client) -> None:
+    user_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "task_filter_owner",
+            "email": "task_filter_owner@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Task Filter Owner",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={"title": "任务筛选会议", "organizer_id": organizer_id},
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    overdue_resp = client.post(
+        "/api/v1/tasks",
+        json={
+            "meeting_id": meeting_id,
+            "title": "紧急修复线上接口",
+            "assignee_id": organizer_id,
+            "priority": "high",
+            "status": "todo",
+            "due_at": "2000-01-01T00:00:00Z",
+        },
+    )
+    assert overdue_resp.status_code == 201
+
+    due_soon_resp = client.post(
+        "/api/v1/tasks",
+        json={
+            "meeting_id": meeting_id,
+            "title": "整理发布说明文档",
+            "assignee_id": organizer_id,
+            "priority": "medium",
+            "status": "in_progress",
+            "due_at": "2999-01-01T00:00:00Z",
+        },
+    )
+    assert due_soon_resp.status_code == 201
+
+    done_resp = client.post(
+        "/api/v1/tasks",
+        json={
+            "meeting_id": meeting_id,
+            "title": "历史归档任务",
+            "assignee_id": organizer_id,
+            "priority": "low",
+            "status": "todo",
+            "due_at": "2000-01-01T00:00:00Z",
+        },
+    )
+    assert done_resp.status_code == 201
+
+    done_id = done_resp.json()["id"]
+    patched_in_progress_resp = client.patch(
+        f"/api/v1/tasks/{done_id}",
+        json={"status": "in_progress"},
+    )
+    assert patched_in_progress_resp.status_code == 200
+
+    back_to_done_resp = client.patch(
+        f"/api/v1/tasks/{done_id}",
+        json={"status": "done"},
+    )
+    assert back_to_done_resp.status_code == 200
+
+    filtered_resp = client.get(
+        "/api/v1/tasks"
+        f"?meeting_id={meeting_id}&status=todo&priority=high&keyword=线上"
+    )
+    assert filtered_resp.status_code == 200
+    data = filtered_resp.json()
+    assert len(data) == 1
+    assert data[0]["title"] == "紧急修复线上接口"
+    assert data[0]["is_overdue"] is True
+    assert data[0]["is_due_soon"] is False
+
+    status_resp = client.get(f"/api/v1/tasks?meeting_id={meeting_id}&status=in_progress")
+    assert status_resp.status_code == 200
+    status_data = status_resp.json()
+    assert len(status_data) == 1
+    assert status_data[0]["title"] == "整理发布说明文档"
+    assert status_data[0]["is_overdue"] is False
+    assert status_data[0]["is_due_soon"] is False
+
+    done_list_resp = client.get(f"/api/v1/tasks?meeting_id={meeting_id}&status=done")
+    assert done_list_resp.status_code == 200
+    done_data = done_list_resp.json()
+    assert len(done_data) == 1
+    assert done_data[0]["title"] == "历史归档任务"
+    assert done_data[0]["is_overdue"] is False
+    assert done_data[0]["is_due_soon"] is False
+
+
+def test_invalid_task_filter_returns_422(client) -> None:
+    response = client.get("/api/v1/tasks?status=blocked")
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error_code"] == "REQUEST_VALIDATION_ERROR"
+
+
 def test_list_meetings_supports_filters_and_pagination(client) -> None:
     owner_a_resp = client.post(
         "/api/v1/users",

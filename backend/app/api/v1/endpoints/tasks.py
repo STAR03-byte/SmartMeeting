@@ -6,8 +6,16 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.services.meeting_service import get_meeting
 from app.services.meeting_transcript_service import get_transcript
+from app.schemas.task import TaskPriority, TaskStatus
 from app.schemas.task import TaskCreate, TaskOut, TaskUpdate
-from app.services.task_service import create_task, delete_task, get_task, list_tasks, update_task
+from app.services.task_service import (
+    create_task,
+    delete_task,
+    get_task,
+    list_tasks,
+    serialize_task_out,
+    update_task,
+)
 from app.services.user_service import get_user
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -39,11 +47,22 @@ def create_task_api(payload: TaskCreate, db: Session = Depends(get_db)) -> TaskO
 def list_tasks_api(
     assignee_id: int | None = Query(default=None),
     meeting_id: int | None = Query(default=None),
+    status: TaskStatus | None = Query(default=None),
+    priority: TaskPriority | None = Query(default=None),
+    keyword: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> list[TaskOut]:
     """查询任务列表。"""
 
-    return list_tasks(db, assignee_id=assignee_id, meeting_id=meeting_id)
+    tasks = list_tasks(
+        db,
+        assignee_id=assignee_id,
+        meeting_id=meeting_id,
+        status=status,
+        priority=priority,
+        keyword=keyword,
+    )
+    return [TaskOut.model_validate(serialize_task_out(task)) for task in tasks]
 
 
 @router.get("/{task_id}", response_model=TaskOut)
@@ -53,7 +72,7 @@ def get_task_api(task_id: int, db: Session = Depends(get_db)) -> TaskOut:
     task = get_task(db, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    return task
+    return TaskOut.model_validate(serialize_task_out(task))
 
 
 @router.patch("/{task_id}", response_model=TaskOut)
@@ -63,7 +82,8 @@ def update_task_api(task_id: int, payload: TaskUpdate, db: Session = Depends(get
     task = get_task(db, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    return update_task(db, task, payload)
+    updated_task = update_task(db, task, payload)
+    return TaskOut.model_validate(serialize_task_out(updated_task))
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
