@@ -9,6 +9,7 @@ from app.schemas.meeting_participant import (
     MeetingParticipantOut,
     MeetingParticipantUpdate,
 )
+from app.services.meeting_service import get_meeting
 from app.services.meeting_participant_service import (
     create_participant,
     delete_participant,
@@ -16,10 +17,10 @@ from app.services.meeting_participant_service import (
     list_participants,
     update_participant,
 )
-from app.services.meeting_service import get_meeting
 from app.services.user_service import get_user
+from .auth import get_current_user
 
-router = APIRouter(prefix="/participants", tags=["participants"])
+router = APIRouter(prefix="/participants", tags=["participants"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("", response_model=MeetingParticipantOut, status_code=status.HTTP_201_CREATED)
@@ -47,7 +48,8 @@ def list_participants_api(
 ) -> list[MeetingParticipantOut]:
     """查询会议参与人列表。"""
 
-    return list_participants(db, meeting_id=meeting_id)
+    participants = list_participants(db, meeting_id=meeting_id)
+    return [MeetingParticipantOut.model_validate(participant) for participant in participants]
 
 
 @router.get("/{participant_id}", response_model=MeetingParticipantOut)

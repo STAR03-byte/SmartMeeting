@@ -27,8 +27,9 @@ from app.services.meeting_service import (
     update_meeting,
 )
 from app.services.user_service import get_user
+from .auth import get_current_user
 
-router = APIRouter(prefix="/meetings", tags=["meetings"])
+router = APIRouter(prefix="/meetings", tags=["meetings"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("", response_model=MeetingOut, status_code=status.HTTP_201_CREATED)

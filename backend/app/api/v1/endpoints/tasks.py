@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.services.meeting_service import get_meeting
-from app.services.meeting_transcript_service import get_transcript
 from app.schemas.task import TaskPriority, TaskStatus
 from app.schemas.task import TaskCreate, TaskOut, TaskUpdate
+from app.services.meeting_service import get_meeting
+from app.services.meeting_transcript_service import get_transcript
 from app.services.task_service import (
     create_task,
     delete_task,
@@ -17,8 +17,9 @@ from app.services.task_service import (
     update_task,
 )
 from app.services.user_service import get_user
+from .auth import get_current_user
 
-router = APIRouter(prefix="/tasks", tags=["tasks"])
+router = APIRouter(prefix="/tasks", tags=["tasks"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("", response_model=TaskOut, status_code=status.HTTP_201_CREATED)

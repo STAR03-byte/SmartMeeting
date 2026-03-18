@@ -9,6 +9,7 @@ from app.schemas.meeting_transcript import (
     MeetingTranscriptOut,
     MeetingTranscriptUpdate,
 )
+from app.services.meeting_service import get_meeting
 from app.services.meeting_transcript_service import (
     create_transcript,
     delete_transcript,
@@ -16,9 +17,9 @@ from app.services.meeting_transcript_service import (
     list_transcripts,
     update_transcript,
 )
-from app.services.meeting_service import get_meeting
+from .auth import get_current_user
 
-router = APIRouter(prefix="/transcripts", tags=["transcripts"])
+router = APIRouter(prefix="/transcripts", tags=["transcripts"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("", response_model=MeetingTranscriptOut, status_code=status.HTTP_201_CREATED)
@@ -42,7 +43,8 @@ def list_transcripts_api(
 ) -> list[MeetingTranscriptOut]:
     """查询转写列表。"""
 
-    return list_transcripts(db, meeting_id=meeting_id)
+    transcripts = list_transcripts(db, meeting_id=meeting_id)
+    return [MeetingTranscriptOut.model_validate(transcript) for transcript in transcripts]
 
 
 @router.get("/{transcript_id}", response_model=MeetingTranscriptOut)
