@@ -9,6 +9,7 @@
         <RouterLink to="/">会议总览</RouterLink>
         <RouterLink to="/tasks">任务中心</RouterLink>
         <RouterLink to="/users">用户管理</RouterLink>
+        <RouterLink to="/login">登录</RouterLink>
       </nav>
     </aside>
     <main class="main-stage">
