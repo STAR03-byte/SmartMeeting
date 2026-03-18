@@ -1,5 +1,7 @@
 """应用配置模块。"""
 
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -37,7 +39,10 @@ class Settings(BaseSettings):
     whisper_device: str = "cpu"  # cpu | cuda | auto
     whisper_language: str = "zh"  # Chinese
 
-    model_config = SettingsConfigDict(env_file="backend/.env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=Path(__file__).resolve().parents[2] / ".env",
+        env_file_encoding="utf-8",
+    )
 
     @property
     def sqlalchemy_database_uri(self) -> str:
