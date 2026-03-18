@@ -1,6 +1,7 @@
 """应用配置模块。"""
 
 from pathlib import Path
+from typing import ClassVar
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -34,12 +35,17 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 2000
     llm_timeout: int = 60  # seconds
 
+    # Auth Settings
+    jwt_secret_key: str = "change-me-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 60 * 24
+
     # Whisper Settings
     whisper_model: str = "base"  # tiny | base | small | medium | large
     whisper_device: str = "cpu"  # cpu | cuda | auto
     whisper_language: str = "zh"  # Chinese
 
-    model_config = SettingsConfigDict(
+    model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[2] / ".env",
         env_file_encoding="utf-8",
     )
