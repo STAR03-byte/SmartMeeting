@@ -203,3 +203,43 @@ async def extract_action_items(
     participants: list[str] | None = None,
 ) -> list[ExtractedTask]:
     return await llm_client.extract_action_items(transcript_content, participants)
+
+
+def generate_fallback_summary(transcript_contents: list[str], meeting_title: str | None) -> str:
+    if not transcript_contents:
+        return "暂无转写内容，无法生成摘要。"
+
+    title = meeting_title or "未命名会议"
+    content_preview = " ".join(transcript_contents[:5])
+    if len(content_preview) > 200:
+        content_preview = content_preview[:200] + "..."
+
+    return (
+        f"## {title}\n\n"
+        f"**主要讨论**：{content_preview}\n\n"
+        f"**后续行动**：请根据转写内容确认具体任务。"
+    )
+
+
+def generate_fallback_tasks(transcript_content: str) -> list[ExtractedTask]:
+    if not transcript_content.strip():
+        return []
+
+    sentences = [s.strip() for s in transcript_content.split("。") if s.strip()]
+    tasks: list[ExtractedTask] = []
+
+    for sentence in sentences[:3]:
+        task: ExtractedTask = {
+            "title": sentence[:50],
+            "description": sentence,
+            "assignee_name": None,
+            "priority": "medium",
+            "due_hint": None,
+        }
+        if any(kw in sentence for kw in ["尽快", "紧急", "立即"]):
+            task["priority"] = "high"
+        elif any(kw in sentence for kw in ["下周", "月底", "后续"]):
+            task["priority"] = "low"
+        tasks.append(task)
+
+    return tasks
