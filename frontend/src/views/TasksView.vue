@@ -45,9 +45,29 @@
 
     <el-card class="base-card" v-loading="loading">
       <el-table :data="tasks" stripe>
-        <el-table-column prop="title" label="任务" min-width="240" />
-        <el-table-column prop="meeting_id" label="会议ID" width="100" />
-        <el-table-column prop="priority" label="优先级" width="120" />
+        <el-table-column prop="title" label="任务" min-width="240">
+          <template #default="{ row }">
+            <span :class="{ 'task-done': row.status === 'done' }">{{ row.title }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="所属会议" width="120">
+          <template #default="{ row }">
+            <router-link v-if="row.meeting_id" :to="`/meetings/${row.meeting_id}`" class="meeting-link">
+              #{{ row.meeting_id }}
+            </router-link>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="priority" label="优先级" width="100">
+          <template #default="{ row }">
+            <el-tag size="small" :type="priorityTag(row.priority)">{{ priorityLabel(row.priority) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="截止时间" width="160">
+          <template #default="{ row }">
+            {{ formatDate(row.due_at) }}
+          </template>
+        </el-table-column>
         <el-table-column label="提醒" width="120">
           <template #default="scope">
             <el-tag v-if="scope.row.is_overdue" type="danger">已逾期</el-tag>
@@ -140,6 +160,21 @@ async function changeStatus(taskId: number, status: TaskStatus) {
 onMounted(async () => {
   await refreshTasks();
 });
+
+function priorityLabel(p: string): string {
+  const map: Record<string, string> = { high: "高", medium: "中", low: "低" };
+  return map[p] ?? p;
+}
+
+function priorityTag(p: string): string {
+  const map: Record<string, string> = { high: "danger", medium: "warning", low: "info" };
+  return map[p] ?? "";
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleString("zh-CN");
+}
 </script>
 
 <style scoped>
@@ -188,5 +223,20 @@ onMounted(async () => {
 
 .muted-text {
   color: #8aa0b8;
+}
+
+.task-done {
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+
+.meeting-link {
+  color: #0c4a84;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.meeting-link:hover {
+  text-decoration: underline;
 }
 </style>

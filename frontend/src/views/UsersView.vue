@@ -14,13 +14,13 @@
         <template #header>新增用户</template>
         <el-form label-position="top" @submit.prevent>
           <el-form-item label="用户名">
-            <el-input v-model="form.username" />
+            <el-input v-model="form.username" placeholder="请输入用户名" />
           </el-form-item>
           <el-form-item label="邮箱">
-            <el-input v-model="form.email" />
+            <el-input v-model="form.email" placeholder="请输入邮箱" />
           </el-form-item>
           <el-form-item label="姓名">
-            <el-input v-model="form.full_name" />
+            <el-input v-model="form.full_name" placeholder="请输入姓名" />
           </el-form-item>
           <el-form-item label="角色">
             <el-select v-model="form.role">
@@ -28,8 +28,8 @@
               <el-option label="成员" value="member" />
             </el-select>
           </el-form-item>
-          <el-form-item label="密码哈希">
-            <el-input v-model="form.password_hash" type="textarea" :rows="2" />
+          <el-form-item label="密码">
+            <el-input v-model="form.password_hash" type="password" show-password placeholder="请输入密码" />
           </el-form-item>
           <el-button type="primary" :loading="submitting" @click="submitUser">创建用户</el-button>
         </el-form>
@@ -41,7 +41,22 @@
           <el-table-column prop="full_name" label="姓名" min-width="140" />
           <el-table-column prop="username" label="用户名" min-width="140" />
           <el-table-column prop="email" label="邮箱" min-width="220" />
-          <el-table-column prop="role" label="角色" width="100" />
+          <el-table-column prop="role" label="角色" width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.role === 'admin' ? 'danger' : 'info'" size="small">
+                {{ row.role === "admin" ? "管理员" : "成员" }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120">
+            <template #default="{ row }">
+              <el-popconfirm title="确认删除此用户？" @confirm="handleDelete(row.id)">
+                <template #reference>
+                  <el-button size="small" type="danger" plain>删除</el-button>
+                </template>
+              </el-popconfirm>
+            </template>
+          </el-table-column>
         </el-table>
       </el-card>
     </div>
@@ -53,7 +68,7 @@ import { onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 
 import { getApiErrorMessage } from "../api/client";
-import { createUser, getUsers, type UserItem, type UserRole } from "../api/users";
+import { createUser, deleteUser, getUsers, type UserItem, type UserRole } from "../api/users";
 
 const users = ref<UserItem[]>([]);
 const loading = ref(false);
@@ -101,6 +116,16 @@ async function submitUser() {
     ElMessage.error(getApiErrorMessage(err));
   } finally {
     submitting.value = false;
+  }
+}
+
+async function handleDelete(userId: number) {
+  try {
+    await deleteUser(userId);
+    ElMessage.success("已删除");
+    await refreshUsers();
+  } catch (err) {
+    ElMessage.error(getApiErrorMessage(err));
   }
 }
 
