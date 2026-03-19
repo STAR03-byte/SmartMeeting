@@ -3,18 +3,18 @@
 from app.services.llm_service import LLMServiceError
 
 
-def test_health_check(client) -> None:
+def test_health_check(auth_client) -> None:
     """健康检查接口可用。"""
 
-    response = client.get("/health")
+    response = auth_client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
 
-def test_user_crud_flow(client) -> None:
+def test_user_crud_flow(auth_client) -> None:
     """用户创建和查询流程可用。"""
 
-    create_resp = client.post(
+    create_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "alice",
@@ -27,19 +27,19 @@ def test_user_crud_flow(client) -> None:
     assert create_resp.status_code == 201
     user_id = create_resp.json()["id"]
 
-    get_resp = client.get(f"/api/v1/users/{user_id}")
+    get_resp = auth_client.get(f"/api/v1/users/{user_id}")
     assert get_resp.status_code == 200
     assert get_resp.json()["username"] == "alice"
 
-    list_resp = client.get("/api/v1/users")
+    list_resp = auth_client.get("/api/v1/users")
     assert list_resp.status_code == 200
     assert len(list_resp.json()) == 1
 
 
-def test_meeting_crud_flow(client) -> None:
+def test_meeting_crud_flow(auth_client) -> None:
     """会议创建和更新流程可用。"""
 
-    user_resp = client.post(
+    user_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "organizer",
@@ -51,7 +51,7 @@ def test_meeting_crud_flow(client) -> None:
     )
     organizer_id = user_resp.json()["id"]
 
-    create_resp = client.post(
+    create_resp = auth_client.post(
         "/api/v1/meetings",
         json={
             "title": "产品评审会",
@@ -63,20 +63,20 @@ def test_meeting_crud_flow(client) -> None:
     assert create_resp.status_code == 201
     meeting_id = create_resp.json()["id"]
 
-    patch_resp = client.patch(
+    patch_resp = auth_client.patch(
         f"/api/v1/meetings/{meeting_id}",
         json={"status": "ongoing"},
     )
     assert patch_resp.status_code == 200
     assert patch_resp.json()["status"] == "ongoing"
 
-    list_resp = client.get("/api/v1/meetings")
+    list_resp = auth_client.get("/api/v1/meetings")
     assert list_resp.status_code == 200
     assert len(list_resp.json()) == 1
 
 
-def test_create_meeting_rejects_nonexistent_organizer(client) -> None:
-    create_resp = client.post(
+def test_create_meeting_rejects_nonexistent_organizer(auth_client) -> None:
+    create_resp = auth_client.post(
         "/api/v1/meetings",
         json={
             "title": "无效组织者会议",
@@ -89,8 +89,8 @@ def test_create_meeting_rejects_nonexistent_organizer(client) -> None:
     assert create_resp.json()["detail"] == "Organizer not found"
 
 
-def test_create_meeting_rejects_invalid_schedule_range(client) -> None:
-    user_resp = client.post(
+def test_create_meeting_rejects_invalid_schedule_range(auth_client) -> None:
+    user_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "schedule_owner",
@@ -103,7 +103,7 @@ def test_create_meeting_rejects_invalid_schedule_range(client) -> None:
     assert user_resp.status_code == 201
     organizer_id = user_resp.json()["id"]
 
-    create_resp = client.post(
+    create_resp = auth_client.post(
         "/api/v1/meetings",
         json={
             "title": "时间非法会议",
@@ -117,10 +117,10 @@ def test_create_meeting_rejects_invalid_schedule_range(client) -> None:
     assert create_resp.json()["detail"] == "scheduled_end_at must be after or equal to scheduled_start_at"
 
 
-def test_meeting_postprocess_generates_summary_and_tasks(client) -> None:
+def test_meeting_postprocess_generates_summary_and_tasks(auth_client) -> None:
     """会议转写后处理可生成摘要和任务。"""
 
-    user_resp = client.post(
+    user_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "pm01",
@@ -133,7 +133,7 @@ def test_meeting_postprocess_generates_summary_and_tasks(client) -> None:
     assert user_resp.status_code == 201
     organizer_id = user_resp.json()["id"]
 
-    assignee_resp = client.post(
+    assignee_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "zhangsan",
@@ -146,7 +146,7 @@ def test_meeting_postprocess_generates_summary_and_tasks(client) -> None:
     assert assignee_resp.status_code == 201
     zhangsan_id = assignee_resp.json()["id"]
 
-    meeting_resp = client.post(
+    meeting_resp = auth_client.post(
         "/api/v1/meetings",
         json={
             "title": "周会",
@@ -157,7 +157,7 @@ def test_meeting_postprocess_generates_summary_and_tasks(client) -> None:
     )
     meeting_id = meeting_resp.json()["id"]
 
-    client.post(
+    auth_client.post(
         "/api/v1/transcripts",
         json={
             "meeting_id": meeting_id,
@@ -167,7 +167,7 @@ def test_meeting_postprocess_generates_summary_and_tasks(client) -> None:
             "content": "今天确认了两个行动项：请张三本周五前提交接口文档；李四负责下周一前完成前端联调。",
         },
     )
-    client.post(
+    auth_client.post(
         "/api/v1/transcripts",
         json={
             "meeting_id": meeting_id,
@@ -178,7 +178,7 @@ def test_meeting_postprocess_generates_summary_and_tasks(client) -> None:
         },
     )
 
-    process_resp = client.post(f"/api/v1/meetings/{meeting_id}/postprocess")
+    process_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/postprocess")
     assert process_resp.status_code == 200
 
     body = process_resp.json()
@@ -189,17 +189,17 @@ def test_meeting_postprocess_generates_summary_and_tasks(client) -> None:
     assert body["tasks"][0]["assignee_id"] == zhangsan_id
     assert body["tasks"][0]["priority"] == "high"
 
-    meeting_detail = client.get(f"/api/v1/meetings/{meeting_id}")
+    meeting_detail = auth_client.get(f"/api/v1/meetings/{meeting_id}")
     assert meeting_detail.status_code == 200
     assert meeting_detail.json()["summary"] == body["summary"]
     assert meeting_detail.json()["postprocessed_at"] is not None
     assert meeting_detail.json()["postprocess_version"] == "rule-v1"
 
 
-def test_meeting_postprocess_requires_transcripts(client) -> None:
+def test_meeting_postprocess_requires_transcripts(auth_client) -> None:
     """无转写数据时后处理应拒绝。"""
 
-    user_resp = client.post(
+    user_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "owner",
@@ -212,7 +212,7 @@ def test_meeting_postprocess_requires_transcripts(client) -> None:
     assert user_resp.status_code == 201
     organizer_id = user_resp.json()["id"]
 
-    meeting_resp = client.post(
+    meeting_resp = auth_client.post(
         "/api/v1/meetings",
         json={
             "title": "空白会议",
@@ -222,15 +222,15 @@ def test_meeting_postprocess_requires_transcripts(client) -> None:
     )
     meeting_id = meeting_resp.json()["id"]
 
-    process_resp = client.post(f"/api/v1/meetings/{meeting_id}/postprocess")
+    process_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/postprocess")
     assert process_resp.status_code == 400
     assert process_resp.json()["detail"] == "No transcripts found for meeting"
 
 
-def test_meeting_postprocess_idempotent_and_force_regenerate(client) -> None:
+def test_meeting_postprocess_idempotent_and_force_regenerate(auth_client) -> None:
     """后处理默认幂等，force_regenerate 可重建任务。"""
 
-    user_resp = client.post(
+    user_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "pm02",
@@ -243,7 +243,7 @@ def test_meeting_postprocess_idempotent_and_force_regenerate(client) -> None:
     assert user_resp.status_code == 201
     organizer_id = user_resp.json()["id"]
 
-    meeting_resp = client.post(
+    meeting_resp = auth_client.post(
         "/api/v1/meetings",
         json={
             "title": "迭代会",
@@ -253,7 +253,7 @@ def test_meeting_postprocess_idempotent_and_force_regenerate(client) -> None:
     )
     meeting_id = meeting_resp.json()["id"]
 
-    transcript_resp = client.post(
+    transcript_resp = auth_client.post(
         "/api/v1/transcripts",
         json={
             "meeting_id": meeting_id,
@@ -265,11 +265,11 @@ def test_meeting_postprocess_idempotent_and_force_regenerate(client) -> None:
     )
     assert transcript_resp.status_code == 201
 
-    first_process_resp = client.post(f"/api/v1/meetings/{meeting_id}/postprocess")
+    first_process_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/postprocess")
     assert first_process_resp.status_code == 200
     assert len(first_process_resp.json()["tasks"]) == 1
 
-    second_transcript_resp = client.post(
+    second_transcript_resp = auth_client.post(
         "/api/v1/transcripts",
         json={
             "meeting_id": meeting_id,
@@ -281,27 +281,27 @@ def test_meeting_postprocess_idempotent_and_force_regenerate(client) -> None:
     )
     assert second_transcript_resp.status_code == 201
 
-    second_process_resp = client.post(f"/api/v1/meetings/{meeting_id}/postprocess")
+    second_process_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/postprocess")
     assert second_process_resp.status_code == 200
     assert len(second_process_resp.json()["tasks"]) == 1
 
-    force_process_resp = client.post(
+    force_process_resp = auth_client.post(
         f"/api/v1/meetings/{meeting_id}/postprocess?force_regenerate=true"
     )
     assert force_process_resp.status_code == 200
     assert len(force_process_resp.json()["tasks"]) == 2
 
-    meeting_detail = client.get(f"/api/v1/meetings/{meeting_id}")
+    meeting_detail = auth_client.get(f"/api/v1/meetings/{meeting_id}")
     assert meeting_detail.status_code == 200
     assert meeting_detail.json()["summary"]
     assert meeting_detail.json()["postprocessed_at"] is not None
     assert meeting_detail.json()["postprocess_version"] == "rule-v1"
 
 
-def test_audio_upload_for_meeting(client) -> None:
+def test_audio_upload_for_meeting(auth_client) -> None:
     """会议音频可上传并返回元数据。"""
 
-    user_resp = client.post(
+    user_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "audio01",
@@ -314,7 +314,7 @@ def test_audio_upload_for_meeting(client) -> None:
     assert user_resp.status_code == 201
     organizer_id = user_resp.json()["id"]
 
-    meeting_resp = client.post(
+    meeting_resp = auth_client.post(
         "/api/v1/meetings",
         json={
             "title": "音频上传会",
@@ -323,7 +323,7 @@ def test_audio_upload_for_meeting(client) -> None:
     )
     meeting_id = meeting_resp.json()["id"]
 
-    upload_resp = client.post(
+    upload_resp = auth_client.post(
         f"/api/v1/meetings/{meeting_id}/audio",
         files={"file": ("demo.wav", b"RIFF....WAVEfmt", "audio/wav")},
     )
@@ -336,10 +336,10 @@ def test_audio_upload_for_meeting(client) -> None:
     assert body["storage_path"]
 
 
-def test_transcribe_latest_audio_generates_transcript(client) -> None:
+def test_transcribe_latest_audio_generates_transcript(auth_client) -> None:
     """占位语音识别可将最新音频写入转写记录。"""
 
-    user_resp = client.post(
+    user_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "asr01",
@@ -352,7 +352,7 @@ def test_transcribe_latest_audio_generates_transcript(client) -> None:
     assert user_resp.status_code == 201
     organizer_id = user_resp.json()["id"]
 
-    meeting_resp = client.post(
+    meeting_resp = auth_client.post(
         "/api/v1/meetings",
         json={
             "title": "语音识别会",
@@ -361,28 +361,28 @@ def test_transcribe_latest_audio_generates_transcript(client) -> None:
     )
     meeting_id = meeting_resp.json()["id"]
 
-    upload_resp = client.post(
+    upload_resp = auth_client.post(
         f"/api/v1/meetings/{meeting_id}/audio",
         files={"file": ("speech.wav", b"RIFF....WAVEfmt", "audio/wav")},
     )
     assert upload_resp.status_code == 201
 
-    transcribe_resp = client.post(f"/api/v1/meetings/{meeting_id}/audio/transcribe")
+    transcribe_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/audio/transcribe")
     assert transcribe_resp.status_code == 201
     transcribe_body = transcribe_resp.json()
     assert transcribe_body["meeting_id"] == meeting_id
     assert transcribe_body["source"] == "mock-asr"
     assert transcribe_body["content"]
 
-    list_resp = client.get(f"/api/v1/transcripts?meeting_id={meeting_id}")
+    list_resp = auth_client.get(f"/api/v1/transcripts?meeting_id={meeting_id}")
     assert list_resp.status_code == 200
     assert len(list_resp.json()) >= 1
 
 
-def test_task_status_transition_and_completed_at(client) -> None:
+def test_task_status_transition_and_completed_at(auth_client) -> None:
     """任务状态流转合法时自动维护完成时间。"""
 
-    user_resp = client.post(
+    user_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "task01",
@@ -395,7 +395,7 @@ def test_task_status_transition_and_completed_at(client) -> None:
     assert user_resp.status_code == 201
     organizer_id = user_resp.json()["id"]
 
-    meeting_resp = client.post(
+    meeting_resp = auth_client.post(
         "/api/v1/meetings",
         json={
             "title": "任务状态会",
@@ -404,7 +404,7 @@ def test_task_status_transition_and_completed_at(client) -> None:
     )
     meeting_id = meeting_resp.json()["id"]
 
-    task_resp = client.post(
+    task_resp = auth_client.post(
         "/api/v1/tasks",
         json={
             "meeting_id": meeting_id,
@@ -415,26 +415,26 @@ def test_task_status_transition_and_completed_at(client) -> None:
     assert task_resp.status_code == 201
     task_id = task_resp.json()["id"]
 
-    start_resp = client.patch(f"/api/v1/tasks/{task_id}", json={"status": "in_progress"})
+    start_resp = auth_client.patch(f"/api/v1/tasks/{task_id}", json={"status": "in_progress"})
     assert start_resp.status_code == 200
     assert start_resp.json()["status"] == "in_progress"
     assert start_resp.json()["completed_at"] is None
 
-    done_resp = client.patch(f"/api/v1/tasks/{task_id}", json={"status": "done"})
+    done_resp = auth_client.patch(f"/api/v1/tasks/{task_id}", json={"status": "done"})
     assert done_resp.status_code == 200
     assert done_resp.json()["status"] == "done"
     assert done_resp.json()["completed_at"] is not None
 
-    reopen_resp = client.patch(f"/api/v1/tasks/{task_id}", json={"status": "todo"})
+    reopen_resp = auth_client.patch(f"/api/v1/tasks/{task_id}", json={"status": "todo"})
     assert reopen_resp.status_code == 200
     assert reopen_resp.json()["status"] == "todo"
     assert reopen_resp.json()["completed_at"] is None
 
 
-def test_task_status_transition_rejects_invalid_flow(client) -> None:
+def test_task_status_transition_rejects_invalid_flow(auth_client) -> None:
     """非法状态流转应返回 400。"""
 
-    user_resp = client.post(
+    user_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "task02",
@@ -447,7 +447,7 @@ def test_task_status_transition_rejects_invalid_flow(client) -> None:
     assert user_resp.status_code == 201
     organizer_id = user_resp.json()["id"]
 
-    meeting_resp = client.post(
+    meeting_resp = auth_client.post(
         "/api/v1/meetings",
         json={
             "title": "非法流转会",
@@ -456,7 +456,7 @@ def test_task_status_transition_rejects_invalid_flow(client) -> None:
     )
     meeting_id = meeting_resp.json()["id"]
 
-    task_resp = client.post(
+    task_resp = auth_client.post(
         "/api/v1/tasks",
         json={
             "meeting_id": meeting_id,
@@ -467,15 +467,15 @@ def test_task_status_transition_rejects_invalid_flow(client) -> None:
     assert task_resp.status_code == 201
     task_id = task_resp.json()["id"]
 
-    invalid_resp = client.patch(f"/api/v1/tasks/{task_id}", json={"status": "done"})
+    invalid_resp = auth_client.patch(f"/api/v1/tasks/{task_id}", json={"status": "done"})
     assert invalid_resp.status_code == 400
     assert invalid_resp.json()["detail"] == "Invalid task status transition: todo -> done"
 
 
-def test_list_tasks_can_filter_by_meeting_id(client) -> None:
+def test_list_tasks_can_filter_by_meeting_id(auth_client) -> None:
     """任务列表支持按 meeting_id 过滤。"""
 
-    user_resp = client.post(
+    user_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "task03",
@@ -488,35 +488,35 @@ def test_list_tasks_can_filter_by_meeting_id(client) -> None:
     assert user_resp.status_code == 201
     organizer_id = user_resp.json()["id"]
 
-    meeting_a_resp = client.post(
+    meeting_a_resp = auth_client.post(
         "/api/v1/meetings",
         json={"title": "过滤会议A", "organizer_id": organizer_id},
     )
-    meeting_b_resp = client.post(
+    meeting_b_resp = auth_client.post(
         "/api/v1/meetings",
         json={"title": "过滤会议B", "organizer_id": organizer_id},
     )
     meeting_a_id = meeting_a_resp.json()["id"]
     meeting_b_id = meeting_b_resp.json()["id"]
 
-    client.post(
+    auth_client.post(
         "/api/v1/tasks",
         json={"meeting_id": meeting_a_id, "title": "A任务1", "assignee_id": organizer_id},
     )
-    client.post(
+    auth_client.post(
         "/api/v1/tasks",
         json={"meeting_id": meeting_b_id, "title": "B任务1", "assignee_id": organizer_id},
     )
 
-    filter_resp = client.get(f"/api/v1/tasks?meeting_id={meeting_a_id}")
+    filter_resp = auth_client.get(f"/api/v1/tasks?meeting_id={meeting_a_id}")
     assert filter_resp.status_code == 200
     data = filter_resp.json()
     assert len(data) == 1
     assert data[0]["meeting_id"] == meeting_a_id
 
 
-def test_list_tasks_filters_and_sets_reminder_flags(client) -> None:
-    user_resp = client.post(
+def test_list_tasks_filters_and_sets_reminder_flags(auth_client) -> None:
+    user_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "task_filter_owner",
@@ -529,14 +529,14 @@ def test_list_tasks_filters_and_sets_reminder_flags(client) -> None:
     assert user_resp.status_code == 201
     organizer_id = user_resp.json()["id"]
 
-    meeting_resp = client.post(
+    meeting_resp = auth_client.post(
         "/api/v1/meetings",
         json={"title": "任务筛选会议", "organizer_id": organizer_id},
     )
     assert meeting_resp.status_code == 201
     meeting_id = meeting_resp.json()["id"]
 
-    overdue_resp = client.post(
+    overdue_resp = auth_client.post(
         "/api/v1/tasks",
         json={
             "meeting_id": meeting_id,
@@ -549,7 +549,7 @@ def test_list_tasks_filters_and_sets_reminder_flags(client) -> None:
     )
     assert overdue_resp.status_code == 201
 
-    due_soon_resp = client.post(
+    due_soon_resp = auth_client.post(
         "/api/v1/tasks",
         json={
             "meeting_id": meeting_id,
@@ -562,7 +562,7 @@ def test_list_tasks_filters_and_sets_reminder_flags(client) -> None:
     )
     assert due_soon_resp.status_code == 201
 
-    done_resp = client.post(
+    done_resp = auth_client.post(
         "/api/v1/tasks",
         json={
             "meeting_id": meeting_id,
@@ -576,19 +576,19 @@ def test_list_tasks_filters_and_sets_reminder_flags(client) -> None:
     assert done_resp.status_code == 201
 
     done_id = done_resp.json()["id"]
-    patched_in_progress_resp = client.patch(
+    patched_in_progress_resp = auth_client.patch(
         f"/api/v1/tasks/{done_id}",
         json={"status": "in_progress"},
     )
     assert patched_in_progress_resp.status_code == 200
 
-    back_to_done_resp = client.patch(
+    back_to_done_resp = auth_client.patch(
         f"/api/v1/tasks/{done_id}",
         json={"status": "done"},
     )
     assert back_to_done_resp.status_code == 200
 
-    filtered_resp = client.get(
+    filtered_resp = auth_client.get(
         "/api/v1/tasks"
         f"?meeting_id={meeting_id}&status=todo&priority=high&keyword=线上"
     )
@@ -599,7 +599,7 @@ def test_list_tasks_filters_and_sets_reminder_flags(client) -> None:
     assert data[0]["is_overdue"] is True
     assert data[0]["is_due_soon"] is False
 
-    status_resp = client.get(f"/api/v1/tasks?meeting_id={meeting_id}&status=in_progress")
+    status_resp = auth_client.get(f"/api/v1/tasks?meeting_id={meeting_id}&status=in_progress")
     assert status_resp.status_code == 200
     status_data = status_resp.json()
     assert len(status_data) == 1
@@ -607,7 +607,7 @@ def test_list_tasks_filters_and_sets_reminder_flags(client) -> None:
     assert status_data[0]["is_overdue"] is False
     assert status_data[0]["is_due_soon"] is False
 
-    done_list_resp = client.get(f"/api/v1/tasks?meeting_id={meeting_id}&status=done")
+    done_list_resp = auth_client.get(f"/api/v1/tasks?meeting_id={meeting_id}&status=done")
     assert done_list_resp.status_code == 200
     done_data = done_list_resp.json()
     assert len(done_data) == 1
@@ -616,16 +616,16 @@ def test_list_tasks_filters_and_sets_reminder_flags(client) -> None:
     assert done_data[0]["is_due_soon"] is False
 
 
-def test_invalid_task_filter_returns_422(client) -> None:
-    response = client.get("/api/v1/tasks?status=blocked")
+def test_invalid_task_filter_returns_422(auth_client) -> None:
+    response = auth_client.get("/api/v1/tasks?status=blocked")
 
     assert response.status_code == 422
     body = response.json()
     assert body["error_code"] == "REQUEST_VALIDATION_ERROR"
 
 
-def test_list_meetings_supports_filters_and_pagination(client) -> None:
-    owner_a_resp = client.post(
+def test_list_meetings_supports_filters_and_pagination(auth_client) -> None:
+    owner_a_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "meeting_filter_a",
@@ -638,7 +638,7 @@ def test_list_meetings_supports_filters_and_pagination(client) -> None:
     assert owner_a_resp.status_code == 201
     owner_a_id = owner_a_resp.json()["id"]
 
-    owner_b_resp = client.post(
+    owner_b_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "meeting_filter_b",
@@ -651,53 +651,53 @@ def test_list_meetings_supports_filters_and_pagination(client) -> None:
     assert owner_b_resp.status_code == 201
     owner_b_id = owner_b_resp.json()["id"]
 
-    meeting_a_resp = client.post(
+    meeting_a_resp = auth_client.post(
         "/api/v1/meetings",
         json={"title": "筛选会议A", "organizer_id": owner_a_id},
     )
     assert meeting_a_resp.status_code == 201
     meeting_a_id = meeting_a_resp.json()["id"]
 
-    meeting_b_resp = client.post(
+    meeting_b_resp = auth_client.post(
         "/api/v1/meetings",
         json={"title": "筛选会议B", "organizer_id": owner_b_id},
     )
     assert meeting_b_resp.status_code == 201
     meeting_b_id = meeting_b_resp.json()["id"]
 
-    meeting_c_resp = client.post(
+    meeting_c_resp = auth_client.post(
         "/api/v1/meetings",
         json={"title": "筛选会议C", "organizer_id": owner_a_id},
     )
     assert meeting_c_resp.status_code == 201
     meeting_c_id = meeting_c_resp.json()["id"]
 
-    patch_a_resp = client.patch(f"/api/v1/meetings/{meeting_a_id}", json={"status": "ongoing"})
+    patch_a_resp = auth_client.patch(f"/api/v1/meetings/{meeting_a_id}", json={"status": "ongoing"})
     assert patch_a_resp.status_code == 200
-    patch_c_resp = client.patch(f"/api/v1/meetings/{meeting_c_id}", json={"status": "done"})
+    patch_c_resp = auth_client.patch(f"/api/v1/meetings/{meeting_c_id}", json={"status": "done"})
     assert patch_c_resp.status_code == 200
 
-    organizer_filter_resp = client.get(f"/api/v1/meetings?organizer_id={owner_a_id}")
+    organizer_filter_resp = auth_client.get(f"/api/v1/meetings?organizer_id={owner_a_id}")
     assert organizer_filter_resp.status_code == 200
     organizer_data = organizer_filter_resp.json()
     assert len(organizer_data) == 2
     assert [item["id"] for item in organizer_data] == [meeting_c_id, meeting_a_id]
 
-    status_filter_resp = client.get("/api/v1/meetings?status=ongoing")
+    status_filter_resp = auth_client.get("/api/v1/meetings?status=ongoing")
     assert status_filter_resp.status_code == 200
     status_data = status_filter_resp.json()
     assert len(status_data) == 1
     assert status_data[0]["id"] == meeting_a_id
 
-    limit_offset_resp = client.get("/api/v1/meetings?limit=1&offset=1")
+    limit_offset_resp = auth_client.get("/api/v1/meetings?limit=1&offset=1")
     assert limit_offset_resp.status_code == 200
     limit_offset_data = limit_offset_resp.json()
     assert len(limit_offset_data) == 1
     assert limit_offset_data[0]["id"] == meeting_b_id
 
 
-def test_get_meeting_detail_includes_organizer_object(client) -> None:
-    user_resp = client.post(
+def test_get_meeting_detail_includes_organizer_object(auth_client) -> None:
+    user_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "meeting_detail_owner",
@@ -710,7 +710,7 @@ def test_get_meeting_detail_includes_organizer_object(client) -> None:
     assert user_resp.status_code == 201
     organizer_id = user_resp.json()["id"]
 
-    meeting_resp = client.post(
+    meeting_resp = auth_client.post(
         "/api/v1/meetings",
         json={
             "title": "详情增强会议",
@@ -721,7 +721,7 @@ def test_get_meeting_detail_includes_organizer_object(client) -> None:
     assert meeting_resp.status_code == 201
     meeting_id = meeting_resp.json()["id"]
 
-    detail_resp = client.get(f"/api/v1/meetings/{meeting_id}")
+    detail_resp = auth_client.get(f"/api/v1/meetings/{meeting_id}")
     assert detail_resp.status_code == 200
     body = detail_resp.json()
     assert body["id"] == meeting_id
@@ -733,8 +733,8 @@ def test_get_meeting_detail_includes_organizer_object(client) -> None:
     assert body["organizer"]["role"] == "admin"
 
 
-def test_update_meeting_rejects_invalid_scheduled_range(client) -> None:
-    user_resp = client.post(
+def test_update_meeting_rejects_invalid_scheduled_range(auth_client) -> None:
+    user_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "meeting_patch_schedule",
@@ -747,14 +747,14 @@ def test_update_meeting_rejects_invalid_scheduled_range(client) -> None:
     assert user_resp.status_code == 201
     organizer_id = user_resp.json()["id"]
 
-    meeting_resp = client.post(
+    meeting_resp = auth_client.post(
         "/api/v1/meetings",
         json={"title": "Patch Scheduled 校验", "organizer_id": organizer_id},
     )
     assert meeting_resp.status_code == 201
     meeting_id = meeting_resp.json()["id"]
 
-    patch_resp = client.patch(
+    patch_resp = auth_client.patch(
         f"/api/v1/meetings/{meeting_id}",
         json={
             "scheduled_start_at": "2026-03-14T10:00:00Z",
@@ -766,8 +766,8 @@ def test_update_meeting_rejects_invalid_scheduled_range(client) -> None:
     assert patch_resp.json()["detail"] == "scheduled_end_at must be after or equal to scheduled_start_at"
 
 
-def test_update_meeting_rejects_invalid_actual_range(client) -> None:
-    user_resp = client.post(
+def test_update_meeting_rejects_invalid_actual_range(auth_client) -> None:
+    user_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "meeting_patch_actual",
@@ -780,14 +780,14 @@ def test_update_meeting_rejects_invalid_actual_range(client) -> None:
     assert user_resp.status_code == 201
     organizer_id = user_resp.json()["id"]
 
-    meeting_resp = client.post(
+    meeting_resp = auth_client.post(
         "/api/v1/meetings",
         json={"title": "Patch Actual 校验", "organizer_id": organizer_id},
     )
     assert meeting_resp.status_code == 201
     meeting_id = meeting_resp.json()["id"]
 
-    patch_resp = client.patch(
+    patch_resp = auth_client.patch(
         f"/api/v1/meetings/{meeting_id}",
         json={
             "actual_start_at": "2026-03-14T10:00:00Z",
@@ -799,8 +799,8 @@ def test_update_meeting_rejects_invalid_actual_range(client) -> None:
     assert patch_resp.json()["detail"] == "actual_end_at must be after or equal to actual_start_at"
 
 
-def test_create_transcript_rejects_nonexistent_meeting(client) -> None:
-    transcript_resp = client.post(
+def test_create_transcript_rejects_nonexistent_meeting(auth_client) -> None:
+    transcript_resp = auth_client.post(
         "/api/v1/transcripts",
         json={
             "meeting_id": 9999,
@@ -814,8 +814,8 @@ def test_create_transcript_rejects_nonexistent_meeting(client) -> None:
     assert transcript_resp.json()["detail"] == "Meeting not found"
 
 
-def test_create_participant_rejects_nonexistent_meeting_or_user(client) -> None:
-    user_resp = client.post(
+def test_create_participant_rejects_nonexistent_meeting_or_user(auth_client) -> None:
+    user_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "participant_guard",
@@ -828,14 +828,14 @@ def test_create_participant_rejects_nonexistent_meeting_or_user(client) -> None:
     assert user_resp.status_code == 201
     user_id = user_resp.json()["id"]
 
-    invalid_meeting_resp = client.post(
+    invalid_meeting_resp = auth_client.post(
         "/api/v1/participants",
         json={"meeting_id": 9999, "user_id": user_id},
     )
     assert invalid_meeting_resp.status_code == 404
     assert invalid_meeting_resp.json()["detail"] == "Meeting not found"
 
-    owner_resp = client.post(
+    owner_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "participant_owner",
@@ -848,14 +848,14 @@ def test_create_participant_rejects_nonexistent_meeting_or_user(client) -> None:
     assert owner_resp.status_code == 201
     organizer_id = owner_resp.json()["id"]
 
-    meeting_resp = client.post(
+    meeting_resp = auth_client.post(
         "/api/v1/meetings",
         json={"title": "参与人校验会议", "organizer_id": organizer_id},
     )
     assert meeting_resp.status_code == 201
     meeting_id = meeting_resp.json()["id"]
 
-    invalid_user_resp = client.post(
+    invalid_user_resp = auth_client.post(
         "/api/v1/participants",
         json={"meeting_id": meeting_id, "user_id": 9999},
     )
@@ -949,8 +949,8 @@ def test_upload_returns_structured_internal_error(safe_client, monkeypatch) -> N
     }
 
 
-def test_create_user_rejects_invalid_role(client) -> None:
-    response = client.post(
+def test_create_user_rejects_invalid_role(auth_client) -> None:
+    response = auth_client.post(
         "/api/v1/users",
         json={
             "username": "invalid_role_user",
@@ -966,8 +966,8 @@ def test_create_user_rejects_invalid_role(client) -> None:
     assert body["error_code"] == "REQUEST_VALIDATION_ERROR"
 
 
-def test_update_meeting_rejects_invalid_status_value(client) -> None:
-    user_resp = client.post(
+def test_update_meeting_rejects_invalid_status_value(auth_client) -> None:
+    user_resp = auth_client.post(
         "/api/v1/users",
         json={
             "username": "meeting_status_owner",
@@ -979,13 +979,13 @@ def test_update_meeting_rejects_invalid_status_value(client) -> None:
     )
     organizer_id = user_resp.json()["id"]
 
-    meeting_resp = client.post(
+    meeting_resp = auth_client.post(
         "/api/v1/meetings",
         json={"title": "状态校验会议", "organizer_id": organizer_id},
     )
     meeting_id = meeting_resp.json()["id"]
 
-    response = client.patch(
+    response = auth_client.patch(
         f"/api/v1/meetings/{meeting_id}",
         json={"status": "archived"},
     )
@@ -995,8 +995,8 @@ def test_update_meeting_rejects_invalid_status_value(client) -> None:
     assert body["error_code"] == "REQUEST_VALIDATION_ERROR"
 
 
-def test_create_task_rejects_nonexistent_related_resources(client) -> None:
-    response = client.post(
+def test_create_task_rejects_nonexistent_related_resources(auth_client) -> None:
+    response = auth_client.post(
         "/api/v1/tasks",
         json={
             "meeting_id": 9999,
@@ -1011,8 +1011,8 @@ def test_create_task_rejects_nonexistent_related_resources(client) -> None:
     assert response.json()["detail"] == "Meeting not found"
 
 
-def test_create_task_rejects_invalid_priority_and_status(client) -> None:
-    response = client.post(
+def test_create_task_rejects_invalid_priority_and_status(auth_client) -> None:
+    response = auth_client.post(
         "/api/v1/tasks",
         json={
             "meeting_id": 1,
