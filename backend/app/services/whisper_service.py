@@ -3,6 +3,7 @@
 import asyncio
 import importlib
 import logging
+import shutil
 from pathlib import Path
 from typing import Protocol, TypedDict, cast
 
@@ -49,6 +50,11 @@ class WhisperTranscriber:
                     "Whisper not installed. Run: pip install openai-whisper"
                 ) from exc
 
+            if shutil.which("ffmpeg") is None:
+                raise WhisperServiceError(
+                    "ffmpeg not found. Install ffmpeg or add it to PATH."
+                )
+
             device = settings.whisper_device
             if device == "auto":
                 torch_module = importlib.import_module("torch")
@@ -75,13 +81,18 @@ class WhisperTranscriber:
             raise WhisperServiceError(f"Audio file not found: {file_path}")
 
         def _sync_transcribe() -> WhisperRawResult:
-            return model.transcribe(
-                str(file_path),
-                language=language or settings.whisper_language,
-                task="transcribe",
-            )
+            try:
+                return model.transcribe(
+                    str(file_path),
+                    language=language or settings.whisper_language,
+                    task="transcribe",
+                )
+            except (FileNotFoundError, OSError, RuntimeError) as exc:
+                raise WhisperServiceError(
+                    "Whisper transcription failed. Check ffmpeg installation and audio format."
+                ) from exc
 
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, _sync_transcribe)
 
         raw_segments = result.get("segments", [])
