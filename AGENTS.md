@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-03-17
-**Commit:** 369a823
+**Generated:** 2026-03-19
+**Commit:** 8e23323
 **Branch:** main
 
 ## OVERVIEW
@@ -39,9 +39,12 @@ SmartMeeting/
 |--------|------|----------|------|
 | `app` | FastAPI app | `backend/app/main.py` | 应用实例与异常处理挂载 |
 | `lifespan` | function | `backend/app/main.py` | 启停生命周期日志与资源处理 |
-| `router` | Vue Router | `frontend/src/router/index.ts` | 前端路由入口 |
-| `meetingStore` | Pinia store | `frontend/src/stores/meetingStore.ts` | 会议状态管理 |
-| `api` | Axios client | `frontend/src/api/client.ts` | 统一 HTTP 客户端 |
+| `get_current_user` | dependency | `backend/app/api/v1/endpoints/auth.py` | JWT 认证依赖注入 |
+| `settings` | Settings | `backend/app/core/config.py` | 全局配置（DB/LLM/Whisper/JWT） |
+| `router` | Vue Router | `frontend/src/router/index.ts` | 前端路由入口（含 auth 守卫） |
+| `authStore` | Pinia store | `frontend/src/stores/authStore.ts` | 认证状态与 token 持久化 |
+| `meetingStore` | Pinia store | `frontend/src/stores/meetingStore.ts` | 会议/任务状态管理 |
+| `apiClient` | Axios instance | `frontend/src/api/client.ts` | 统一 HTTP 客户端（自动 Bearer） |
 
 ## CONVENTIONS
 

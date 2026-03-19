@@ -1,5 +1,7 @@
 import { defineStore } from "pinia";
 import {
+  createMeeting,
+  deleteMeeting,
   getMeeting,
   getMeetings,
   getMeetingTranscripts,
@@ -8,10 +10,13 @@ import {
   triggerPostprocess,
   uploadMeetingAudio,
   type Meeting,
+  type MeetingCreatePayload,
   type MeetingDetail,
+  type MeetingListParams,
   type TaskItem,
   type Transcript,
 } from "../api/meetings";
+import { updateTaskStatus, type TaskStatus } from "../api/tasks";
 import { getApiErrorMessage } from "../api/client";
 
 interface MeetingState {
@@ -33,16 +38,37 @@ export const useMeetingStore = defineStore("meeting", {
     error: null,
   }),
   actions: {
-    async fetchMeetings() {
+    async fetchMeetings(params?: MeetingListParams) {
       this.loading = true;
       this.error = null;
       try {
-        this.meetings = await getMeetings();
+        this.meetings = await getMeetings(params);
       } catch (error) {
         this.error = getApiErrorMessage(error);
         throw error;
       } finally {
         this.loading = false;
+      }
+    },
+    async createMeeting(payload: MeetingCreatePayload) {
+      this.error = null;
+      try {
+        const meeting = await createMeeting(payload);
+        this.meetings.unshift(meeting);
+        return meeting;
+      } catch (error) {
+        this.error = getApiErrorMessage(error);
+        throw error;
+      }
+    },
+    async removeMeeting(meetingId: number) {
+      this.error = null;
+      try {
+        await deleteMeeting(meetingId);
+        this.meetings = this.meetings.filter((m) => m.id !== meetingId);
+      } catch (error) {
+        this.error = getApiErrorMessage(error);
+        throw error;
       }
     },
     async fetchMeetingDetail(meetingId: number) {
@@ -84,6 +110,18 @@ export const useMeetingStore = defineStore("meeting", {
         throw error;
       } finally {
         this.loading = false;
+      }
+    },
+    async changeTaskStatus(taskId: number, newStatus: TaskStatus) {
+      this.error = null;
+      try {
+        const updated = await updateTaskStatus(taskId, newStatus);
+        const idx = this.tasks.findIndex((t) => t.id === taskId);
+        if (idx !== -1) this.tasks[idx] = updated;
+        return updated;
+      } catch (error) {
+        this.error = getApiErrorMessage(error);
+        throw error;
       }
     },
   },

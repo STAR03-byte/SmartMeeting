@@ -3,6 +3,14 @@
     <header class="hero-header">
       <h1>SmartMeeting Control Deck</h1>
       <p>会议、转写、任务闭环的一站式驾驶舱</p>
+      <div class="hero-actions">
+        <router-link to="/meetings">
+          <el-button type="primary">会议管理</el-button>
+        </router-link>
+        <router-link to="/tasks">
+          <el-button>任务中心</el-button>
+        </router-link>
+      </div>
     </header>
 
     <el-skeleton v-if="store.loading" rows="4" animated />
@@ -50,6 +58,12 @@ onMounted(async () => {
 .hero-header p {
   margin: 10px 0 0;
   color: #4b6077;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .meeting-grid {

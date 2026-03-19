@@ -3,6 +3,7 @@ import { useAuthStore } from "../stores/authStore";
 
 const DashboardView = () => import("../views/DashboardView.vue");
 const MeetingDetailView = () => import("../views/MeetingDetailView.vue");
+const MeetingListView = () => import("../views/MeetingListView.vue");
 const TasksView = () => import("../views/TasksView.vue");
 const UsersView = () => import("../views/UsersView.vue");
 const LoginView = () => import("../views/LoginView.vue");
@@ -14,6 +15,11 @@ const router = createRouter({
       path: "/",
       name: "dashboard",
       component: DashboardView,
+    },
+    {
+      path: "/meetings",
+      name: "meetings",
+      component: MeetingListView,
     },
     {
       path: "/meetings/:id",

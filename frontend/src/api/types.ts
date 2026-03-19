@@ -28,8 +28,27 @@ export interface Meeting {
   summary: string | null;
   postprocessed_at: string | null;
   postprocess_version: string | null;
+  share_token: string | null;
+  shared_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface MeetingCreatePayload {
+  title: string;
+  description?: string | null;
+  organizer_id: number;
+  scheduled_start_at?: string | null;
+  scheduled_end_at?: string | null;
+  location?: string | null;
+}
+
+export interface MeetingListParams {
+  status?: MeetingStatus;
+  organizer_id?: number;
+  keyword?: string;
+  limit?: number;
+  offset?: number;
 }
 
 export interface MeetingDetail extends Meeting {

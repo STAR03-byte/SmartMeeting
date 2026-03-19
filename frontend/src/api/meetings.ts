@@ -2,17 +2,28 @@ import { apiClient } from "./client";
 import type {
   Meeting,
   MeetingAudio,
+  MeetingCreatePayload,
   MeetingDetail,
+  MeetingListParams,
   MeetingPostprocessResult,
   TaskItem,
   Transcript,
 } from "./types";
 
-export type { Meeting, MeetingAudio, MeetingDetail, MeetingPostprocessResult, TaskItem, Transcript } from "./types";
+export type { Meeting, MeetingAudio, MeetingCreatePayload, MeetingDetail, MeetingListParams, MeetingPostprocessResult, TaskItem, Transcript } from "./types";
 
-export async function getMeetings(): Promise<Meeting[]> {
-  const resp = await apiClient.get<Meeting[]>("/api/v1/meetings");
+export async function getMeetings(params?: MeetingListParams): Promise<Meeting[]> {
+  const resp = await apiClient.get<Meeting[]>("/api/v1/meetings", { params });
   return resp.data;
+}
+
+export async function createMeeting(payload: MeetingCreatePayload): Promise<Meeting> {
+  const resp = await apiClient.post<Meeting>("/api/v1/meetings", payload);
+  return resp.data;
+}
+
+export async function deleteMeeting(meetingId: number): Promise<void> {
+  await apiClient.delete(`/api/v1/meetings/${meetingId}`);
 }
 
 export async function getMeeting(meetingId: number): Promise<MeetingDetail> {

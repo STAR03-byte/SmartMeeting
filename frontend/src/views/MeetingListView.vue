@@ -1,0 +1,274 @@
+<template>
+  <section class="meeting-list-page">
+    <header class="page-header">
+      <h1>会议管理</h1>
+      <el-button type="primary" @click="showCreateDialog = true">新建会议</el-button>
+    </header>
+
+    <el-form :inline="true" class="filter-bar" @submit.prevent="applyFilter">
+      <el-form-item label="状态">
+        <el-select v-model="filterStatus" clearable placeholder="全部" style="width: 140px">
+          <el-option label="计划中" value="planned" />
+          <el-option label="进行中" value="ongoing" />
+          <el-option label="已结束" value="done" />
+          <el-option label="已取消" value="cancelled" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="关键词">
+        <el-input v-model="filterKeyword" placeholder="搜索标题/描述" clearable style="width: 200px" />
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" @click="applyFilter">筛选</el-button>
+        <el-button @click="resetFilter">重置</el-button>
+      </el-form-item>
+    </el-form>
+
+    <el-skeleton v-if="store.loading" rows="5" animated />
+
+    <el-alert v-else-if="store.error" :title="store.error" type="error" show-icon closable @close="store.error = null" />
+
+    <el-table v-else :data="store.meetings" stripe style="width: 100%">
+      <el-table-column prop="id" label="ID" width="70" />
+      <el-table-column prop="title" label="标题" min-width="200">
+        <template #default="{ row }">
+          <router-link :to="`/meetings/${row.id}`" class="meeting-link">{{ row.title }}</router-link>
+        </template>
+      </el-table-column>
+      <el-table-column prop="status" label="状态" width="100">
+        <template #default="{ row }">
+          <el-tag :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="scheduled_start_at" label="计划开始" width="170">
+        <template #default="{ row }">
+          {{ formatDate(row.scheduled_start_at) }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="location" label="地点" width="150">
+        <template #default="{ row }">
+          {{ row.location || "-" }}
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="160" fixed="right">
+        <template #default="{ row }">
+          <el-button size="small" @click="$router.push(`/meetings/${row.id}`)">详情</el-button>
+          <el-popconfirm title="确认删除此会议？" @confirm="handleDelete(row.id)">
+            <template #reference>
+              <el-button size="small" type="danger" plain>删除</el-button>
+            </template>
+          </el-popconfirm>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-pagination
+      v-if="totalCount > pageSize"
+      class="pagination"
+      layout="prev, pager, next"
+      :total="totalCount"
+      :page-size="pageSize"
+      :current-page="currentPage"
+      @current-change="handlePageChange"
+    />
+
+    <el-dialog v-model="showCreateDialog" title="新建会议" width="500px" @closed="resetCreateForm">
+      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="80px">
+        <el-form-item label="标题" prop="title">
+          <el-input v-model="createForm.title" placeholder="请输入会议标题" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="createForm.description" type="textarea" :rows="3" placeholder="可选" />
+        </el-form-item>
+        <el-form-item label="组织者ID" prop="organizer_id">
+          <el-input-number v-model="createForm.organizer_id" :min="1" />
+        </el-form-item>
+        <el-form-item label="计划开始">
+          <el-date-picker v-model="createForm.scheduled_start_at" type="datetime" placeholder="选择时间" />
+        </el-form-item>
+        <el-form-item label="计划结束">
+          <el-date-picker v-model="createForm.scheduled_end_at" type="datetime" placeholder="选择时间" />
+        </el-form-item>
+        <el-form-item label="地点">
+          <el-input v-model="createForm.location" placeholder="可选" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showCreateDialog = false">取消</el-button>
+        <el-button type="primary" :loading="creating" @click="handleCreate">创建</el-button>
+      </template>
+    </el-dialog>
+  </section>
+</template>
+
+<script setup lang="ts">
+import { reactive, ref } from "vue";
+import type { FormInstance, FormRules } from "element-plus";
+import { ElMessage } from "element-plus";
+import { useMeetingStore } from "../stores/meetingStore";
+import type { MeetingCreatePayload, MeetingStatus } from "../api/types";
+
+const store = useMeetingStore();
+
+const filterStatus = ref<MeetingStatus | "">("");
+const filterKeyword = ref("");
+const currentPage = ref(1);
+const pageSize = 20;
+const totalCount = ref(0);
+
+const showCreateDialog = ref(false);
+const creating = ref(false);
+const createFormRef = ref<FormInstance>();
+
+const createForm = reactive<MeetingCreatePayload>({
+  title: "",
+  description: null,
+  organizer_id: 1,
+  scheduled_start_at: null,
+  scheduled_end_at: null,
+  location: null,
+});
+
+const createRules: FormRules = {
+  title: [{ required: true, message: "请输入会议标题", trigger: "blur" }],
+  organizer_id: [{ required: true, message: "请输入组织者ID", trigger: "blur" }],
+};
+
+async function loadMeetings() {
+  const params: Record<string, unknown> = {
+    limit: pageSize,
+    offset: (currentPage.value - 1) * pageSize,
+  };
+  if (filterStatus.value) params.status = filterStatus.value;
+  if (filterKeyword.value) params.keyword = filterKeyword.value;
+  await store.fetchMeetings(params);
+}
+
+function applyFilter() {
+  currentPage.value = 1;
+  loadMeetings();
+}
+
+function resetFilter() {
+  filterStatus.value = "";
+  filterKeyword.value = "";
+  currentPage.value = 1;
+  loadMeetings();
+}
+
+function handlePageChange(page: number) {
+  currentPage.value = page;
+  loadMeetings();
+}
+
+async function handleCreate() {
+  const valid = await createFormRef.value?.validate().catch(() => false);
+  if (!valid) return;
+
+  creating.value = true;
+  try {
+    await store.createMeeting({
+      ...createForm,
+      scheduled_start_at: createForm.scheduled_start_at
+        ? new Date(createForm.scheduled_start_at).toISOString()
+        : null,
+      scheduled_end_at: createForm.scheduled_end_at
+        ? new Date(createForm.scheduled_end_at).toISOString()
+        : null,
+    });
+    showCreateDialog.value = false;
+    ElMessage.success("会议创建成功");
+  } catch {
+    ElMessage.error(store.error || "创建失败");
+  } finally {
+    creating.value = false;
+  }
+}
+
+async function handleDelete(meetingId: number) {
+  try {
+    await store.removeMeeting(meetingId);
+    ElMessage.success("已删除");
+  } catch {
+    ElMessage.error(store.error || "删除失败");
+  }
+}
+
+function resetCreateForm() {
+  createForm.title = "";
+  createForm.description = null;
+  createForm.organizer_id = 1;
+  createForm.scheduled_start_at = null;
+  createForm.scheduled_end_at = null;
+  createForm.location = null;
+  createFormRef.value?.resetFields();
+}
+
+function statusLabel(status: MeetingStatus): string {
+  const map: Record<MeetingStatus, string> = {
+    planned: "计划中",
+    ongoing: "进行中",
+    done: "已结束",
+    cancelled: "已取消",
+  };
+  return map[status] ?? status;
+}
+
+function statusTagType(status: MeetingStatus): string {
+  const map: Record<MeetingStatus, string> = {
+    planned: "",
+    ongoing: "success",
+    done: "info",
+    cancelled: "danger",
+  };
+  return map[status] ?? "";
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleString("zh-CN");
+}
+
+loadMeetings();
+</script>
+
+<style scoped>
+.meeting-list-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 24px;
+  color: #1d2f45;
+}
+
+.filter-bar {
+  background: #f8fafc;
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+
+.meeting-link {
+  color: #0c4a84;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.meeting-link:hover {
+  text-decoration: underline;
+}
+
+.pagination {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+}
+</style>
