@@ -17,6 +17,16 @@ npm --prefix frontend install --cache "D:\SmartMeeting\.npm-cache"
 npm --prefix frontend run dev
 ```
 
+### Docker
+
+```bash
+copy .env.example .env
+docker compose up --build
+```
+
+- Frontend: `http://127.0.0.1:5173`
+- Backend: `http://127.0.0.1:8000`
+
 ## Current MVP Progress
 
 - Backend core CRUD ready (users/meetings/transcripts/tasks/participants)
