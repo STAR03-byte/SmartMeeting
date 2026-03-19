@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import {
+  createTask,
   createMeeting,
   deleteMeeting,
   getMeeting,
@@ -13,6 +14,7 @@ import {
   type MeetingCreatePayload,
   type MeetingDetail,
   type MeetingListParams,
+  type TaskCreatePayload,
   type TaskItem,
   type Transcript,
 } from "../api/meetings";
@@ -119,6 +121,17 @@ export const useMeetingStore = defineStore("meeting", {
         const idx = this.tasks.findIndex((t) => t.id === taskId);
         if (idx !== -1) this.tasks[idx] = updated;
         return updated;
+      } catch (error) {
+        this.error = getApiErrorMessage(error);
+        throw error;
+      }
+    },
+    async createMeetingTask(payload: TaskCreatePayload) {
+      this.error = null;
+      try {
+        const task = await createTask(payload);
+        this.tasks.unshift(task);
+        return task;
       } catch (error) {
         this.error = getApiErrorMessage(error);
         throw error;

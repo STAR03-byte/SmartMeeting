@@ -1,13 +1,36 @@
 <template>
   <section class="detail-page" v-loading="store.loading">
-    <el-page-header @back="goBack" content="会议详情" />
+    <el-page-header @back="goBack" content="会议工作台" />
+
+    <el-alert
+      v-if="store.error"
+      :title="store.error"
+      type="error"
+      show-icon
+      :closable="false"
+    />
 
     <el-card v-if="store.currentMeeting" class="base-card">
-      <h2>{{ store.currentMeeting.title }}</h2>
-      <p>{{ store.currentMeeting.description || "暂无描述" }}</p>
-      <p class="organizer-line">
-        组织者：{{ store.currentMeeting.organizer.full_name }} · 状态：{{ store.currentMeeting.status }}
-      </p>
+      <div class="header-row">
+        <div>
+          <h2>{{ store.currentMeeting.title }}</h2>
+          <p>{{ store.currentMeeting.description || "暂无描述" }}</p>
+          <p class="organizer-line">
+            组织者：{{ store.currentMeeting.organizer.full_name }} · 状态：{{ statusLabel(store.currentMeeting.status) }}
+          </p>
+        </div>
+        <div class="summary-actions">
+          <el-button @click="reloadMeeting">刷新</el-button>
+          <el-button type="primary" @click="showTaskDialog = true">新建任务</el-button>
+        </div>
+      </div>
+
+      <el-row :gutter="12" class="stats-row">
+        <el-col :span="8"><el-statistic title="转写片段" :value="store.transcripts.length" /></el-col>
+        <el-col :span="8"><el-statistic title="任务数" :value="store.tasks.length" /></el-col>
+        <el-col :span="8"><el-statistic title="已完成任务" :value="doneTaskCount" /></el-col>
+      </el-row>
+
       <div class="action-row">
         <el-upload
           :auto-upload="false"
@@ -18,31 +41,45 @@
           <el-button type="primary">上传音频并转写</el-button>
         </el-upload>
         <el-button type="success" @click="runPostprocess">生成纪要与任务</el-button>
+        <el-button @click="copySummary" :disabled="!store.currentMeeting.summary">复制摘要</el-button>
       </div>
-      <p class="summary-block">{{ store.currentMeeting.summary || "暂无会议摘要" }}</p>
-    </el-card>
 
-    <el-alert
-      v-if="store.error"
-      :title="store.error"
-      type="error"
-      show-icon
-      :closable="false"
-    />
+      <div class="summary-block" :class="{ empty: !store.currentMeeting.summary }">
+        {{ store.currentMeeting.summary || "暂无会议摘要" }}
+      </div>
+    </el-card>
 
     <div class="panel-grid">
       <el-card class="base-card">
-        <template #header>转写片段</template>
-        <ul class="plain-list">
-          <li v-for="item in store.transcripts" :key="item.id">
-            #{{ item.segment_index }} {{ item.content }}
+        <template #header>
+          <div class="panel-header">
+            <span>转写片段</span>
+            <el-button text @click="reloadMeeting">刷新</el-button>
+          </div>
+        </template>
+
+        <el-empty v-if="store.transcripts.length === 0" description="暂无转写内容" />
+        <ul v-else class="plain-list">
+          <li v-for="item in store.transcripts" :key="item.id" class="transcript-row">
+            <div class="transcript-meta">
+              <strong>#{{ item.segment_index }}</strong>
+              <span>{{ item.speaker_name || item.source }}</span>
+            </div>
+            <p>{{ item.content }}</p>
           </li>
         </ul>
       </el-card>
 
       <el-card class="base-card">
-        <template #header>任务列表</template>
-        <ul class="plain-list">
+        <template #header>
+          <div class="panel-header">
+            <span>任务列表</span>
+            <el-button text @click="reloadMeeting">刷新</el-button>
+          </div>
+        </template>
+
+        <el-empty v-if="store.tasks.length === 0" description="暂无任务" />
+        <ul v-else class="plain-list">
           <li v-for="task in store.tasks" :key="task.id" class="task-row">
             <div class="task-info">
               <span class="task-title" :class="{ done: task.status === 'done' }">{{ task.title }}</span>
@@ -63,27 +100,79 @@
               </el-select>
             </div>
           </li>
-          <li v-if="store.tasks.length === 0" class="empty-hint">暂无任务</li>
         </ul>
       </el-card>
     </div>
+
+    <el-dialog v-model="showTaskDialog" title="新建任务" width="520px" @closed="resetTaskForm">
+      <el-form ref="taskFormRef" :model="taskForm" :rules="taskRules" label-width="90px">
+        <el-form-item label="标题" prop="title">
+          <el-input v-model="taskForm.title" placeholder="请输入任务标题" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="taskForm.description" type="textarea" :rows="3" placeholder="可选" />
+        </el-form-item>
+        <el-form-item label="负责人ID">
+          <el-input-number v-model="taskForm.assignee_id" :min="1" />
+        </el-form-item>
+        <el-form-item label="优先级">
+          <el-select v-model="taskForm.priority" style="width: 160px">
+            <el-option label="高" value="high" />
+            <el-option label="中" value="medium" />
+            <el-option label="低" value="low" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="截止时间">
+          <el-date-picker v-model="taskForm.due_at" type="datetime" placeholder="可选" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showTaskDialog = false">取消</el-button>
+        <el-button type="primary" :loading="creatingTask" @click="createTask">创建</el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { computed, onMounted, reactive, ref } from "vue";
+import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
+import { useRoute, useRouter } from "vue-router";
 
+import { useAuthStore } from "../stores/authStore";
 import { useMeetingStore } from "../stores/meetingStore";
+import type { TaskCreatePayload } from "../api/types";
 import type { TaskStatus } from "../api/tasks";
 
 type TaskStatusValue = TaskStatus;
 
 const store = useMeetingStore();
+const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const meetingId = Number(route.params.id);
+
+const showTaskDialog = ref(false);
+const creatingTask = ref(false);
+const taskFormRef = ref<FormInstance>();
+
+const taskForm = reactive<TaskCreatePayload>({
+  meeting_id: meetingId,
+  title: "",
+  description: null,
+  assignee_id: authStore.currentUser?.id ?? null,
+  reporter_id: authStore.currentUser?.id ?? null,
+  priority: "medium",
+  status: "todo",
+  due_at: null,
+});
+
+const taskRules: FormRules = {
+  title: [{ required: true, message: "请输入任务标题", trigger: "blur" }],
+};
+
+const doneTaskCount = computed(() => store.tasks.filter((task) => task.status === "done").length);
 
 onMounted(async () => {
   if (!Number.isFinite(meetingId)) {
@@ -91,8 +180,12 @@ onMounted(async () => {
     router.push("/");
     return;
   }
-  await store.fetchMeetingDetail(meetingId);
+  await reloadMeeting();
 });
+
+async function reloadMeeting() {
+  await store.fetchMeetingDetail(meetingId);
+}
 
 function goBack() {
   router.push("/");
@@ -119,6 +212,36 @@ async function runPostprocess() {
   }
 }
 
+async function createTask() {
+  const valid = await taskFormRef.value?.validate().catch(() => false);
+  if (!valid) return;
+
+  creatingTask.value = true;
+  try {
+    await store.createMeetingTask({
+      ...taskForm,
+      due_at: taskForm.due_at ? new Date(taskForm.due_at).toISOString() : null,
+    });
+    showTaskDialog.value = false;
+    ElMessage.success("任务创建成功");
+  } catch {
+    ElMessage.error(store.error || "任务创建失败");
+  } finally {
+    creatingTask.value = false;
+  }
+}
+
+function resetTaskForm() {
+  taskForm.title = "";
+  taskForm.description = null;
+  taskForm.assignee_id = authStore.currentUser?.id ?? null;
+  taskForm.reporter_id = authStore.currentUser?.id ?? null;
+  taskForm.priority = "medium";
+  taskForm.status = "todo";
+  taskForm.due_at = null;
+  taskFormRef.value?.resetFields();
+}
+
 async function handleStatusChange(taskId: number, newStatus: TaskStatusValue) {
   try {
     await store.changeTaskStatus(taskId, newStatus);
@@ -126,6 +249,23 @@ async function handleStatusChange(taskId: number, newStatus: TaskStatusValue) {
   } catch {
     ElMessage.error(store.error || "更新失败");
   }
+}
+
+async function copySummary() {
+  const summary = store.currentMeeting?.summary;
+  if (!summary) return;
+  await navigator.clipboard.writeText(summary);
+  ElMessage.success("摘要已复制");
+}
+
+function statusLabel(status: string): string {
+  const map: Record<string, string> = {
+    planned: "计划中",
+    ongoing: "进行中",
+    done: "已结束",
+    cancelled: "已取消",
+  };
+  return map[status] ?? status;
 }
 
 function priorityLabel(p: string): string {
@@ -150,6 +290,24 @@ function priorityTag(p: string): string {
   border-radius: 12px;
 }
 
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.summary-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.stats-row {
+  margin-top: 12px;
+}
+
 .panel-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -160,6 +318,7 @@ function priorityTag(p: string): string {
   display: flex;
   gap: 10px;
   margin: 14px 0;
+  flex-wrap: wrap;
 }
 
 .organizer-line {
@@ -173,6 +332,17 @@ function priorityTag(p: string): string {
   background: #f7fbff;
   border-radius: 8px;
   border: 1px solid #d7e6f5;
+  white-space: pre-wrap;
+}
+
+.summary-block.empty {
+  color: #94a3b8;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .plain-list {
@@ -184,13 +354,29 @@ function priorityTag(p: string): string {
   gap: 8px;
 }
 
+.transcript-row,
+.task-row {
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.transcript-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #486078;
+}
+
+.transcript-row p {
+  margin: 8px 0 0;
+  line-height: 1.6;
+}
+
 .task-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  background: #f8fafc;
-  border-radius: 8px;
 }
 
 .task-info {
@@ -215,15 +401,13 @@ function priorityTag(p: string): string {
   flex-shrink: 0;
 }
 
-.empty-hint {
-  color: #94a3b8;
-  text-align: center;
-  padding: 16px;
-}
-
 @media (max-width: 900px) {
   .panel-grid {
     grid-template-columns: 1fr;
+  }
+
+  .header-row {
+    flex-direction: column;
   }
 }
 </style>

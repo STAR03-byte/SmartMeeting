@@ -6,11 +6,12 @@ import type {
   MeetingDetail,
   MeetingListParams,
   MeetingPostprocessResult,
+  TaskCreatePayload,
   TaskItem,
   Transcript,
 } from "./types";
 
-export type { Meeting, MeetingAudio, MeetingCreatePayload, MeetingDetail, MeetingListParams, MeetingPostprocessResult, TaskItem, Transcript } from "./types";
+export type { Meeting, MeetingAudio, MeetingCreatePayload, MeetingDetail, MeetingListParams, MeetingPostprocessResult, TaskCreatePayload, TaskItem, Transcript } from "./types";
 
 export async function getMeetings(params?: MeetingListParams): Promise<Meeting[]> {
   const resp = await apiClient.get<Meeting[]>("/api/v1/meetings", { params });
@@ -64,5 +65,10 @@ export async function uploadMeetingAudio(meetingId: number, file: File): Promise
 
 export async function transcribeMeetingAudio(meetingId: number): Promise<Transcript> {
   const resp = await apiClient.post<Transcript>(`/api/v1/meetings/${meetingId}/audio/transcribe`);
+  return resp.data;
+}
+
+export async function createTask(payload: TaskCreatePayload): Promise<TaskItem> {
+  const resp = await apiClient.post<TaskItem>("/api/v1/tasks", payload);
   return resp.data;
 }

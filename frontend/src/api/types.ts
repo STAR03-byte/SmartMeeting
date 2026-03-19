@@ -103,3 +103,15 @@ export interface MeetingPostprocessResult {
   summary: string;
   tasks: TaskItem[];
 }
+
+export interface TaskCreatePayload {
+  meeting_id: number;
+  transcript_id?: number | null;
+  title: string;
+  description?: string | null;
+  assignee_id?: number | null;
+  reporter_id?: number | null;
+  priority?: TaskPriority;
+  status?: TaskStatus;
+  due_at?: string | null;
+}
