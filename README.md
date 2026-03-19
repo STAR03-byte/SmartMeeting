@@ -65,4 +65,4 @@ npm --prefix frontend run dev
 - Backend API: `docs/backend-api.md`
 - Frontend runbook: `docs/frontend-runbook.md`
 - Database design: `docs/database-design.md`
-- Project planning: `docs/项目立项规划书.md`
+- Project planning: `docs/SmartMeeting智能会议系统项目立项规划书`
