@@ -9,9 +9,10 @@ services:
       MYSQL_USER: ${DB_USER:-smartmeeting}
       MYSQL_PASSWORD: ${DB_PASSWORD:-smartmeeting}
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
+      - ./database/docker-init.sh:/docker-entrypoint-initdb.d/00_run_migrations.sh
       - ./database/migrations:/docker-entrypoint-initdb.d/migrations:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p$$MYSQL_ROOT_PASSWORD"]
@@ -28,6 +29,8 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: 3306
+      DB_USER: smartmeeting
+      DB_PASSWORD: smartmeeting
       DB_BACKEND: mysql
       DB_AUTO_FALLBACK_SQLITE: "false"
       SQLITE_PATH: /app/data/dev.db
@@ -49,7 +52,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "5173:5173"
+      - "5174:5173"
 
 volumes:
   db_data:
