@@ -4,17 +4,17 @@ services:
     container_name: smartmeeting-db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${DB_NAME:-smartmeeting}
+      MYSQL_USER: ${DB_USER:-smartmeeting}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-smartmeeting}
     ports:
       - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
       - ./database/migrations:/docker-entrypoint-initdb.d/migrations:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-p${DB_ROOT_PASSWORD}"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -25,8 +25,6 @@ services:
       dockerfile: backend/Dockerfile
     container_name: smartmeeting-backend
     restart: unless-stopped
-    env_file:
-      - .env
     environment:
       DB_HOST: db
       DB_PORT: 3306
