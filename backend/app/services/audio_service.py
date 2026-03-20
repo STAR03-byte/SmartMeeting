@@ -78,7 +78,7 @@ def _generate_mock_transcripts(meeting_id: int, start_index: int) -> list[Meetin
             start_time_sec=round(time_cursor, 2),
             end_time_sec=round(time_cursor + duration, 2),
             language_code="zh-CN",
-            source="mock-asr",
+            source="manual",
             content=text,
         )
         segments.append(segment)
