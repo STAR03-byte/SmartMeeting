@@ -61,6 +61,35 @@ npm --prefix frontend run dev
 - Deployment documentation
 - Production environment configuration
 
+## Configuration
+
+### LLM (AI Summary & Task Extraction)
+
+Without configuration, the system uses rule-based fallback. To enable real AI:
+
+```bash
+# .env
+LLM_PROVIDER=openai
+LLM_API_KEY=sk-your-key
+LLM_MODEL=gpt-4o-mini
+LLM_BASE_URL=https://api.openai.com/v1  # optional
+```
+
+### Whisper (Speech Recognition)
+
+Without Whisper, the system uses mock ASR with realistic multi-segment transcripts. To enable real transcription:
+
+```bash
+# Install
+pip install openai-whisper
+# On Windows, also install ffmpeg: https://ffmpeg.org/download.html
+
+# .env
+WHISPER_MODEL=base
+WHISPER_DEVICE=cpu  # or "cuda" for GPU
+WHISPER_LANGUAGE=zh
+```
+
 ## Documents
 
 - Backend API: `docs/backend-api.md`
