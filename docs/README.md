@@ -2,10 +2,11 @@
 
 ## 核心文档
 
+- `SmartMeeting智能会议系统项目立项规划书.md`：项目立项文档（V3.0）
+- `SmartMeeting软件需求规格说明书SRS.md`：软件需求规格说明书（V1.0）
 - `backend-api.md`：后端 API 说明
 - `frontend-runbook.md`：前端启动与联调手册
 - `database-design.md`：数据库设计说明
-- `SmartMeeting智能会议系统项目立项规划书.md`：项目立项文档
 
 ## 过程文档
 
@@ -26,6 +27,7 @@
 ## 建议阅读顺序
 
 1. `SmartMeeting智能会议系统项目立项规划书.md`
-2. `database-design.md`
-3. `backend-api.md`
-4. `frontend-runbook.md`
+2. `SmartMeeting软件需求规格说明书SRS.md`
+3. `database-design.md`
+4. `backend-api.md`
+5. `frontend-runbook.md`
