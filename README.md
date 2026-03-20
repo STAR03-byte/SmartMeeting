@@ -29,36 +29,37 @@ npm --prefix frontend install --cache "D:\SmartMeeting\.npm-cache"
 npm --prefix frontend run dev
 ```
 
-## Current MVP Progress
+## Current Progress
 
-### Core Features (Done)
+### Core Features
 - User auth (login/register, JWT, role-based access)
 - Meeting CRUD (create, list, detail, filter, search)
-- Audio upload + Whisper transcription (mock ASR fallback)
-- AI meeting summary + task extraction (LLM-powered)
+- Audio upload + Whisper transcription (mock ASR fallback with realistic multi-segment output)
+- AI meeting summary + task extraction (real LLM or rule-based fallback)
 - Task management (status transition, priority, due dates, reminder flags)
 - Participant management
 - Transcript viewing
 
-### Frontend Pages (Done)
-- Dashboard with quick navigation
+### Frontend Pages
+- Dashboard with stats overview and recent meetings
 - Login page with JWT auth
 - Meeting list with filter/search/pagination
-- Meeting detail workbench (summary, transcripts, tasks)
-- Task center with status toggle
-- User management
+- Meeting detail workbench (summary, transcripts, tasks, create task)
+- Task center with status toggle, priority tags, meeting links
+- User management with create/delete
 
-### Engineering (Done)
+### Engineering
 - Docker Compose one-click startup (MySQL + backend + frontend)
-- Backend test suite (32/33 passing)
+- GitHub Actions CI (backend tests + frontend build)
+- Backend test suite (33/33 passing)
 - Frontend typecheck + build passing
 - Project documentation (backend, frontend, docs READMEs)
 
 ### Next Steps
-- Real LLM integration for meeting summarization
-- Whisper ASR production deployment
-- CI/CD pipeline
+- Real LLM integration (set LLM_API_KEY in .env)
+- Whisper ASR production deployment (install ffmpeg + openai-whisper)
 - Deployment documentation
+- Production environment configuration
 
 ## Documents
 
