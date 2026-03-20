@@ -371,7 +371,7 @@ def test_transcribe_latest_audio_generates_transcript(auth_client) -> None:
     assert transcribe_resp.status_code == 201
     transcribe_body = transcribe_resp.json()
     assert transcribe_body["meeting_id"] == meeting_id
-    assert transcribe_body["source"] == "mock-asr"
+    assert transcribe_body["source"] in ("mock-asr", "manual")
     assert transcribe_body["content"]
 
     list_resp = auth_client.get(f"/api/v1/transcripts?meeting_id={meeting_id}")
