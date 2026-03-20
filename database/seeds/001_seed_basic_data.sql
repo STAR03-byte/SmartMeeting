@@ -17,9 +17,9 @@ SET FOREIGN_KEY_CHECKS = 1;
 INSERT INTO users (
   id, username, email, password_hash, full_name, role, is_active, last_login_at, created_at, updated_at
 ) VALUES
-  (4001, 'alice_admin', 'alice@smartmeeting.local', '$2b$12$example_admin_hash_replace_in_prod', 'Alice Chen', 'admin', 1, NOW(), '2026-03-12 09:00:00', '2026-03-12 09:00:00'),
-  (4002, 'bob_pm', 'bob@smartmeeting.local', '$2b$12$example_pm_hash_replace_in_prod', 'Bob Li', 'member', 1, NOW(), '2026-03-12 09:00:00', '2026-03-12 09:00:00'),
-  (4003, 'cindy_dev', 'cindy@smartmeeting.local', '$2b$12$example_dev_hash_replace_in_prod', 'Cindy Wang', 'member', 1, NOW(), '2026-03-13 10:00:00', '2026-03-13 10:00:00');
+  (4001, 'alice_admin', 'alice@example.com', '$2b$12$example_admin_hash_replace_in_prod', 'Alice Chen', 'admin', 1, NOW(), '2026-03-12 09:00:00', '2026-03-12 09:00:00'),
+  (4002, 'bob_pm', 'bob@example.com', '$2b$12$example_pm_hash_replace_in_prod', 'Bob Li', 'member', 1, NOW(), '2026-03-12 09:00:00', '2026-03-12 09:00:00'),
+  (4003, 'cindy_dev', 'cindy@example.com', '$2b$12$example_dev_hash_replace_in_prod', 'Cindy Wang', 'member', 1, NOW(), '2026-03-13 10:00:00', '2026-03-13 10:00:00');
 
 INSERT INTO meetings (
   id, title, description, organizer_id, scheduled_start_at, scheduled_end_at, actual_start_at, actual_end_at, location, status, created_at, updated_at
