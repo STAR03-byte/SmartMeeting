@@ -48,6 +48,7 @@ npm run ci
 ### Core Features
 - User auth (login/register, JWT, role-based access)
 - Meeting CRUD (create, list, detail, filter, search)
+- Online recording from microphone (start/pause/resume/stop then transcribe)
 - Audio upload + Whisper transcription (mock ASR fallback with realistic multi-segment output)
 - AI meeting summary + task extraction (real LLM or rule-based fallback)
 - Task management (status transition, priority, due dates, reminder flags)

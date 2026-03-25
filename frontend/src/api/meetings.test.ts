@@ -44,4 +44,21 @@ describe("meetings api module", () => {
 
     expect(deleteSpy).toHaveBeenCalledWith("/api/v1/meetings/1");
   });
+
+  it("exports meeting summary", async () => {
+    const postSpy = vi.spyOn(apiClient, "post").mockResolvedValueOnce({
+      data: {
+        meeting_id: 3,
+        format: "txt",
+        filename: "周会.txt",
+        content: "会议主题：周会",
+      },
+    } as never);
+
+    const mod = await import("./meetings");
+    const result = await mod.exportMeetingSummary(3, { format: "txt" });
+
+    expect(postSpy).toHaveBeenCalledWith("/api/v1/meetings/3/export", { format: "txt" });
+    expect(result.filename).toBe("周会.txt");
+  });
 });

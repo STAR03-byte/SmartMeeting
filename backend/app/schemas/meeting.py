@@ -67,3 +67,18 @@ class MeetingPostprocessOut(BaseModel):
     meeting_id: int
     summary: str
     tasks: list[TaskOut]
+
+
+class MeetingExportRequest(BaseModel):
+    """会议导出请求。"""
+
+    format: str = Field(default="txt", pattern="^(txt|pdf|docx)$")
+
+
+class MeetingExportOut(BaseModel):
+    """会议导出响应。"""
+
+    meeting_id: int
+    format: str
+    filename: str
+    content: str

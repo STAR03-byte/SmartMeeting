@@ -37,11 +37,45 @@
           :show-file-list="false"
           accept="audio/*"
           :on-change="onFilePicked"
+          :disabled="recordingState !== 'idle'"
         >
           <el-button type="primary">上传音频并转写</el-button>
         </el-upload>
+        <el-button
+          type="primary"
+          plain
+          :disabled="recordingState === 'recording' || recordingState === 'paused'"
+          @click="startRecording"
+        >
+          开始录音
+        </el-button>
+        <el-button
+          :disabled="recordingState !== 'recording'"
+          @click="pauseRecording"
+        >
+          暂停录音
+        </el-button>
+        <el-button
+          :disabled="recordingState !== 'paused'"
+          @click="resumeRecording"
+        >
+          继续录音
+        </el-button>
+        <el-button
+          type="danger"
+          :loading="recordingState === 'processing'"
+          :disabled="recordingState !== 'recording' && recordingState !== 'paused'"
+          @click="stopRecording"
+        >
+          停止并转写
+        </el-button>
         <el-button type="success" @click="runPostprocess">生成纪要与任务</el-button>
+        <el-button @click="downloadSummary" :disabled="!store.currentMeeting.summary">导出纪要</el-button>
         <el-button @click="copySummary" :disabled="!store.currentMeeting.summary">复制摘要</el-button>
+      </div>
+
+      <div class="recording-status" :class="recordingState">
+        录音状态：{{ recordingStateLabel }}
       </div>
 
       <div class="summary-block" :class="{ empty: !store.currentMeeting.summary }">
@@ -135,7 +169,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { useRoute, useRouter } from "vue-router";
@@ -144,6 +178,7 @@ import { useAuthStore } from "../stores/authStore";
 import { useMeetingStore } from "../stores/meetingStore";
 import type { TaskCreatePayload } from "../api/types";
 import type { TaskStatus } from "../api/tasks";
+import { buildRecordingFile, pickRecordingMimeType } from "../utils/recorder";
 
 type TaskStatusValue = TaskStatus;
 
@@ -156,6 +191,12 @@ const meetingId = Number(route.params.id);
 const showTaskDialog = ref(false);
 const creatingTask = ref(false);
 const taskFormRef = ref<FormInstance>();
+const recordingState = ref<"idle" | "recording" | "paused" | "processing">("idle");
+const recordingMimeType = ref("audio/webm");
+
+let mediaStream: MediaStream | null = null;
+let mediaRecorder: MediaRecorder | null = null;
+let recordedChunks: BlobPart[] = [];
 
 const taskForm = reactive<TaskCreatePayload>({
   meeting_id: meetingId,
@@ -173,6 +214,15 @@ const taskRules: FormRules = {
 };
 
 const doneTaskCount = computed(() => store.tasks.filter((task) => task.status === "done").length);
+const recordingStateLabel = computed(() => {
+  const map: Record<typeof recordingState.value, string> = {
+    idle: "未录音",
+    recording: "录音中",
+    paused: "已暂停",
+    processing: "处理中",
+  };
+  return map[recordingState.value];
+});
 
 onMounted(async () => {
   if (!Number.isFinite(meetingId)) {
@@ -181,6 +231,10 @@ onMounted(async () => {
     return;
   }
   await reloadMeeting();
+});
+
+onBeforeUnmount(() => {
+  cleanupRecorder();
 });
 
 async function reloadMeeting() {
@@ -210,6 +264,121 @@ async function runPostprocess() {
   } catch {
     ElMessage.error(store.error || "会议后处理失败");
   }
+}
+
+async function downloadSummary() {
+  try {
+    const result = await store.exportMeetingSummary(meetingId);
+    const blob = new Blob([result.content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = result.filename;
+    link.click();
+    URL.revokeObjectURL(url);
+    ElMessage.success("纪要已导出");
+  } catch {
+    ElMessage.error(store.error || "纪要导出失败");
+  }
+}
+
+async function startRecording() {
+  if (!Number.isFinite(meetingId)) {
+    ElMessage.error("会议ID无效");
+    return;
+  }
+
+  if (!navigator.mediaDevices?.getUserMedia) {
+    ElMessage.error("当前浏览器不支持麦克风录音");
+    return;
+  }
+
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordingMimeType.value = pickRecordingMimeType((mime) => MediaRecorder.isTypeSupported(mime));
+    mediaRecorder = new MediaRecorder(mediaStream, { mimeType: recordingMimeType.value });
+    recordedChunks = [];
+
+    mediaRecorder.addEventListener("dataavailable", (event: BlobEvent) => {
+      if (event.data.size > 0) {
+        recordedChunks.push(event.data);
+      }
+    });
+
+    mediaRecorder.start();
+    recordingState.value = "recording";
+    ElMessage.success("已开始录音");
+  } catch {
+    cleanupRecorder();
+    ElMessage.error("无法访问麦克风，请检查浏览器权限");
+  }
+}
+
+function pauseRecording() {
+  if (!mediaRecorder || mediaRecorder.state !== "recording") {
+    return;
+  }
+  mediaRecorder.pause();
+  recordingState.value = "paused";
+  ElMessage.info("录音已暂停");
+}
+
+function resumeRecording() {
+  if (!mediaRecorder || mediaRecorder.state !== "paused") {
+    return;
+  }
+  mediaRecorder.resume();
+  recordingState.value = "recording";
+  ElMessage.success("录音已继续");
+}
+
+async function stopRecording() {
+  if (!mediaRecorder || (mediaRecorder.state !== "recording" && mediaRecorder.state !== "paused")) {
+    return;
+  }
+
+  recordingState.value = "processing";
+
+  await new Promise<void>((resolve) => {
+    if (!mediaRecorder) {
+      resolve();
+      return;
+    }
+    mediaRecorder.requestData();
+    mediaRecorder.addEventListener(
+      "stop",
+      () => {
+        resolve();
+      },
+      { once: true },
+    );
+    mediaRecorder.stop();
+  });
+
+  try {
+    if (recordedChunks.length === 0) {
+      throw new Error("empty recording");
+    }
+    const file = buildRecordingFile(recordedChunks, recordingMimeType.value, meetingId, "online-recording");
+    await store.uploadAudioAndTranscribe(meetingId, file);
+    ElMessage.success("录音上传并转写完成");
+  } catch {
+    ElMessage.error(store.error || "录音处理失败");
+  } finally {
+    cleanupRecorder();
+    recordingState.value = "idle";
+  }
+}
+
+function cleanupRecorder() {
+  if (mediaStream) {
+    for (const track of mediaStream.getTracks()) {
+      track.stop();
+    }
+  }
+  mediaStream = null;
+  mediaRecorder = null;
+  recordedChunks = [];
 }
 
 async function createTask() {
@@ -337,6 +506,26 @@ function priorityTag(p: string): string {
 
 .summary-block.empty {
   color: #94a3b8;
+}
+
+.recording-status {
+  margin-bottom: 12px;
+  color: #486078;
+}
+
+.recording-status.recording {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.recording-status.paused {
+  color: #d97706;
+  font-weight: 600;
+}
+
+.recording-status.processing {
+  color: #1d4ed8;
+  font-weight: 600;
 }
 
 .panel-header {

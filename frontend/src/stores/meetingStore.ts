@@ -7,6 +7,7 @@ import {
   getMeetings,
   getMeetingTranscripts,
   getTasksByMeeting,
+  exportMeetingSummary,
   transcribeMeetingAudio,
   triggerPostprocess,
   uploadMeetingAudio,
@@ -107,6 +108,18 @@ export const useMeetingStore = defineStore("meeting", {
       try {
         await triggerPostprocess(meetingId);
         await this.fetchMeetingDetail(meetingId);
+      } catch (error) {
+        this.error = getApiErrorMessage(error);
+        throw error;
+      } finally {
+        this.loading = false;
+      }
+    },
+    async exportMeetingSummary(meetingId: number) {
+      this.loading = true;
+      this.error = null;
+      try {
+        return await exportMeetingSummary(meetingId);
       } catch (error) {
         this.error = getApiErrorMessage(error);
         throw error;

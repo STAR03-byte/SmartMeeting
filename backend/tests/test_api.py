@@ -227,6 +227,58 @@ def test_meeting_postprocess_requires_transcripts(auth_client) -> None:
     assert process_resp.json()["detail"] == "No transcripts found for meeting"
 
 
+def test_meeting_export_flow(auth_client) -> None:
+    user_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "exporter",
+            "email": "exporter@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Exporter",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "导出会议",
+            "description": "测试纪要导出",
+            "organizer_id": organizer_id,
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    transcript_resp = auth_client.post(
+        "/api/v1/transcripts",
+        json={
+            "meeting_id": meeting_id,
+            "speaker_user_id": organizer_id,
+            "speaker_name": "PM",
+            "segment_index": 1,
+            "content": "今天确认导出功能，张三负责实现。",
+        },
+    )
+    assert transcript_resp.status_code == 201
+
+    postprocess_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/postprocess")
+    assert postprocess_resp.status_code == 200
+
+    export_resp = auth_client.post(
+        f"/api/v1/meetings/{meeting_id}/export",
+        json={"format": "txt"},
+    )
+    assert export_resp.status_code == 200
+    body = export_resp.json()
+    assert body["meeting_id"] == meeting_id
+    assert body["format"] == "txt"
+    assert body["filename"].endswith(".txt")
+    assert "导出会议" in body["content"]
+
+
 def test_meeting_postprocess_idempotent_and_force_regenerate(auth_client) -> None:
     """后处理默认幂等，force_regenerate 可重建任务。"""
 

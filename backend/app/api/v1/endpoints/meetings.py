@@ -9,6 +9,8 @@ from app.models.meeting_transcript import MeetingTranscript
 from app.schemas.meeting import (
     MeetingCreate,
     MeetingDetailOut,
+    MeetingExportOut,
+    MeetingExportRequest,
     MeetingOut,
     MeetingPostprocessOut,
     MeetingUpdate,
@@ -219,3 +221,32 @@ async def transcribe_meeting_audio_api(
     if not transcripts:
         raise HTTPException(status_code=400, detail="No audio found for meeting")
     return MeetingTranscriptOut.model_validate(transcripts[0])
+
+
+@router.post("/{meeting_id}/export", response_model=MeetingExportOut)
+def export_meeting_api(
+    meeting_id: int,
+    payload: MeetingExportRequest,
+    db: Session = Depends(get_db),
+) -> MeetingExportOut:
+    """导出会议纪要。"""
+
+    meeting = get_meeting(db, meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    if not meeting.summary:
+        raise HTTPException(status_code=400, detail="No summary available for export")
+
+    title = meeting.title or "未命名会议"
+    filename = f"{title}.{payload.format}"
+    content = (
+        f"title={title}\n"
+        f"summary=\n{meeting.summary}\n"
+        f"format={payload.format}"
+    )
+    return MeetingExportOut(
+        meeting_id=meeting_id,
+        format=payload.format,
+        filename=filename,
+        content=content,
+    )
