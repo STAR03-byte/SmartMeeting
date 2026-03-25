@@ -1,6 +1,7 @@
 """会议服务层。"""
 
 from datetime import UTC, datetime
+from secrets import token_urlsafe
 
 from sqlalchemy.orm import Session
 
@@ -8,7 +9,9 @@ from app.models.meeting import Meeting
 from app.models.meeting_transcript import MeetingTranscript
 from app.models.task import Task
 from app.models.user import User
-from app.schemas.meeting import MeetingCreate, MeetingUpdate
+from app.schemas.meeting import MeetingCreate, MeetingDetailOut, MeetingShareOut, MeetingUpdate, SharedMeetingOut
+from app.schemas.meeting_transcript import MeetingTranscriptOut
+from app.schemas.task import TaskOut
 from app.services.task_service import extract_action_items, infer_assignee_name, infer_task_priority
 from app.services.llm_service import (
     ExtractedTask,
@@ -16,6 +19,8 @@ from app.services.llm_service import (
     extract_action_items as llm_extract_action_items,
     generate_meeting_summary as llm_generate_meeting_summary,
 )
+from app.services.user_service import get_user
+from app.services.task_service import serialize_task_out
 
 
 def create_meeting(db: Session, payload: MeetingCreate) -> Meeting:
@@ -57,6 +62,54 @@ def get_meeting(db: Session, meeting_id: int) -> Meeting | None:
     """按 ID 查询会议。"""
 
     return db.query(Meeting).filter(Meeting.id == meeting_id).first()
+
+
+def create_or_get_meeting_share(db: Session, meeting: Meeting) -> tuple[MeetingShareOut, bool]:
+    if not meeting.summary:
+        raise ValueError("Meeting summary is required for sharing")
+
+    created_now = False
+    if not meeting.share_token:
+        meeting.share_token = token_urlsafe(32)
+        meeting.shared_at = datetime.now(UTC)
+        db.add(meeting)
+        db.commit()
+        db.refresh(meeting)
+        created_now = True
+
+    assert meeting.share_token is not None
+    assert meeting.shared_at is not None
+
+    return (
+        MeetingShareOut(
+            meeting_id=meeting.id,
+            share_token=meeting.share_token,
+            share_path=f"/shared/meetings/{meeting.share_token}",
+            created_now=created_now,
+            shared_at=meeting.shared_at,
+        ),
+        created_now,
+    )
+
+
+def build_shared_meeting_out(db: Session, meeting: Meeting) -> SharedMeetingOut:
+    organizer = get_user(db, meeting.organizer_id)
+    if organizer is None:
+        raise ValueError("Organizer not found")
+
+    transcripts = (
+        db.query(MeetingTranscript)
+        .filter(MeetingTranscript.meeting_id == meeting.id)
+        .order_by(MeetingTranscript.segment_index.asc(), MeetingTranscript.id.asc())
+        .all()
+    )
+    tasks = db.query(Task).filter(Task.meeting_id == meeting.id).order_by(Task.id.desc()).all()
+
+    return SharedMeetingOut(
+        meeting=MeetingDetailOut.model_validate({**meeting.__dict__, "organizer": organizer}),
+        transcripts=[MeetingTranscriptOut.model_validate(item) for item in transcripts],
+        tasks=[TaskOut.model_validate(serialize_task_out(task)) for task in tasks],
+    )
 
 
 def update_meeting(db: Session, meeting: Meeting, payload: MeetingUpdate) -> Meeting:

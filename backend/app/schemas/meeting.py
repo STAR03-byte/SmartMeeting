@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.meeting_transcript import MeetingTranscriptOut
 from app.schemas.task import TaskOut
 from app.schemas.user import UserOut
 
@@ -59,6 +60,20 @@ class MeetingOut(BaseModel):
 
 class MeetingDetailOut(MeetingOut):
     organizer: UserOut
+
+
+class MeetingShareOut(BaseModel):
+    meeting_id: int
+    share_token: str
+    share_path: str
+    created_now: bool
+    shared_at: datetime
+
+
+class SharedMeetingOut(BaseModel):
+    meeting: MeetingDetailOut
+    transcripts: list[MeetingTranscriptOut]
+    tasks: list[TaskOut]
 
 
 class MeetingPostprocessOut(BaseModel):

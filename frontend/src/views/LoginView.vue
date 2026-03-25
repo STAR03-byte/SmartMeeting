@@ -32,12 +32,14 @@
 
 <script setup lang="ts">
 import { reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 import { getApiErrorMessage } from "../api/client";
 import { useAuthStore } from "../stores/authStore";
+import { resolveSafeRedirect } from "../utils/redirect";
 
 const authStore = useAuthStore();
+const route = useRoute();
 const router = useRouter();
 const loading = ref(false);
 const error = ref<string | null>(null);
@@ -52,7 +54,7 @@ async function submit() {
   error.value = null;
   try {
     await authStore.signIn(form.username, form.password);
-    await router.push("/");
+    await router.push(resolveSafeRedirect(route.query.redirect));
   } catch (err) {
     error.value = getApiErrorMessage(err);
   } finally {

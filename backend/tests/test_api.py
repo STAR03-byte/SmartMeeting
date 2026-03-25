@@ -279,6 +279,159 @@ def test_meeting_export_flow(auth_client) -> None:
     assert "导出会议" in body["content"]
 
 
+def test_meeting_share_is_idempotent(auth_client) -> None:
+    user_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "share_owner",
+            "email": "share_owner@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Share Owner",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "分享会议",
+            "description": "验证分享链接",
+            "organizer_id": organizer_id,
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    transcript_resp = auth_client.post(
+        "/api/v1/transcripts",
+        json={
+            "meeting_id": meeting_id,
+            "speaker_user_id": organizer_id,
+            "speaker_name": "PM",
+            "segment_index": 1,
+            "content": "请张三本周五前完成接口文档。",
+        },
+    )
+    assert transcript_resp.status_code == 201
+
+    postprocess_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/postprocess")
+    assert postprocess_resp.status_code == 200
+
+    first_share_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/share")
+    assert first_share_resp.status_code == 200
+    first_share = first_share_resp.json()
+    assert first_share["meeting_id"] == meeting_id
+    assert first_share["created_now"] is True
+    assert first_share["share_token"]
+    assert first_share["share_path"] == f"/shared/meetings/{first_share['share_token']}"
+    assert first_share["shared_at"] is not None
+
+    second_share_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/share")
+    assert second_share_resp.status_code == 200
+    second_share = second_share_resp.json()
+    assert second_share["meeting_id"] == meeting_id
+    assert second_share["created_now"] is False
+    assert second_share["share_token"] == first_share["share_token"]
+    assert second_share["share_path"] == first_share["share_path"]
+    assert second_share["shared_at"] == first_share["shared_at"]
+
+
+def test_meeting_share_requires_summary(auth_client) -> None:
+    user_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "share_blocker",
+            "email": "share_blocker@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Share Blocker",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "无摘要分享会",
+            "description": "不应允许分享",
+            "organizer_id": organizer_id,
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    share_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/share")
+    assert share_resp.status_code == 400
+    assert share_resp.json()["detail"] == "No summary available for share"
+
+
+def test_get_shared_meeting_returns_read_only_payload(auth_client) -> None:
+    user_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "shared_reader",
+            "email": "shared_reader@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Shared Reader",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "只读分享会议",
+            "description": "验证分享页",
+            "organizer_id": organizer_id,
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    transcript_resp = auth_client.post(
+        "/api/v1/transcripts",
+        json={
+            "meeting_id": meeting_id,
+            "speaker_user_id": organizer_id,
+            "speaker_name": "PM",
+            "segment_index": 1,
+            "content": "请李四今天补齐测试报告。",
+        },
+    )
+    assert transcript_resp.status_code == 201
+
+    postprocess_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/postprocess")
+    assert postprocess_resp.status_code == 200
+
+    share_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/share")
+    assert share_resp.status_code == 200
+    share_token = share_resp.json()["share_token"]
+
+    shared_resp = auth_client.get(f"/api/v1/shared/meetings/{share_token}")
+    assert shared_resp.status_code == 200
+    body = shared_resp.json()
+    assert body["meeting"]["id"] == meeting_id
+    assert body["meeting"]["title"] == "只读分享会议"
+    assert body["meeting"]["summary"]
+    assert body["meeting"]["organizer"]["full_name"] == "Shared Reader"
+    assert len(body["transcripts"]) == 1
+    assert body["transcripts"][0]["meeting_id"] == meeting_id
+    assert len(body["tasks"]) >= 1
+    assert body["tasks"][0]["meeting_id"] == meeting_id
+
+
+def test_get_shared_meeting_invalid_token_returns_404(auth_client) -> None:
+    response = auth_client.get("/api/v1/shared/meetings/not-a-real-token")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Shared meeting not found"
+
+
 def test_meeting_postprocess_idempotent_and_force_regenerate(auth_client) -> None:
     """后处理默认幂等，force_regenerate 可重建任务。"""
 

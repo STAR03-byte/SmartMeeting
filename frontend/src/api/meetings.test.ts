@@ -61,4 +61,66 @@ describe("meetings api module", () => {
     expect(postSpy).toHaveBeenCalledWith("/api/v1/meetings/3/export", { format: "txt" });
     expect(result.filename).toBe("周会.txt");
   });
+
+  it("creates meeting share link", async () => {
+    const postSpy = vi.spyOn(apiClient, "post").mockResolvedValueOnce({
+      data: {
+        meeting_id: 7,
+        share_token: "share-token-1",
+        share_path: "/shared/meetings/share-token-1",
+        created_now: true,
+        shared_at: "2026-03-25T00:00:00Z",
+      },
+    } as never);
+
+    const mod = await import("./meetings");
+    const result = await mod.createMeetingShareLink(7);
+
+    expect(postSpy).toHaveBeenCalledWith("/api/v1/meetings/7/share");
+    expect(result.share_token).toBe("share-token-1");
+  });
+
+  it("loads shared meeting payload", async () => {
+    const getSpy = vi.spyOn(apiClient, "get").mockResolvedValueOnce({
+      data: {
+        meeting: {
+          id: 7,
+          title: "Share",
+          description: null,
+          organizer_id: 1,
+          scheduled_start_at: null,
+          scheduled_end_at: null,
+          actual_start_at: null,
+          actual_end_at: null,
+          location: null,
+          status: "done",
+          summary: "Summary",
+          postprocessed_at: null,
+          postprocess_version: null,
+          share_token: "share-token-1",
+          shared_at: "2026-03-25T00:00:00Z",
+          created_at: "2026-03-25T00:00:00Z",
+          updated_at: "2026-03-25T00:00:00Z",
+          organizer: {
+            id: 1,
+            username: "alice",
+            email: "alice@example.com",
+            full_name: "Alice",
+            role: "member",
+            is_active: true,
+            created_at: "2026-03-25T00:00:00Z",
+            updated_at: "2026-03-25T00:00:00Z",
+          },
+        },
+        transcripts: [],
+        tasks: [],
+      },
+    } as never);
+
+    const mod = await import("./meetings");
+    const result = await mod.getSharedMeeting("share-token-1");
+
+    expect(getSpy).toHaveBeenCalledWith("/api/v1/shared/meetings/share-token-1");
+    expect(result.meeting.title).toBe("Share");
+  });
 });

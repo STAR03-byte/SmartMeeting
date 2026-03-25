@@ -6,12 +6,14 @@ import type {
   MeetingDetail,
   MeetingListParams,
   MeetingPostprocessResult,
+  MeetingShareCreateResult,
+  SharedMeetingDetail,
   TaskCreatePayload,
   TaskItem,
   Transcript,
 } from "./types";
 
-export type { Meeting, MeetingAudio, MeetingCreatePayload, MeetingDetail, MeetingListParams, MeetingPostprocessResult, TaskCreatePayload, TaskItem, Transcript } from "./types";
+export type { Meeting, MeetingAudio, MeetingCreatePayload, MeetingDetail, MeetingListParams, MeetingPostprocessResult, MeetingShareCreateResult, SharedMeetingDetail, TaskCreatePayload, TaskItem, Transcript } from "./types";
 
 export interface MeetingExportPayload {
   format?: "txt" | "pdf" | "docx";
@@ -86,6 +88,16 @@ export async function exportMeetingSummary(
   const resp = await apiClient.post<MeetingExportResult>(`/api/v1/meetings/${meetingId}/export`, {
     format: payload.format ?? "txt",
   });
+  return resp.data;
+}
+
+export async function createMeetingShareLink(meetingId: number): Promise<MeetingShareCreateResult> {
+  const resp = await apiClient.post<MeetingShareCreateResult>(`/api/v1/meetings/${meetingId}/share`);
+  return resp.data;
+}
+
+export async function getSharedMeeting(shareToken: string): Promise<SharedMeetingDetail> {
+  const resp = await apiClient.get<SharedMeetingDetail>(`/api/v1/shared/meetings/${shareToken}`);
   return resp.data;
 }
 

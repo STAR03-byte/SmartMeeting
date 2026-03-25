@@ -24,6 +24,8 @@ class Meeting(Base):
     location: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="planned", nullable=False, index=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    share_token: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True, index=True)
+    shared_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     postprocessed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     postprocess_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)

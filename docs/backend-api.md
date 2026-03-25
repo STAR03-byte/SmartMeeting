@@ -60,6 +60,32 @@
   - 优先使用 LLM 抽取任务，失败时回退到规则抽取
   - 默认幂等；`force_regenerate=true` 时重建任务
 
+### 2.6 会议分享链接
+
+- `POST /api/v1/meetings/{meeting_id}/share`
+- 作用: 生成或复用会议分享链接
+- 前置条件: 会议必须已有 `summary`
+- 成功返回:
+
+```json
+{
+  "meeting_id": 10,
+  "share_token": "...",
+  "share_path": "/shared/meetings/...",
+  "created_now": true,
+  "shared_at": "2026-03-25T00:00:00Z"
+}
+```
+
+- `GET /api/v1/shared/meetings/{share_token}`
+- 作用: 获取只读分享页数据
+- 返回:
+  - `meeting`
+  - `transcripts`
+  - `tasks`
+- 访问要求: 已登录；未登录或登录态失效返回 `401`
+- 无效 `share_token` 返回 `404 Shared meeting not found`
+
 ## 3. 任务接口
 
 ### 3.1 查询任务列表
@@ -92,7 +118,8 @@
 
 - `400`: 业务前置条件不满足（无音频、无转写、非法状态流转）
 - `500`: AI 服务不可用且无可恢复降级路径
-- `404`: 资源不存在（meeting/task/transcript/user）
+- `404`: 资源不存在（meeting/task/transcript/user/share token）
+- `401`: 登录态失效或未登录（鉴权接口/分享页读取）
 - `422`: 请求参数校验失败
 
 ## 5. 当前 AI 能力说明

@@ -21,6 +21,7 @@
         </div>
         <div class="summary-actions">
           <el-button @click="reloadMeeting">刷新</el-button>
+          <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="copyShareLink">生成分享链接</el-button>
           <el-button type="primary" @click="showTaskDialog = true">新建任务</el-button>
         </div>
       </div>
@@ -174,6 +175,7 @@ import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { useRoute, useRouter } from "vue-router";
 
+import { createMeetingShareLink } from "../api/meetings";
 import { useAuthStore } from "../stores/authStore";
 import { useMeetingStore } from "../stores/meetingStore";
 import type { TaskCreatePayload } from "../api/types";
@@ -239,6 +241,17 @@ onBeforeUnmount(() => {
 
 async function reloadMeeting() {
   await store.fetchMeetingDetail(meetingId);
+}
+
+async function copyShareLink() {
+  try {
+    const result = await createMeetingShareLink(meetingId);
+    const shareUrl = `${window.location.origin}${result.share_path}`;
+    await navigator.clipboard.writeText(shareUrl);
+    ElMessage.success("分享链接已复制");
+  } catch {
+    ElMessage.error("生成分享链接失败");
+  }
 }
 
 function goBack() {

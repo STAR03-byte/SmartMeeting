@@ -55,6 +55,14 @@ export interface MeetingDetail extends Meeting {
   organizer: UserItem;
 }
 
+export interface MeetingShareCreateResult {
+  meeting_id: number;
+  share_token: string;
+  share_path: string;
+  created_now: boolean;
+  shared_at: string;
+}
+
 export interface Transcript {
   id: number;
   meeting_id: number;
@@ -68,6 +76,12 @@ export interface Transcript {
   content: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface SharedMeetingDetail {
+  meeting: MeetingDetail;
+  transcripts: Transcript[];
+  tasks: TaskItem[];
 }
 
 export interface TaskItem {

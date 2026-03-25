@@ -4,6 +4,7 @@ import { useAuthStore } from "../stores/authStore";
 const DashboardView = () => import("../views/DashboardView.vue");
 const MeetingDetailView = () => import("../views/MeetingDetailView.vue");
 const MeetingListView = () => import("../views/MeetingListView.vue");
+const SharedMeetingView = () => import("../views/SharedMeetingView.vue");
 const TasksView = () => import("../views/TasksView.vue");
 const UsersView = () => import("../views/UsersView.vue");
 const LoginView = () => import("../views/LoginView.vue");
@@ -28,6 +29,12 @@ const router = createRouter({
       props: true,
     },
     {
+      path: "/shared/meetings/:token",
+      name: "shared-meeting",
+      component: SharedMeetingView,
+      props: true,
+    },
+    {
       path: "/tasks",
       name: "tasks",
       component: TasksView,
@@ -48,7 +55,10 @@ const router = createRouter({
 router.beforeEach((to) => {
   const authStore = useAuthStore();
   if (to.name !== "login" && !authStore.token) {
-    return { name: "login" };
+    return {
+      name: "login",
+      query: { redirect: `${to.fullPath}` },
+    };
   }
   if (to.name === "login" && authStore.token) {
     return { name: "dashboard" };

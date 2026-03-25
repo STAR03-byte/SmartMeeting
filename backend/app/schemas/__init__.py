@@ -1,6 +1,13 @@
 """Schema 导出模块。"""
 
-from app.schemas.meeting import MeetingCreate, MeetingOut, MeetingUpdate
+from app.schemas.meeting import (
+    MeetingCreate,
+    MeetingDetailOut,
+    MeetingOut,
+    MeetingShareOut,
+    MeetingUpdate,
+    SharedMeetingOut,
+)
 from app.schemas.meeting_audio import MeetingAudioOut
 from app.schemas.meeting_participant import (
     MeetingParticipantCreate,
@@ -22,6 +29,9 @@ __all__ = [
     "MeetingCreate",
     "MeetingUpdate",
     "MeetingOut",
+    "MeetingDetailOut",
+    "MeetingShareOut",
+    "SharedMeetingOut",
     "MeetingAudioOut",
     "MeetingTranscriptCreate",
     "MeetingTranscriptUpdate",
