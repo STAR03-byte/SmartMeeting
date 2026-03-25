@@ -18,8 +18,10 @@
 3. `database/migrations/003_sp_task_query.sql`
 4. `database/migrations/004_indexes_perf.sql`
 5. `database/migrations/005_audit_and_participants.sql`
-6. `database/seeds/001_seed_basic_data.sql`（可选）
-7. `database/seeds/002_seed_participants.sql`（可选）
+6. `database/migrations/006_collaboration_share_fields.sql`
+7. `database/migrations/006_meeting_share_links.sql`
+8. `database/seeds/001_seed_basic_data.sql`（可选）
+9. `database/seeds/002_seed_participants.sql`（可选）
 
 也可直接一键执行:
 
@@ -33,6 +35,8 @@ mysql -u <user> -p < database/migrations/002_enhance_smartmeeting.sql
 mysql -u <user> -p < database/migrations/003_sp_task_query.sql
 mysql -u <user> -p < database/migrations/004_indexes_perf.sql
 mysql -u <user> -p < database/migrations/005_audit_and_participants.sql
+mysql -u <user> -p < database/migrations/006_collaboration_share_fields.sql
+mysql -u <user> -p < database/migrations/006_meeting_share_links.sql
 mysql -u <user> -p < database/seeds/001_seed_basic_data.sql
 mysql -u <user> -p < database/seeds/002_seed_participants.sql
 ```
