@@ -7,6 +7,19 @@ on:
     branches: [main]
 
 jobs:
+  db-script-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate DB migration script order
+        run: python scripts/db/check_sql_file_order.py
+
   backend-test:
     runs-on: ubuntu-latest
     steps:

@@ -30,7 +30,8 @@ backend/app/
 - **API Versioning**: All production endpoints reside under `/api/v1/` prefix.
 - **Model/Schema Split**: Keep `models/` strictly for DB persistence and `schemas/` for request/response serialization.
 - **Dependency Injection**: Use `Depends(get_db)` for database sessions in route handlers.
-- **Audio Storage**: Local development uses `storage/audio/` for raw file persistence.
+- **Audio Storage**: Current implementation writes raw files under `backend/storage/audio/`.
+- **Services Local Rules**: Domain-specific service constraints live in `app/services/AGENTS.md`.
 
 ## ANTI-PATTERNS
 

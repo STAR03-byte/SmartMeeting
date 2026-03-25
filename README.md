@@ -29,6 +29,20 @@ npm --prefix frontend install --cache "D:\SmartMeeting\.npm-cache"
 npm --prefix frontend run dev
 ```
 
+### Project Engineering Entry (Recommended)
+
+```bash
+npm run bootstrap
+```
+
+Unified commands:
+
+```bash
+npm run dev:backend
+npm run dev:frontend
+npm run ci
+```
+
 ## Current Progress
 
 ### Core Features
@@ -95,4 +109,5 @@ WHISPER_LANGUAGE=zh
 - Backend API: `docs/backend-api.md`
 - Frontend runbook: `docs/frontend-runbook.md`
 - Database design: `docs/database-design.md`
+- Engineering framework: `docs/engineering-framework.md`
 - Project planning: `docs/SmartMeeting智能会议系统项目立项规划书`
