@@ -1,21 +1,32 @@
 <template>
   <section class="login-page">
-    <el-card class="login-card">
-      <h1>登录 SmartMeeting</h1>
-      <p>使用你的会议账号进入系统。</p>
+    <div class="login-container">
+      <div class="login-brand">
+        <h1>SmartMeeting</h1>
+        <p>AI 驱动的智能会议系统</p>
+      </div>
 
-      <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" />
+      <el-card class="login-card">
+        <h2>登录</h2>
+        <p class="login-hint">使用你的会议账号进入系统</p>
 
-      <el-form label-position="top" @submit.prevent>
-        <el-form-item label="用户名">
-          <el-input v-model="form.username" />
-        </el-form-item>
-        <el-form-item label="密码">
-          <el-input v-model="form.password" type="password" show-password />
-        </el-form-item>
-        <el-button type="primary" :loading="loading" @click="submit">登录</el-button>
-      </el-form>
-    </el-card>
+        <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" />
+
+        <el-form label-position="top" @submit.prevent>
+          <el-form-item label="用户名">
+            <el-input v-model="form.username" placeholder="请输入用户名" prefix-icon="User" size="large" />
+          </el-form-item>
+          <el-form-item label="密码">
+            <el-input v-model="form.password" type="password" show-password placeholder="请输入密码" prefix-icon="Lock" size="large" />
+          </el-form-item>
+          <el-button type="primary" :loading="loading" @click="submit" size="large" style="width: 100%">登录</el-button>
+        </el-form>
+
+        <div class="login-footer">
+          <span>默认账号: alice_admin / admin123</span>
+        </div>
+      </el-card>
+    </div>
   </section>
 </template>
 
@@ -56,19 +67,56 @@ async function submit() {
   display: grid;
   place-items: center;
   padding: 24px;
+  background: radial-gradient(circle at 30% 20%, #e8f4ff, #f8fbff 60%, #fff9ef);
+}
+
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: min(420px, 100%);
+}
+
+.login-brand {
+  text-align: center;
+}
+
+.login-brand h1 {
+  margin: 0;
+  font-size: 36px;
+  color: #0c4a84;
+  letter-spacing: 1px;
+}
+
+.login-brand p {
+  margin: 8px 0 0;
+  color: #5a6f84;
+  font-size: 16px;
 }
 
 .login-card {
-  width: min(420px, 100%);
+  width: 100%;
   border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
 }
 
-.login-card h1 {
-  margin: 0 0 8px;
+.login-card h2 {
+  margin: 0 0 4px;
+  font-size: 24px;
+  color: #14324f;
 }
 
-.login-card p {
-  margin: 0 0 18px;
+.login-hint {
+  margin: 0 0 20px;
   color: #5a6f84;
+  font-size: 14px;
+}
+
+.login-footer {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: #8aa0b8;
 }
 </style>

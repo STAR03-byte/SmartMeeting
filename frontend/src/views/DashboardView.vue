@@ -1,8 +1,10 @@
 <template>
   <section class="dashboard-page">
     <header class="hero-header">
-      <h1>SmartMeeting Control Deck</h1>
-      <p>会议、转写、任务闭环的一站式驾驶舱</p>
+      <div>
+        <h1>SmartMeeting Control Deck</h1>
+        <p>{{ greeting }}</p>
+      </div>
       <div class="hero-actions">
         <router-link to="/meetings">
           <el-button type="primary">会议管理</el-button>
@@ -87,10 +89,19 @@
 import { computed, onMounted } from "vue";
 
 import MeetingCard from "../components/MeetingCard.vue";
+import { useAuthStore } from "../stores/authStore";
 import { useMeetingStore } from "../stores/meetingStore";
 import type { MeetingStatus } from "../api/types";
 
+const authStore = useAuthStore();
 const store = useMeetingStore();
+
+const greeting = computed(() => {
+  const hour = new Date().getHours();
+  const timeGreeting = hour < 12 ? "早上好" : hour < 18 ? "下午好" : "晚上好";
+  const name = authStore.currentUser?.full_name || "";
+  return name ? `${timeGreeting}，${name}！欢迎使用 SmartMeeting` : `${timeGreeting}！欢迎使用 SmartMeeting`;
+});
 
 const totalMeetings = computed(() => store.meetings.length);
 const ongoingMeetings = computed(() => store.meetings.filter((m) => m.status === "ongoing").length);
