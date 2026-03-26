@@ -180,6 +180,7 @@ import { useAuthStore } from "../stores/authStore";
 import { useMeetingStore } from "../stores/meetingStore";
 import type { TaskCreatePayload } from "../api/types";
 import type { TaskStatus } from "../api/tasks";
+import { copyShareLinkToClipboard } from "../utils/share-link";
 import { buildRecordingFile, pickRecordingMimeType } from "../utils/recorder";
 
 type TaskStatusValue = TaskStatus;
@@ -246,11 +247,10 @@ async function reloadMeeting() {
 async function copyShareLink() {
   try {
     const result = await createMeetingShareLink(meetingId);
-    const shareUrl = `${window.location.origin}${result.share_path}`;
-    await navigator.clipboard.writeText(shareUrl);
-    ElMessage.success("分享链接已复制");
+    await copyShareLinkToClipboard(window.location.origin, result.share_path);
+    ElMessage.success(result.created_now ? "分享链接已生成并复制" : "分享链接已复制");
   } catch {
-    ElMessage.error("生成分享链接失败");
+    ElMessage.error("分享链接生成失败，请重试");
   }
 }
 
@@ -436,8 +436,12 @@ async function handleStatusChange(taskId: number, newStatus: TaskStatusValue) {
 async function copySummary() {
   const summary = store.currentMeeting?.summary;
   if (!summary) return;
-  await navigator.clipboard.writeText(summary);
-  ElMessage.success("摘要已复制");
+  try {
+    await navigator.clipboard.writeText(summary);
+    ElMessage.success("摘要已复制");
+  } catch {
+    ElMessage.error("摘要复制失败，请重试");
+  }
 }
 
 function statusLabel(status: string): string {
