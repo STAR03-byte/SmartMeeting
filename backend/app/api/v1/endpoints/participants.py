@@ -14,7 +14,9 @@ from app.services.meeting_participant_service import (
     create_participant,
     delete_participant,
     get_participant,
+    get_participant_out,
     list_participants,
+    list_participants_out,
     update_participant,
 )
 from app.services.user_service import get_user
@@ -48,15 +50,14 @@ def list_participants_api(
 ) -> list[MeetingParticipantOut]:
     """查询会议参与人列表。"""
 
-    participants = list_participants(db, meeting_id=meeting_id)
-    return [MeetingParticipantOut.model_validate(participant) for participant in participants]
+    return list_participants_out(db, meeting_id=meeting_id)
 
 
 @router.get("/{participant_id}", response_model=MeetingParticipantOut)
 def get_participant_api(participant_id: int, db: Session = Depends(get_db)) -> MeetingParticipantOut:
     """查询会议参与人详情。"""
 
-    participant = get_participant(db, participant_id)
+    participant = get_participant_out(db, participant_id)
     if not participant:
         raise HTTPException(status_code=404, detail="Participant not found")
     return participant

@@ -75,6 +75,62 @@ def test_meeting_crud_flow(auth_client) -> None:
     assert len(list_resp.json()) == 1
 
 
+def test_participants_api_includes_user_email(auth_client) -> None:
+    user_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "participant1",
+            "email": "participant1@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Participant One",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    user_id = user_resp.json()["id"]
+
+    organizer_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "organizer_participants",
+            "email": "organizer_participants@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Organizer Participants",
+            "role": "member",
+        },
+    )
+    assert organizer_resp.status_code == 201
+    organizer_id = organizer_resp.json()["id"]
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "参与人列表会议",
+            "description": "测试参与人邮箱返回",
+            "organizer_id": organizer_id,
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    create_resp = auth_client.post(
+        "/api/v1/participants",
+        json={
+            "meeting_id": meeting_id,
+            "user_id": user_id,
+            "participant_role": "required",
+            "attendance_status": "invited",
+        },
+    )
+    assert create_resp.status_code == 201
+
+    list_resp = auth_client.get(f"/api/v1/participants?meeting_id={meeting_id}")
+    assert list_resp.status_code == 200
+    body = list_resp.json()
+    assert len(body) == 1
+    assert body[0]["email"] == "participant1@example.com"
+
+
 def test_create_meeting_rejects_nonexistent_organizer(auth_client) -> None:
     create_resp = auth_client.post(
         "/api/v1/meetings",

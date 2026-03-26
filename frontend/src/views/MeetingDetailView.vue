@@ -22,6 +22,7 @@
         <div class="summary-actions">
           <el-button @click="reloadMeeting">刷新</el-button>
           <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="copyShareLink">生成分享链接</el-button>
+          <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="distributeByEmail">邮件分发</el-button>
           <el-button type="primary" @click="showTaskDialog = true">新建任务</el-button>
         </div>
       </div>
@@ -176,11 +177,13 @@ import { ElMessage } from "element-plus";
 import { useRoute, useRouter } from "vue-router";
 
 import { createMeetingShareLink } from "../api/meetings";
+import { getMeetingParticipants } from "../api/participants";
 import { useAuthStore } from "../stores/authStore";
 import { useMeetingStore } from "../stores/meetingStore";
 import type { TaskCreatePayload } from "../api/types";
 import type { TaskStatus } from "../api/tasks";
 import { copyShareLinkToClipboard } from "../utils/share-link";
+import { buildEmailShareDraft, openEmailShareDraft } from "../utils/email-share";
 import { buildRecordingFile, pickRecordingMimeType } from "../utils/recorder";
 
 type TaskStatusValue = TaskStatus;
@@ -251,6 +254,28 @@ async function copyShareLink() {
     ElMessage.success(result.created_now ? "分享链接已生成并复制" : "分享链接已复制");
   } catch {
     ElMessage.error("分享链接生成失败，请重试");
+  }
+}
+
+async function distributeByEmail() {
+  try {
+    const shareResult = await createMeetingShareLink(meetingId);
+    const participants = await getMeetingParticipants(meetingId);
+    const summaryLines = (store.currentMeeting?.summary ?? "")
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .slice(0, 2);
+    const draft = buildEmailShareDraft({
+      title: store.currentMeeting?.title ?? "会议纪要",
+      summaryLines,
+      shareLink: `${window.location.origin}${shareResult.share_path}`,
+      recipientEmails: participants.map((participant) => participant.email ?? ""),
+    });
+    openEmailShareDraft(draft);
+    ElMessage.success("已打开邮件客户端");
+  } catch {
+    ElMessage.error("邮件分发失败，请重试");
   }
 }
 

@@ -129,3 +129,16 @@ export interface TaskCreatePayload {
   status?: TaskStatus;
   due_at?: string | null;
 }
+
+export interface MeetingParticipantOut {
+  id: number;
+  meeting_id: number;
+  user_id: number;
+  email: string | null;
+  participant_role: string;
+  attendance_status: string;
+  joined_at: string | null;
+  left_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
