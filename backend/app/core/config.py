@@ -47,10 +47,11 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 60 * 24
 
     # Whisper Settings
-    whisper_model: str = "base"  # tiny | base | small | medium | large
+    whisper_model: str = "small"  # tiny | base | small | medium | large
     whisper_device: str = "cpu"  # cpu | cuda | auto
     whisper_language: str = "zh"  # Chinese
     whisper_hot_words: str = ""
+    whisper_normalize_to_simplified: bool = True
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[2] / ".env",

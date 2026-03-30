@@ -6,6 +6,8 @@ from secrets import token_urlsafe
 from sqlalchemy.orm import Session
 
 from app.models.meeting import Meeting
+from app.models.meeting_audio import MeetingAudio
+from app.models.meeting_participant import MeetingParticipant
 from app.models.meeting_transcript import MeetingTranscript
 from app.models.task import Task
 from app.models.user import User
@@ -149,6 +151,12 @@ def update_meeting(db: Session, meeting: Meeting, payload: MeetingUpdate) -> Mee
 def delete_meeting(db: Session, meeting: Meeting) -> None:
     """删除会议。"""
 
+    _ = db.query(MeetingAudio).filter(MeetingAudio.meeting_id == meeting.id).delete(synchronize_session=False)
+    _ = db.query(Task).filter(Task.meeting_id == meeting.id).delete(synchronize_session=False)
+    _ = db.query(MeetingTranscript).filter(MeetingTranscript.meeting_id == meeting.id).delete(synchronize_session=False)
+    _ = db.query(MeetingParticipant).filter(MeetingParticipant.meeting_id == meeting.id).delete(
+        synchronize_session=False
+    )
     db.delete(meeting)
     db.commit()
 

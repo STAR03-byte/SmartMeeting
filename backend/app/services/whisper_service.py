@@ -92,6 +92,23 @@ class WhisperTranscriber:
             return None
         return "，".join(hotwords)
 
+    def _normalize_to_simplified(self, text: str) -> str:
+        if not settings.whisper_normalize_to_simplified:
+            return text
+
+        try:
+            opencc_module = importlib.import_module("opencc")
+        except ImportError:
+            logger.warning("OpenCC not installed; skip simplified Chinese normalization")
+            return text
+
+        try:
+            converter = getattr(opencc_module, "OpenCC")("t2s")
+            return converter.convert(text)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("OpenCC conversion failed, keep original text: %s", exc)
+            return text
+
     def _get_audio_duration_seconds(self, file_path: Path) -> float:
         if shutil.which("ffprobe") is None:
             raise WhisperServiceError("ffprobe not found. Install ffmpeg or add it to PATH.")
@@ -236,7 +253,7 @@ class WhisperTranscriber:
                         + offset_seconds,
                         "end": (float(end) if isinstance(end, (int, float)) else 0.0)
                         + offset_seconds,
-                        "text": text.strip() if isinstance(text, str) else "",
+                        "text": self._normalize_to_simplified(text.strip()) if isinstance(text, str) else "",
                         "language": detected_language if isinstance(detected_language, str) else language,
                     }
                 )

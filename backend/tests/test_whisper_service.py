@@ -4,6 +4,7 @@ import math
 import subprocess
 import wave
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 from app.services.whisper_service import WhisperTranscriber
 
@@ -72,3 +73,25 @@ def test_vad_segments_audio_and_offsets(tmp_path: Path) -> None:
     stderr = _run_silencedetect(audio_path)
     assert "silence_start: 1" in stderr
     assert "silence_end: 2" in stderr
+
+
+def test_normalize_to_simplified_uses_opencc_when_enabled() -> None:
+    transcriber = WhisperTranscriber()
+
+    fake_opencc = MagicMock()
+    fake_converter = MagicMock()
+    fake_converter.convert.return_value = "简体中文"
+    fake_opencc.OpenCC.return_value = fake_converter
+
+    with patch("app.services.whisper_service.settings.whisper_normalize_to_simplified", True), patch(
+        "app.services.whisper_service.importlib.import_module",
+        return_value=fake_opencc,
+    ):
+        assert transcriber._normalize_to_simplified("繁體中文") == "简体中文"
+
+
+def test_normalize_to_simplified_passthrough_when_disabled() -> None:
+    transcriber = WhisperTranscriber()
+
+    with patch("app.services.whisper_service.settings.whisper_normalize_to_simplified", False):
+        assert transcriber._normalize_to_simplified("繁體中文") == "繁體中文"

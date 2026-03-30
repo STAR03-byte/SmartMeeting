@@ -20,8 +20,9 @@
 5. `database/migrations/005_audit_and_participants.sql`
 6. `database/migrations/006_collaboration_share_fields.sql`
 7. `database/migrations/006_meeting_share_links.sql`
-8. `database/seeds/001_seed_basic_data.sql`（可选）
-9. `database/seeds/002_seed_participants.sql`（可选）
+8. `database/migrations/007_fix_meeting_audio_cascade.sql`
+9. `database/seeds/001_seed_basic_data.sql`（可选）
+10. `database/seeds/002_seed_participants.sql`（可选）
 
 也可直接一键执行:
 
@@ -37,6 +38,7 @@ mysql -u <user> -p < database/migrations/004_indexes_perf.sql
 mysql -u <user> -p < database/migrations/005_audit_and_participants.sql
 mysql -u <user> -p < database/migrations/006_collaboration_share_fields.sql
 mysql -u <user> -p < database/migrations/006_meeting_share_links.sql
+mysql -u <user> -p < database/migrations/007_fix_meeting_audio_cascade.sql
 mysql -u <user> -p < database/seeds/001_seed_basic_data.sql
 mysql -u <user> -p < database/seeds/002_seed_participants.sql
 ```
@@ -91,10 +93,11 @@ ORDER BY start_time_sec ASC;
 
 回滚脚本位于 `database/rollback/`，建议按以下顺序执行:
 
-1. `rollback_005_to_004.sql`
-2. `rollback_004_to_003.sql`
-3. `rollback_003_to_002.sql`
-4. `rollback_002_to_001.sql`
+1. `rollback_007_to_006.sql`
+2. `rollback_005_to_004.sql`
+3. `rollback_004_to_003.sql`
+4. `rollback_003_to_002.sql`
+5. `rollback_002_to_001.sql`
 
 可直接执行:
 
