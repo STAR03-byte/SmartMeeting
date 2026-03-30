@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import os
+import shutil
 import subprocess
+from pathlib import Path
 
 
 def run_step(name: str, command: list[str]) -> int:
@@ -14,13 +17,32 @@ def run_step(name: str, command: list[str]) -> int:
     return 0
 
 
+def _resolve_command(command: list[str]) -> list[str]:
+    if not command:
+        return command
+    if command[0] == "npm" and os.name == "nt":
+        npm_cmd = shutil.which("npm.cmd") or shutil.which("npm")
+        if npm_cmd:
+            return [npm_cmd, *command[1:]]
+    return command
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run SmartMeeting quality gates")
     parser.add_argument("--skip-backend-tests", action="store_true")
     parser.add_argument("--skip-frontend", action="store_true")
+    parser.add_argument("--smoke", action="store_true", help="Run the stage A smoke flow")
     args = parser.parse_args()
 
     steps: list[tuple[str, list[str]]] = []
+
+    if args.smoke:
+        steps.append(
+            (
+                "stage-a-smoke",
+                ["python", "scripts/dev/smoke.py"],
+            )
+        )
 
     if not args.skip_backend_tests:
         steps.append(
@@ -35,7 +57,7 @@ def main() -> int:
         steps.append(("frontend-build", ["npm", "--prefix", "frontend", "run", "build"]))
 
     for step_name, step_command in steps:
-        code = run_step(step_name, step_command)
+        code = run_step(step_name, _resolve_command(step_command))
         if code != 0:
             return code
 
