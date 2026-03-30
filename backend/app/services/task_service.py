@@ -79,6 +79,7 @@ def serialize_task_out(task: Task) -> dict[str, object]:
         "reporter_id": task.reporter_id,
         "priority": task.priority,
         "status": task.status,
+        "progress_note": task.progress_note,
         "due_at": task.due_at,
         "completed_at": task.completed_at,
         "is_overdue": is_overdue,

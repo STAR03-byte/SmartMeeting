@@ -20,6 +20,7 @@ class TaskCreate(BaseModel):
     reporter_id: int | None = None
     priority: TaskPriority = Field(default="medium")
     status: TaskStatus = Field(default="todo")
+    progress_note: str | None = None
     due_at: datetime | None = None
 
 
@@ -33,6 +34,7 @@ class TaskUpdate(BaseModel):
     reporter_id: int | None = None
     priority: TaskPriority | None = None
     status: TaskStatus | None = None
+    progress_note: str | None = None
     due_at: datetime | None = None
     completed_at: datetime | None = None
 
@@ -49,6 +51,7 @@ class TaskOut(BaseModel):
     reporter_id: int | None
     priority: str
     status: str
+    progress_note: str | None
     due_at: datetime | None
     completed_at: datetime | None
     is_overdue: bool = False

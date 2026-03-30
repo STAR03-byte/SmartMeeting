@@ -94,6 +94,7 @@ export interface TaskItem {
   reporter_id: number | null;
   priority: TaskPriority;
   status: TaskStatus;
+  progress_note: string | null;
   due_at: string | null;
   completed_at: string | null;
   is_overdue: boolean;
