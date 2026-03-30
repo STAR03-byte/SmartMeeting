@@ -197,8 +197,11 @@ const meetingId = Number(route.params.id);
 const showTaskDialog = ref(false);
 const creatingTask = ref(false);
 const taskFormRef = ref<FormInstance>();
-const recordingState = ref<"idle" | "recording" | "paused" | "processing">("idle");
+const recordingState = ref<"idle" | "recording" | "paused" | "processing" | "streaming">("idle");
 const recordingMimeType = ref("audio/webm");
+const realtimeTranscript = ref("");
+const realtimeChunks: BlobPart[] = [];
+let realtimeTimer: number | null = null;
 
 let mediaStream: MediaStream | null = null;
 let mediaRecorder: MediaRecorder | null = null;
@@ -226,6 +229,7 @@ const recordingStateLabel = computed(() => {
     recording: "录音中",
     paused: "已暂停",
     processing: "处理中",
+    streaming: "实时转写中",
   };
   return map[recordingState.value];
 });
@@ -336,15 +340,19 @@ async function startRecording() {
     recordingMimeType.value = pickRecordingMimeType((mime) => MediaRecorder.isTypeSupported(mime));
     mediaRecorder = new MediaRecorder(mediaStream, { mimeType: recordingMimeType.value });
     recordedChunks = [];
+    realtimeChunks.length = 0;
+    realtimeTranscript.value = "";
 
     mediaRecorder.addEventListener("dataavailable", (event: BlobEvent) => {
       if (event.data.size > 0) {
         recordedChunks.push(event.data);
+        realtimeChunks.push(event.data);
       }
     });
 
     mediaRecorder.start();
     recordingState.value = "recording";
+    startRealtimePolling();
     ElMessage.success("已开始录音");
   } catch {
     cleanupRecorder();
@@ -376,6 +384,7 @@ async function stopRecording() {
   }
 
   recordingState.value = "processing";
+  stopRealtimePolling();
 
   await new Promise<void>((resolve) => {
     if (!mediaRecorder) {
@@ -417,6 +426,36 @@ function cleanupRecorder() {
   mediaStream = null;
   mediaRecorder = null;
   recordedChunks = [];
+  stopRealtimePolling();
+}
+
+function startRealtimePolling() {
+  stopRealtimePolling();
+  realtimeTimer = window.setInterval(async () => {
+    if (recordingState.value !== "recording" && recordingState.value !== "paused") {
+      return;
+    }
+    if (realtimeChunks.length === 0) {
+      return;
+    }
+    const chunk = new Blob(realtimeChunks, { type: recordingMimeType.value });
+    realtimeChunks.length = 0;
+    const chunkFile = buildRecordingFile([chunk], recordingMimeType.value, meetingId, "realtime-chunk");
+    try {
+      const transcript = await store.appendRealtimeTranscript(meetingId, chunkFile);
+      realtimeTranscript.value = `${realtimeTranscript.value}${realtimeTranscript.value ? "\n" : ""}${transcript.content}`;
+      recordingState.value = "streaming";
+    } catch {
+      recordingState.value = "recording";
+    }
+  }, 3000);
+}
+
+function stopRealtimePolling() {
+  if (realtimeTimer !== null) {
+    window.clearInterval(realtimeTimer);
+    realtimeTimer = null;
+  }
 }
 
 async function createTask() {

@@ -88,7 +88,7 @@ export const useMeetingStore = defineStore("meeting", {
         this.loading = false;
       }
     },
-    async uploadAudioAndTranscribe(meetingId: number, file: File) {
+  async uploadAudioAndTranscribe(meetingId: number, file: File) {
       this.loading = true;
       this.error = null;
       try {
@@ -100,6 +100,18 @@ export const useMeetingStore = defineStore("meeting", {
         throw error;
       } finally {
         this.loading = false;
+      }
+    },
+    async appendRealtimeTranscript(meetingId: number, file: File) {
+      this.error = null;
+      try {
+        await uploadMeetingAudio(meetingId, file);
+        const transcript = await transcribeMeetingAudio(meetingId);
+        this.transcripts.push(transcript);
+        return transcript;
+      } catch (error) {
+        this.error = getApiErrorMessage(error);
+        throw error;
       }
     },
     async runPostprocess(meetingId: number) {
