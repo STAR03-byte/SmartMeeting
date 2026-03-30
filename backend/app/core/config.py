@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     whisper_model: str = "base"  # tiny | base | small | medium | large
     whisper_device: str = "cpu"  # cpu | cuda | auto
     whisper_language: str = "zh"  # Chinese
+    whisper_hot_words: str = ""
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[2] / ".env",

@@ -27,9 +27,11 @@ python -m uvicorn backend.main:app --reload
 - `OLLAMA_TIMEOUT` / `OLLAMA_TEMPERATURE` / `OLLAMA_MAX_TOKENS`
 - `JWT_SECRET_KEY` / `JWT_ALGORITHM` / `JWT_ACCESS_TOKEN_EXPIRE_MINUTES`
 - `WHISPER_MODEL` / `WHISPER_DEVICE` / `WHISPER_LANGUAGE`
+- `WHISPER_HOT_WORDS`
 
 生产环境建议：`LLM_PROVIDER=openai`，`LLM_FALLBACK_PROVIDER=ollama`，并显式填写 `JWT_SECRET_KEY` 与数据库连接信息。
 如果启用 `WHISPER_DEVICE=cuda`，还需要宿主机具备 NVIDIA Container Toolkit 和 CUDA 运行时支持。
+`WHISPER_HOT_WORDS` 可用于填写会议主题、项目名、人名等热词，以便 Whisper 在转写时优先保留这些词。
 
 ## 数据库行为
 

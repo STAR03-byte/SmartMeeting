@@ -108,6 +108,7 @@ pip install openai-whisper
 WHISPER_MODEL=base
 WHISPER_DEVICE=cpu  # or "cuda" for GPU
 WHISPER_LANGUAGE=zh
+WHISPER_HOT_WORDS=SmartMeeting,WhisperX,项目推进,接口联调
 ```
 
 If you set `WHISPER_DEVICE=cuda`, make sure the host has NVIDIA Container Toolkit and a CUDA-capable PyTorch runtime available inside the container.

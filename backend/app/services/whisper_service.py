@@ -44,7 +44,13 @@ WhisperRawResult = dict[str, object]
 
 
 class WhisperModelProtocol(Protocol):
-    def transcribe(self, audio: str, language: str, task: str) -> WhisperRawResult: ...
+    def transcribe(
+        self,
+        audio: str,
+        language: str,
+        task: str,
+        initial_prompt: str | None = None,
+    ) -> WhisperRawResult: ...
 
 
 class WhisperTranscriber:
@@ -79,6 +85,12 @@ class WhisperTranscriber:
             )
             self._device = device
         return self._model
+
+    def _build_initial_prompt(self) -> str | None:
+        hotwords = [item.strip() for item in settings.whisper_hot_words.split(",") if item.strip()]
+        if not hotwords:
+            return None
+        return "，".join(hotwords)
 
     def _get_audio_duration_seconds(self, file_path: Path) -> float:
         if shutil.which("ffprobe") is None:
@@ -190,9 +202,16 @@ class WhisperTranscriber:
         language: str,
         offset_seconds: float,
     ) -> list[WhisperSegment]:
+        initial_prompt = self._build_initial_prompt()
+
         def _sync_transcribe() -> WhisperRawResult:
             try:
-                return model.transcribe(str(audio_path), language=language, task="transcribe")
+                return model.transcribe(
+                    str(audio_path),
+                    language=language,
+                    task="transcribe",
+                    initial_prompt=initial_prompt,
+                )
             except (FileNotFoundError, OSError, RuntimeError) as exc:
                 raise WhisperServiceError(
                     "Whisper transcription failed. Check ffmpeg installation and audio format."
