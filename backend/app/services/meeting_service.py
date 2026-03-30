@@ -37,6 +37,7 @@ def list_meetings(
     db: Session,
     status: str | None = None,
     organizer_id: int | None = None,
+    keyword: str | None = None,
     limit: int | None = None,
     offset: int = 0,
 ) -> list[Meeting]:
@@ -50,12 +51,27 @@ def list_meetings(
     if organizer_id is not None:
         query = query.filter(Meeting.organizer_id == organizer_id)
 
+    if keyword:
+        normalized_keyword = keyword.strip()
+        if normalized_keyword:
+            query = query.filter(
+                (Meeting.title.ilike(f"%{normalized_keyword}%"))
+                | (Meeting.description.ilike(f"%{normalized_keyword}%"))
+            )
+
     query = query.order_by(Meeting.id.desc()).offset(offset)
 
     if limit is not None:
         query = query.limit(limit)
 
     return query.all()
+
+
+def match_meeting_keyword(meeting: Meeting, keyword: str) -> bool:
+    normalized_keyword = keyword.strip()
+    if not normalized_keyword:
+        return True
+    return normalized_keyword.lower() in (meeting.title or "").lower() or normalized_keyword.lower() in (meeting.description or "").lower()
 
 
 def get_meeting(db: Session, meeting_id: int) -> Meeting | None:

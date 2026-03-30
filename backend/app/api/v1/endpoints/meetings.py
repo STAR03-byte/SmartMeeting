@@ -57,6 +57,7 @@ def create_meeting_api(payload: MeetingCreate, db: Session = Depends(get_db)) ->
 def list_meetings_api(
     status: str | None = Query(default=None),
     organizer_id: int | None = Query(default=None),
+    keyword: str | None = Query(default=None),
     limit: int | None = Query(default=None, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -67,6 +68,7 @@ def list_meetings_api(
         db,
         status=status,
         organizer_id=organizer_id,
+        keyword=keyword,
         limit=limit,
         offset=offset,
     )
