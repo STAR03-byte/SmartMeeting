@@ -71,8 +71,6 @@ npm run ci
 - Project documentation (backend, frontend, docs READMEs)
 
 ### Next Steps
-- Real LLM integration (set LLM_API_KEY in .env)
-- Deployment documentation
 - Production environment configuration
 
 ## Configuration
