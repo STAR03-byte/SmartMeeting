@@ -10,7 +10,7 @@
         <h2>登录</h2>
         <p class="login-hint">使用你的会议账号进入系统</p>
 
-        <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" />
+        <AppErrorAlert :error="error" :closable="false" />
 
         <el-form label-position="top" @submit.prevent>
           <el-form-item label="用户名">
@@ -35,6 +35,7 @@ import { reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { getApiErrorMessage } from "../api/client";
+import AppErrorAlert from "../components/AppErrorAlert.vue";
 import { useAuthStore } from "../stores/authStore";
 import { resolveSafeRedirect } from "../utils/redirect";
 

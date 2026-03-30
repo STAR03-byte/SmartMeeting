@@ -31,7 +31,7 @@
 
     <el-skeleton v-if="store.loading" rows="5" animated />
 
-    <el-alert v-else-if="store.error" :title="store.error" type="error" show-icon closable @close="store.error = null" />
+    <AppErrorAlert v-else-if="store.error" :error="store.error" @close="store.error = null" />
 
     <el-table v-else :data="store.meetings" stripe style="width: 100%">
       <el-table-column prop="id" label="ID" width="70" />
@@ -111,6 +111,7 @@ import { reactive, ref } from "vue";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { useMeetingStore } from "../stores/meetingStore";
+import AppErrorAlert from "../components/AppErrorAlert.vue";
 import type { MeetingCreatePayload, MeetingListParams, MeetingStatus } from "../api/types";
 
 const store = useMeetingStore();

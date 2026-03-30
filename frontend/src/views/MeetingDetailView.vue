@@ -2,13 +2,7 @@
   <section class="detail-page" v-loading="store.loading">
     <el-page-header @back="goBack" content="会议工作台" />
 
-    <el-alert
-      v-if="store.error"
-      :title="store.error"
-      type="error"
-      show-icon
-      :closable="false"
-    />
+    <AppErrorAlert :error="store.error" :closable="false" />
 
     <el-card v-if="store.currentMeeting" class="base-card">
       <div class="header-row">
@@ -176,6 +170,8 @@ import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { useRoute, useRouter } from "vue-router";
 
+import AppErrorAlert from "../components/AppErrorAlert.vue";
+import { getApiErrorMessage } from "../api/client";
 import { createMeetingShareLink } from "../api/meetings";
 import { getMeetingParticipants } from "../api/participants";
 import { useAuthStore } from "../stores/authStore";
@@ -256,8 +252,8 @@ async function copyShareLink() {
     const result = await createMeetingShareLink(meetingId);
     await copyShareLinkToClipboard(window.location.origin, result.share_path);
     ElMessage.success(result.created_now ? "分享链接已生成并复制" : "分享链接已复制");
-  } catch {
-    ElMessage.error("分享链接生成失败，请重试");
+  } catch (err) {
+    ElMessage.error(getApiErrorMessage(err));
   }
 }
 
@@ -278,8 +274,8 @@ async function distributeByEmail() {
     });
     openEmailShareDraft(draft);
     ElMessage.success("已打开邮件客户端");
-  } catch {
-    ElMessage.error("邮件分发失败，请重试");
+  } catch (err) {
+    ElMessage.error(getApiErrorMessage(err));
   }
 }
 
@@ -294,8 +290,8 @@ async function onFilePicked(file: { raw?: File }) {
   try {
     await store.uploadAudioAndTranscribe(meetingId, file.raw);
     ElMessage.success("音频上传并转写完成");
-  } catch {
-    ElMessage.error(store.error || "音频处理失败");
+  } catch (err) {
+    ElMessage.error(getApiErrorMessage(err));
   }
 }
 
@@ -303,8 +299,8 @@ async function runPostprocess() {
   try {
     await store.runPostprocess(meetingId);
     ElMessage.success("已生成会议纪要与任务");
-  } catch {
-    ElMessage.error(store.error || "会议后处理失败");
+  } catch (err) {
+    ElMessage.error(getApiErrorMessage(err));
   }
 }
 
@@ -319,8 +315,8 @@ async function downloadSummary() {
     link.click();
     URL.revokeObjectURL(url);
     ElMessage.success("纪要已导出");
-  } catch {
-    ElMessage.error(store.error || "纪要导出失败");
+  } catch (err) {
+    ElMessage.error(getApiErrorMessage(err));
   }
 }
 
@@ -354,9 +350,9 @@ async function startRecording() {
     recordingState.value = "recording";
     startRealtimePolling();
     ElMessage.success("已开始录音");
-  } catch {
+  } catch (err) {
     cleanupRecorder();
-    ElMessage.error("无法访问麦克风，请检查浏览器权限");
+    ElMessage.error(getApiErrorMessage(err));
   }
 }
 
@@ -409,8 +405,8 @@ async function stopRecording() {
     const file = buildRecordingFile(recordedChunks, recordingMimeType.value, meetingId, "online-recording");
     await store.uploadAudioAndTranscribe(meetingId, file);
     ElMessage.success("录音上传并转写完成");
-  } catch {
-    ElMessage.error(store.error || "录音处理失败");
+  } catch (err) {
+    ElMessage.error(getApiErrorMessage(err));
   } finally {
     cleanupRecorder();
     recordingState.value = "idle";
@@ -445,8 +441,9 @@ function startRealtimePolling() {
       const transcript = await store.appendRealtimeTranscript(meetingId, chunkFile);
       realtimeTranscript.value = `${realtimeTranscript.value}${realtimeTranscript.value ? "\n" : ""}${transcript.content}`;
       recordingState.value = "streaming";
-    } catch {
+    } catch (err) {
       recordingState.value = "recording";
+      ElMessage.error(getApiErrorMessage(err));
     }
   }, 3000);
 }
@@ -470,8 +467,8 @@ async function createTask() {
     });
     showTaskDialog.value = false;
     ElMessage.success("任务创建成功");
-  } catch {
-    ElMessage.error(store.error || "任务创建失败");
+  } catch (err) {
+    ElMessage.error(getApiErrorMessage(err));
   } finally {
     creatingTask.value = false;
   }
@@ -492,8 +489,8 @@ async function handleStatusChange(taskId: number, newStatus: TaskStatusValue) {
   try {
     await store.changeTaskStatus(taskId, newStatus);
     ElMessage.success("状态已更新");
-  } catch {
-    ElMessage.error(store.error || "更新失败");
+  } catch (err) {
+    ElMessage.error(getApiErrorMessage(err));
   }
 }
 
@@ -503,8 +500,8 @@ async function copySummary() {
   try {
     await navigator.clipboard.writeText(summary);
     ElMessage.success("摘要已复制");
-  } catch {
-    ElMessage.error("摘要复制失败，请重试");
+  } catch (err) {
+    ElMessage.error(getApiErrorMessage(err));
   }
 }
 

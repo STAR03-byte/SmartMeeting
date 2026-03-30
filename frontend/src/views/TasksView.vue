@@ -8,7 +8,7 @@
       <el-button @click="refreshTasks">刷新</el-button>
     </header>
 
-    <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" />
+    <AppErrorAlert :error="error" :closable="false" />
 
     <el-card class="base-card filter-card">
       <div class="filter-row">
@@ -98,6 +98,7 @@ import { onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 
 import { getApiErrorMessage } from "../api/client";
+import AppErrorAlert from "../components/AppErrorAlert.vue";
 import {
   getTasks,
   updateTaskStatus,

@@ -7,7 +7,7 @@
       </div>
     </header>
 
-    <el-alert v-if="error" :title="error" type="error" show-icon :closable="false" />
+    <AppErrorAlert :error="error" :closable="false" />
 
     <div class="user-grid">
       <el-card class="base-card">
@@ -68,6 +68,7 @@ import { onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 
 import { getApiErrorMessage } from "../api/client";
+import AppErrorAlert from "../components/AppErrorAlert.vue";
 import { createUser, deleteUser, getUsers, type UserItem, type UserRole } from "../api/users";
 
 const users = ref<UserItem[]>([]);
