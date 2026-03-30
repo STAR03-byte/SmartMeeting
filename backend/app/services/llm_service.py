@@ -2,6 +2,7 @@
 
 import json
 import logging
+from dataclasses import dataclass
 from typing import TypedDict, cast
 
 from openai import APIConnectionError, APIError, AsyncOpenAI, RateLimitError
@@ -16,6 +17,46 @@ class LLMServiceError(Exception):
     """LLM 服务异常。"""
 
 
+@dataclass(frozen=True)
+class LLMProviderConfig:
+    name: str
+    model: str
+    base_url: str | None
+    api_key: str | None
+    timeout: int
+    temperature: float
+    max_tokens: int
+
+
+def _build_provider_chain() -> list[LLMProviderConfig]:
+    providers = [
+        LLMProviderConfig(
+            name="openai",
+            model=settings.llm_model,
+            base_url=settings.llm_base_url or None,
+            api_key=settings.llm_api_key or None,
+            timeout=settings.llm_timeout,
+            temperature=settings.llm_temperature,
+            max_tokens=settings.llm_max_tokens,
+        )
+    ]
+
+    if settings.llm_fallback_provider == "ollama":
+        providers.append(
+            LLMProviderConfig(
+                name="ollama",
+                model=settings.ollama_model,
+                base_url=settings.ollama_base_url or None,
+                api_key=None,
+                timeout=settings.ollama_timeout,
+                temperature=settings.ollama_temperature,
+                max_tokens=settings.ollama_max_tokens,
+            )
+        )
+
+    return providers
+
+
 class ExtractedTask(TypedDict):
     title: str
     description: str
@@ -28,38 +69,39 @@ class LLMClient:
     """LLM 客户端封装。"""
 
     def __init__(self) -> None:
-        self._client: AsyncOpenAI | None = None
-        self._initialized: bool = False
+        self._clients: dict[str, AsyncOpenAI] = {}
 
-    def _ensure_client(self) -> AsyncOpenAI:
-        if not self._initialized:
-            if not settings.llm_api_key:
-                raise LLMServiceError("LLM API key not configured")
-            self._client = AsyncOpenAI(
-                api_key=settings.llm_api_key,
-                base_url=settings.llm_base_url or None,
-                timeout=settings.llm_timeout,
-            )
-            self._initialized = True
-        if self._client is None:
-            raise LLMServiceError("LLM client initialization failed")
-        return self._client
+    def _ensure_client(self, provider: LLMProviderConfig) -> AsyncOpenAI:
+        if provider.name not in self._clients:
+            if provider.api_key is not None:
+                self._clients[provider.name] = AsyncOpenAI(
+                    api_key=provider.api_key,
+                    base_url=provider.base_url,
+                    timeout=provider.timeout,
+                )
+            else:
+                self._clients[provider.name] = AsyncOpenAI(
+                    base_url=provider.base_url,
+                    timeout=provider.timeout,
+                )
+        return self._clients[provider.name]
 
     async def _call_chat(
         self,
         messages: list[ChatCompletionMessageParam],
+        provider: LLMProviderConfig,
         temperature: float | None = None,
         max_tokens: int | None = None,
     ) -> str:
-        client = self._ensure_client()
+        client = self._ensure_client(provider)
         last_error: Exception | None = None
         for attempt in range(3):
             try:
                 response = await client.chat.completions.create(
-                    model=settings.llm_model,
+                    model=provider.model,
                     messages=messages,
-                    temperature=temperature if temperature is not None else settings.llm_temperature,
-                    max_tokens=max_tokens if max_tokens is not None else settings.llm_max_tokens,
+                    temperature=temperature if temperature is not None else provider.temperature,
+                    max_tokens=max_tokens if max_tokens is not None else provider.max_tokens,
                 )
                 content = response.choices[0].message.content
                 return content or ""
@@ -75,6 +117,30 @@ class LLMClient:
         if last_error is not None:
             raise LLMServiceError(f"LLM transient error: {last_error}") from last_error
         raise LLMServiceError("LLM request failed")
+
+    async def _call_with_fallback(
+        self,
+        messages: list[ChatCompletionMessageParam],
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> tuple[str, str]:
+        errors: list[str] = []
+        for provider in _build_provider_chain():
+            try:
+                return (
+                    await self._call_chat(
+                        messages,
+                        provider=provider,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                    ),
+                    provider.name,
+                )
+            except LLMServiceError as exc:
+                errors.append(f"{provider.name}: {exc}")
+                logger.warning("LLM provider failed, trying fallback: %s", exc)
+
+        raise LLMServiceError("; ".join(errors) if errors else "LLM request failed")
 
     async def generate_meeting_summary(
         self,
@@ -106,7 +172,8 @@ class LLMClient:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
-        return await self._call_chat(messages)
+        content, _provider = await self._call_with_fallback(messages)
+        return content
 
     async def extract_action_items(
         self,
@@ -142,7 +209,7 @@ class LLMClient:
         ]
 
         try:
-            response = await self._call_chat(messages, temperature=0.1)
+            response, _provider = await self._call_with_fallback(messages, temperature=0.1)
             parsed = cast(object, json.loads(response))
         except json.JSONDecodeError as exc:
             logger.warning("Failed to parse LLM response as JSON: %s", exc)
@@ -176,13 +243,11 @@ class LLMClient:
 
     async def health_check(self) -> bool:
         try:
-            client = self._ensure_client()
-            response = await client.chat.completions.create(
-                model=settings.llm_model,
-                messages=[{"role": "user", "content": "Hi"}],
+            response = await self._call_with_fallback(
+                [{"role": "user", "content": "Hi"}],
                 max_tokens=5,
             )
-            return bool(response.choices)
+            return bool(response[0])
         except Exception as exc:
             logger.error("LLM health check failed: %s", exc)
             return False

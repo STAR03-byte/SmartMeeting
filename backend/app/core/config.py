@@ -34,6 +34,12 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.3
     llm_max_tokens: int = 2000
     llm_timeout: int = 60  # seconds
+    llm_fallback_provider: str = "ollama"  # ollama | mock | none
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_model: str = "llama3.1"
+    ollama_timeout: int = 60  # seconds
+    ollama_temperature: float = 0.3
+    ollama_max_tokens: int = 2000
 
     # Auth Settings
     jwt_secret_key: str = "change-me-in-production"
