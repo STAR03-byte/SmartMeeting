@@ -69,6 +69,7 @@ ALTER TABLE meeting_transcripts
     );
 
 ALTER TABLE tasks
+  ADD COLUMN progress_note TEXT NULL COMMENT '任务进展备注' AFTER status,
   ADD CONSTRAINT chk_tasks_due_after_create
     CHECK (due_at IS NULL OR due_at >= created_at),
   ADD CONSTRAINT chk_tasks_complete_after_create

@@ -85,8 +85,20 @@
         <el-form-item label="描述">
           <el-input v-model="createForm.description" type="textarea" :rows="3" placeholder="可选" />
         </el-form-item>
-        <el-form-item label="组织者ID" prop="organizer_id">
-          <el-input-number v-model="createForm.organizer_id" :min="1" />
+        <el-form-item label="组织者" prop="organizer_id">
+          <el-select
+            v-model="createForm.organizer_id"
+            filterable
+            placeholder="请选择组织者"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="user in users"
+              :key="user.id"
+              :label="`${user.full_name}（${user.username}）`"
+              :value="user.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="计划开始">
           <el-date-picker v-model="createForm.scheduled_start_at" type="datetime" placeholder="选择时间" />
@@ -107,12 +119,13 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { useMeetingStore } from "../stores/meetingStore";
 import AppErrorAlert from "../components/AppErrorAlert.vue";
 import type { MeetingCreatePayload, MeetingListParams, MeetingStatus } from "../api/types";
+import { getUsers, type UserItem } from "../api/users";
 
 const store = useMeetingStore();
 
@@ -126,6 +139,7 @@ const totalCount = ref(0);
 const showCreateDialog = ref(false);
 const creating = ref(false);
 const createFormRef = ref<FormInstance>();
+const users = ref<UserItem[]>([]);
 
 const createForm = reactive<MeetingCreatePayload>({
   title: "",
@@ -152,6 +166,13 @@ async function loadMeetings() {
   await store.fetchMeetings(params);
 }
 
+async function loadUsers() {
+  users.value = await getUsers();
+  if (!createForm.organizer_id && users.value.length > 0) {
+    createForm.organizer_id = users.value[0].id;
+  }
+}
+
 function applyFilter() {
   currentPage.value = 1;
   loadMeetings();
@@ -173,6 +194,11 @@ function handlePageChange(page: number) {
 async function handleCreate() {
   const valid = await createFormRef.value?.validate().catch(() => false);
   if (!valid) return;
+
+  if (users.value.length === 0) {
+    ElMessage.error("暂无可选组织者，请先创建用户");
+    return;
+  }
 
   creating.value = true;
   try {
@@ -206,7 +232,7 @@ async function handleDelete(meetingId: number) {
 function resetCreateForm() {
   createForm.title = "";
   createForm.description = null;
-  createForm.organizer_id = 1;
+  createForm.organizer_id = users.value[0]?.id ?? 1;
   createForm.scheduled_start_at = null;
   createForm.scheduled_end_at = null;
   createForm.location = null;
@@ -239,6 +265,9 @@ function formatDate(iso: string | null): string {
 }
 
 loadMeetings();
+onMounted(async () => {
+  await loadUsers();
+});
 </script>
 
 <style scoped>
