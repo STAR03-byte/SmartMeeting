@@ -13,7 +13,7 @@ docker compose up --build
 - Backend: `http://localhost:8000`
 - MySQL: `localhost:3307`
 
-Default account: `alice_admin` / `admin123`
+Default account: configured in the seed data
 
 ### Local Development
 
@@ -92,6 +92,7 @@ OLLAMA_TIMEOUT=60
 OLLAMA_TEMPERATURE=0.3
 OLLAMA_MAX_TOKENS=2000
 JWT_SECRET_KEY=change-me-in-production
+JWT_ALGORITHM=HS256
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=1440
 ```
 
