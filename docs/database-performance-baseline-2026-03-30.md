@@ -1,7 +1,7 @@
 # SmartMeeting 数据库性能复核基线
 
 **日期**: 2026-03-30  
-**状态**: Draft
+**状态**: Blocked
 
 ## 1. 目标
 
@@ -48,6 +48,13 @@
 ## 5. 当前阻塞
 
 本地 MySQL 默认账号 `root/root` 与 `smartmeeting/smartmeeting` 均无法直接连接，暂无法在当前环境跑 `check_health.sql` / `check_performance.sql` 获取真实输出。
+
+已实际尝试执行：
+
+- `mysql -u root -proot < scripts/db/check_health.sql`
+- `mysql -u root -proot < scripts/db/check_performance.sql`
+
+结果均为 `ERROR 1045 (28000): Access denied for user 'root'@'localhost'`。
 
 ## 6. 后续建议
 
