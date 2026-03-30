@@ -38,6 +38,7 @@ def list_meetings(
     status: str | None = None,
     organizer_id: int | None = None,
     keyword: str | None = None,
+    sort_by: str | None = None,
     limit: int | None = None,
     offset: int = 0,
 ) -> list[Meeting]:
@@ -59,7 +60,12 @@ def list_meetings(
                 | (Meeting.description.ilike(f"%{normalized_keyword}%"))
             )
 
-    query = query.order_by(Meeting.id.desc()).offset(offset)
+    if sort_by == "scheduled_start_at":
+        query = query.order_by(Meeting.scheduled_start_at.asc().nullslast(), Meeting.id.desc())
+    else:
+        query = query.order_by(Meeting.id.desc())
+
+    query = query.offset(offset)
 
     if limit is not None:
         query = query.limit(limit)
@@ -131,7 +137,7 @@ def build_shared_meeting_out(db: Session, meeting: Meeting) -> SharedMeetingOut:
 def update_meeting(db: Session, meeting: Meeting, payload: MeetingUpdate) -> Meeting:
     """更新会议。"""
 
-    data = payload.model_dump(exclude_unset=True)
+    data: dict[str, object] = payload.model_dump(exclude_unset=True)
     for key, value in data.items():
         setattr(meeting, key, value)
     db.add(meeting)

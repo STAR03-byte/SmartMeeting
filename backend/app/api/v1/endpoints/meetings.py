@@ -1,5 +1,7 @@
 """会议 REST API。"""
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
@@ -35,7 +37,10 @@ router = APIRouter(prefix="/meetings", tags=["meetings"], dependencies=[Depends(
 
 
 @router.post("", response_model=MeetingOut, status_code=status.HTTP_201_CREATED)
-def create_meeting_api(payload: MeetingCreate, db: Session = Depends(get_db)) -> MeetingOut:
+def create_meeting_api(
+    payload: MeetingCreate,
+    db: Annotated[Session, Depends(get_db)],
+) -> MeetingOut:
     organizer = get_user(db, payload.organizer_id)
     if not organizer:
         raise HTTPException(status_code=404, detail="Organizer not found")
@@ -55,12 +60,13 @@ def create_meeting_api(payload: MeetingCreate, db: Session = Depends(get_db)) ->
 
 @router.get("", response_model=list[MeetingOut])
 def list_meetings_api(
-    status: str | None = Query(default=None),
-    organizer_id: int | None = Query(default=None),
-    keyword: str | None = Query(default=None),
-    limit: int | None = Query(default=None, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    status: Annotated[str | None, Query()] = None,
+    organizer_id: Annotated[int | None, Query()] = None,
+    keyword: Annotated[str | None, Query()] = None,
+    sort_by: Annotated[str | None, Query()] = None,
+    limit: Annotated[int | None, Query(ge=1, le=100)] = None,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[MeetingOut]:
     """查询会议列表。"""
 
@@ -69,6 +75,7 @@ def list_meetings_api(
         status=status,
         organizer_id=organizer_id,
         keyword=keyword,
+        sort_by=sort_by,
         limit=limit,
         offset=offset,
     )
@@ -76,7 +83,7 @@ def list_meetings_api(
 
 
 @router.get("/{meeting_id}", response_model=MeetingDetailOut)
-def get_meeting_api(meeting_id: int, db: Session = Depends(get_db)) -> MeetingDetailOut:
+def get_meeting_api(meeting_id: int, db: Annotated[Session, Depends(get_db)]) -> MeetingDetailOut:
     """查询会议详情。"""
 
     meeting = get_meeting(db, meeting_id)
@@ -98,7 +105,7 @@ def get_meeting_api(meeting_id: int, db: Session = Depends(get_db)) -> MeetingDe
 def update_meeting_api(
     meeting_id: int,
     payload: MeetingUpdate,
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
 ) -> MeetingOut:
     """更新会议。"""
 
@@ -142,7 +149,7 @@ def update_meeting_api(
 
 
 @router.delete("/{meeting_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_meeting_api(meeting_id: int, db: Session = Depends(get_db)) -> None:
+def delete_meeting_api(meeting_id: int, db: Annotated[Session, Depends(get_db)]) -> None:
     """删除会议。"""
 
     meeting = get_meeting(db, meeting_id)
@@ -154,8 +161,8 @@ def delete_meeting_api(meeting_id: int, db: Session = Depends(get_db)) -> None:
 @router.post("/{meeting_id}/postprocess", response_model=MeetingPostprocessOut)
 async def postprocess_meeting_api(
     meeting_id: int,
-    force_regenerate: bool = Query(default=False),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    force_regenerate: Annotated[bool, Query()] = False,
 ) -> MeetingPostprocessOut:
     """对会议转写进行后处理并生成摘要与任务。"""
 
@@ -180,7 +187,7 @@ async def postprocess_meeting_api(
         force_regenerate=force_regenerate,
     )
     version = summary_version if "llm" in summary_version else task_version
-    save_postprocess_result(db, meeting, summary, version=version)
+    _ = save_postprocess_result(db, meeting, summary, version=version)
 
     return MeetingPostprocessOut(
         meeting_id=meeting_id,
@@ -192,8 +199,8 @@ async def postprocess_meeting_api(
 @router.post("/{meeting_id}/audio", response_model=MeetingAudioOut, status_code=status.HTTP_201_CREATED)
 def upload_meeting_audio_api(
     meeting_id: int,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
+    file: Annotated[UploadFile, File()],
+    db: Annotated[Session, Depends(get_db)],
 ) -> MeetingAudioOut:
     """上传会议音频文件。"""
 
@@ -211,7 +218,7 @@ def upload_meeting_audio_api(
 )
 async def transcribe_meeting_audio_api(
     meeting_id: int,
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
 ) -> MeetingTranscriptOut:
     """对最新上传音频执行 Whisper 语音识别。"""
 
@@ -229,7 +236,7 @@ async def transcribe_meeting_audio_api(
 def export_meeting_api(
     meeting_id: int,
     payload: MeetingExportRequest,
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
 ) -> MeetingExportOut:
     """导出会议纪要。"""
 

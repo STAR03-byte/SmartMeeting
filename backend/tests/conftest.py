@@ -13,6 +13,8 @@ if str(BACKEND_DIR) not in sys.path:
 os.environ.setdefault("DB_BACKEND", "sqlite")
 os.environ.setdefault("DB_AUTO_FALLBACK_SQLITE", "false")
 os.environ.setdefault("SQLITE_PATH", "backend/test.db")
+os.environ.setdefault("LLM_PROVIDER", "mock")
+os.environ.setdefault("LLM_FALLBACK_PROVIDER", "none")
 
 import pytest
 from fastapi.testclient import TestClient

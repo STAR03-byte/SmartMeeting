@@ -1,5 +1,7 @@
 """任务 REST API。"""
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -23,7 +25,10 @@ router = APIRouter(prefix="/tasks", tags=["tasks"], dependencies=[Depends(get_cu
 
 
 @router.post("", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
-def create_task_api(payload: TaskCreate, db: Session = Depends(get_db)) -> TaskOut:
+def create_task_api(
+    payload: TaskCreate,
+    db: Annotated[Session, Depends(get_db)],
+) -> TaskOut:
     """创建任务。"""
 
     meeting = get_meeting(db, payload.meeting_id)
@@ -46,12 +51,12 @@ def create_task_api(payload: TaskCreate, db: Session = Depends(get_db)) -> TaskO
 
 @router.get("", response_model=list[TaskOut])
 def list_tasks_api(
-    assignee_id: int | None = Query(default=None),
-    meeting_id: int | None = Query(default=None),
-    status: TaskStatus | None = Query(default=None),
-    priority: TaskPriority | None = Query(default=None),
-    keyword: str | None = Query(default=None),
-    db: Session = Depends(get_db),
+    db: Annotated[Session, Depends(get_db)],
+    assignee_id: Annotated[int | None, Query()] = None,
+    meeting_id: Annotated[int | None, Query()] = None,
+    status: Annotated[TaskStatus | None, Query()] = None,
+    priority: Annotated[TaskPriority | None, Query()] = None,
+    keyword: Annotated[str | None, Query()] = None,
 ) -> list[TaskOut]:
     """查询任务列表。"""
 
@@ -67,7 +72,7 @@ def list_tasks_api(
 
 
 @router.get("/{task_id}", response_model=TaskOut)
-def get_task_api(task_id: int, db: Session = Depends(get_db)) -> TaskOut:
+def get_task_api(task_id: int, db: Annotated[Session, Depends(get_db)]) -> TaskOut:
     """查询任务详情。"""
 
     task = get_task(db, task_id)
@@ -77,7 +82,7 @@ def get_task_api(task_id: int, db: Session = Depends(get_db)) -> TaskOut:
 
 
 @router.patch("/{task_id}", response_model=TaskOut)
-def update_task_api(task_id: int, payload: TaskUpdate, db: Session = Depends(get_db)) -> TaskOut:
+def update_task_api(task_id: int, payload: TaskUpdate, db: Annotated[Session, Depends(get_db)]) -> TaskOut:
     """更新任务。"""
 
     task = get_task(db, task_id)
@@ -88,7 +93,7 @@ def update_task_api(task_id: int, payload: TaskUpdate, db: Session = Depends(get
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task_api(task_id: int, db: Session = Depends(get_db)) -> None:
+def delete_task_api(task_id: int, db: Annotated[Session, Depends(get_db)]) -> None:
     """删除任务。"""
 
     task = get_task(db, task_id)

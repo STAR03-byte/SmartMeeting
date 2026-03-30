@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass
 from typing import TypedDict, cast
 
-from openai import APIConnectionError, APIError, AsyncOpenAI, RateLimitError
+from openai import APIConnectionError, APIError, AsyncOpenAI, OpenAIError, RateLimitError
 from openai.types.chat import ChatCompletionMessageParam
 
 from app.core.config import settings
@@ -29,30 +29,73 @@ class LLMProviderConfig:
 
 
 def _build_provider_chain() -> list[LLMProviderConfig]:
-    providers = [
-        LLMProviderConfig(
-            name="openai",
-            model=settings.llm_model,
-            base_url=settings.llm_base_url or None,
-            api_key=settings.llm_api_key or None,
-            timeout=settings.llm_timeout,
-            temperature=settings.llm_temperature,
-            max_tokens=settings.llm_max_tokens,
-        )
-    ]
+    providers: list[LLMProviderConfig] = []
 
-    if settings.llm_fallback_provider == "ollama":
+    def add_mock_provider() -> None:
+        providers.append(
+            LLMProviderConfig(
+                name="mock",
+                model="mock",
+                base_url=None,
+                api_key="mock",
+                timeout=1,
+                temperature=0.0,
+                max_tokens=5,
+            )
+        )
+
+    def add_openai_provider() -> None:
+        api_key = settings.llm_api_key.strip() or None
+        if api_key is None:
+            logger.warning("Skipping OpenAI LLM provider because no API key is configured")
+            return
+
+        providers.append(
+            LLMProviderConfig(
+                name="openai",
+                model=settings.llm_model,
+                base_url=settings.llm_base_url or None,
+                api_key=api_key,
+                timeout=settings.llm_timeout,
+                temperature=settings.llm_temperature,
+                max_tokens=settings.llm_max_tokens,
+            )
+        )
+
+    def add_ollama_provider() -> None:
+        base_url = settings.ollama_base_url.strip() or None
+        if base_url is None:
+            logger.warning("Skipping Ollama LLM provider because no base URL is configured")
+            return
+
         providers.append(
             LLMProviderConfig(
                 name="ollama",
                 model=settings.ollama_model,
-                base_url=settings.ollama_base_url or None,
-                api_key=None,
+                base_url=base_url,
+                api_key="ollama",
                 timeout=settings.ollama_timeout,
                 temperature=settings.ollama_temperature,
                 max_tokens=settings.ollama_max_tokens,
             )
         )
+
+    primary_provider = settings.llm_provider.strip().lower()
+    fallback_provider = settings.llm_fallback_provider.strip().lower()
+
+    if primary_provider == "openai":
+        add_openai_provider()
+    elif primary_provider == "ollama":
+        add_ollama_provider()
+    elif primary_provider == "mock":
+        add_mock_provider()
+    else:
+        logger.warning("Unknown LLM_PROVIDER=%s; using rule-based fallback", settings.llm_provider)
+
+    if fallback_provider == "openai" and primary_provider != "openai":
+        add_openai_provider()
+    elif fallback_provider == "ollama" and primary_provider != "ollama":
+        add_ollama_provider()
 
     return providers
 
@@ -73,17 +116,22 @@ class LLMClient:
 
     def _ensure_client(self, provider: LLMProviderConfig) -> AsyncOpenAI:
         if provider.name not in self._clients:
-            if provider.api_key is not None:
-                self._clients[provider.name] = AsyncOpenAI(
-                    api_key=provider.api_key,
-                    base_url=provider.base_url,
-                    timeout=provider.timeout,
-                )
-            else:
-                self._clients[provider.name] = AsyncOpenAI(
-                    base_url=provider.base_url,
-                    timeout=provider.timeout,
-                )
+            if provider.name == "mock":
+                raise LLMServiceError("Mock provider does not create a real client")
+            try:
+                if provider.api_key is not None:
+                    self._clients[provider.name] = AsyncOpenAI(
+                        api_key=provider.api_key,
+                        base_url=provider.base_url,
+                        timeout=provider.timeout,
+                    )
+                else:
+                    self._clients[provider.name] = AsyncOpenAI(
+                        base_url=provider.base_url,
+                        timeout=provider.timeout,
+                    )
+            except OpenAIError as exc:
+                raise LLMServiceError(f"LLM client init failed: {exc}") from exc
         return self._clients[provider.name]
 
     async def _call_chat(
@@ -93,6 +141,8 @@ class LLMClient:
         temperature: float | None = None,
         max_tokens: int | None = None,
     ) -> str:
+        if provider.name == "mock":
+            raise LLMServiceError("Mock provider uses rule fallback")
         client = self._ensure_client(provider)
         last_error: Exception | None = None
         for attempt in range(3):

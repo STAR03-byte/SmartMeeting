@@ -88,7 +88,7 @@ export const useMeetingStore = defineStore("meeting", {
         this.loading = false;
       }
     },
-  async uploadAudioAndTranscribe(meetingId: number, file: File) {
+    async uploadAudioAndTranscribe(meetingId: number, file: File) {
       this.loading = true;
       this.error = null;
       try {

@@ -17,6 +17,12 @@
       <el-form-item label="关键词">
         <el-input v-model="filterKeyword" placeholder="搜索标题/描述" clearable style="width: 200px" />
       </el-form-item>
+      <el-form-item label="排序">
+        <el-select v-model="filterSortBy" clearable placeholder="按创建时间" style="width: 160px">
+          <el-option label="按创建时间" value="" />
+          <el-option label="按计划开始时间" value="scheduled_start_at" />
+        </el-select>
+      </el-form-item>
       <el-form-item>
         <el-button type="primary" @click="applyFilter">筛选</el-button>
         <el-button @click="resetFilter">重置</el-button>
@@ -105,12 +111,13 @@ import { reactive, ref } from "vue";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { useMeetingStore } from "../stores/meetingStore";
-import type { MeetingCreatePayload, MeetingStatus } from "../api/types";
+import type { MeetingCreatePayload, MeetingListParams, MeetingStatus } from "../api/types";
 
 const store = useMeetingStore();
 
 const filterStatus = ref<MeetingStatus | "">("");
 const filterKeyword = ref("");
+const filterSortBy = ref("");
 const currentPage = ref(1);
 const pageSize = 20;
 const totalCount = ref(0);
@@ -134,12 +141,13 @@ const createRules: FormRules = {
 };
 
 async function loadMeetings() {
-  const params: Record<string, unknown> = {
+  const params: MeetingListParams = {
     limit: pageSize,
     offset: (currentPage.value - 1) * pageSize,
   };
   if (filterStatus.value) params.status = filterStatus.value;
   if (filterKeyword.value) params.keyword = filterKeyword.value;
+  if (filterSortBy.value) params.sort_by = filterSortBy.value;
   await store.fetchMeetings(params);
 }
 
@@ -151,6 +159,7 @@ function applyFilter() {
 function resetFilter() {
   filterStatus.value = "";
   filterKeyword.value = "";
+  filterSortBy.value = "";
   currentPage.value = 1;
   loadMeetings();
 }

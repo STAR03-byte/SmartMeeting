@@ -47,6 +47,7 @@ export interface MeetingListParams {
   status?: MeetingStatus;
   organizer_id?: number;
   keyword?: string;
+  sort_by?: string;
   limit?: number;
   offset?: number;
 }
