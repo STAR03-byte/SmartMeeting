@@ -3,13 +3,24 @@
 import asyncio
 import importlib
 import logging
+import re
 import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 from typing import Protocol, TypedDict, cast
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+_MIN_SILENCE_SECONDS = 0.5
+_SILENCE_NOISE_DB = -35.0
+_KEEP_SILENCE_SECONDS = 0.2
+_MIN_SEGMENT_SECONDS = 0.4
+
+_SILENCE_START_RE = re.compile(r"silence_start:\s*(?P<time>\d+(?:\.\d+)?)")
+_SILENCE_END_RE = re.compile(r"silence_end:\s*(?P<time>\d+(?:\.\d+)?)")
 
 
 class WhisperServiceError(Exception):
@@ -69,6 +80,149 @@ class WhisperTranscriber:
             self._device = device
         return self._model
 
+    def _get_audio_duration_seconds(self, file_path: Path) -> float:
+        if shutil.which("ffprobe") is None:
+            raise WhisperServiceError("ffprobe not found. Install ffmpeg or add it to PATH.")
+
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                str(file_path),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise WhisperServiceError("ffprobe failed to inspect audio duration")
+
+        try:
+            duration = float(result.stdout.strip())
+        except ValueError as exc:
+            raise WhisperServiceError("Failed to parse audio duration") from exc
+
+        if duration <= 0:
+            raise WhisperServiceError("Invalid audio duration")
+        return duration
+
+    def _build_speech_ranges(self, file_path: Path) -> list[tuple[float, float]]:
+        duration = self._get_audio_duration_seconds(file_path)
+        if shutil.which("ffmpeg") is None:
+            raise WhisperServiceError("ffmpeg not found. Install ffmpeg or add it to PATH.")
+
+        result = subprocess.run(
+            [
+                "ffmpeg",
+                "-hide_banner",
+                "-nostdin",
+                "-i",
+                str(file_path),
+                "-af",
+                f"silencedetect=noise={_SILENCE_NOISE_DB}dB:d={_MIN_SILENCE_SECONDS}",
+                "-f",
+                "null",
+                "-",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode not in (0, 1):
+            raise WhisperServiceError("ffmpeg silence detection failed")
+
+        silence_events: list[tuple[str, float]] = []
+        for line in result.stderr.splitlines():
+            start_match = _SILENCE_START_RE.search(line)
+            if start_match:
+                silence_events.append(("start", float(start_match.group("time"))))
+                continue
+            end_match = _SILENCE_END_RE.search(line)
+            if end_match:
+                silence_events.append(("end", float(end_match.group("time"))))
+
+        if not silence_events:
+            return [(0.0, duration)]
+
+        silence_ranges: list[tuple[float, float]] = []
+        current_start: float | None = None
+        for event_type, event_time in silence_events:
+            if event_type == "start":
+                current_start = event_time
+            elif event_type == "end" and current_start is not None:
+                silence_ranges.append((current_start, event_time))
+                current_start = None
+
+        if current_start is not None:
+            silence_ranges.append((current_start, duration))
+
+        speech_ranges: list[tuple[float, float]] = []
+        cursor = 0.0
+        for silence_start, silence_end in silence_ranges:
+            if silence_start > cursor:
+                speech_ranges.append((cursor, silence_start))
+            cursor = max(cursor, silence_end)
+        if cursor < duration:
+            speech_ranges.append((cursor, duration))
+
+        merged: list[tuple[float, float]] = []
+        for start_sec, end_sec in speech_ranges:
+            start = max(0.0, start_sec - _KEEP_SILENCE_SECONDS)
+            end = min(duration, end_sec + _KEEP_SILENCE_SECONDS)
+            if end - start < _MIN_SEGMENT_SECONDS:
+                continue
+            if merged and start - merged[-1][1] <= _KEEP_SILENCE_SECONDS:
+                merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+            else:
+                merged.append((start, end))
+
+        return merged or [(0.0, duration)]
+
+    async def _transcribe_chunk(
+        self,
+        model: WhisperModelProtocol,
+        audio_path: Path,
+        language: str,
+        offset_seconds: float,
+    ) -> list[WhisperSegment]:
+        def _sync_transcribe() -> WhisperRawResult:
+            try:
+                return model.transcribe(str(audio_path), language=language, task="transcribe")
+            except (FileNotFoundError, OSError, RuntimeError) as exc:
+                raise WhisperServiceError(
+                    "Whisper transcription failed. Check ffmpeg installation and audio format."
+                ) from exc
+
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, _sync_transcribe)
+
+        raw_segments = result.get("segments", [])
+        detected_language = result.get("language", language)
+        segments: list[WhisperSegment] = []
+        if isinstance(raw_segments, list):
+            for segment in raw_segments:
+                if not isinstance(segment, dict):
+                    continue
+                start = segment.get("start", 0.0)
+                end = segment.get("end", 0.0)
+                text = segment.get("text", "")
+                segments.append(
+                    {
+                        "start": (float(start) if isinstance(start, (int, float)) else 0.0)
+                        + offset_seconds,
+                        "end": (float(end) if isinstance(end, (int, float)) else 0.0)
+                        + offset_seconds,
+                        "text": text.strip() if isinstance(text, str) else "",
+                        "language": detected_language if isinstance(detected_language, str) else language,
+                    }
+                )
+        return segments
+
     async def transcribe_file(
         self,
         audio_path: str | Path,
@@ -80,39 +234,62 @@ class WhisperTranscriber:
         if not file_path.exists():
             raise WhisperServiceError(f"Audio file not found: {file_path}")
 
-        def _sync_transcribe() -> WhisperRawResult:
-            try:
-                return model.transcribe(
-                    str(file_path),
-                    language=language or settings.whisper_language,
-                    task="transcribe",
-                )
-            except (FileNotFoundError, OSError, RuntimeError) as exc:
-                raise WhisperServiceError(
-                    "Whisper transcription failed. Check ffmpeg installation and audio format."
-                ) from exc
+        language_code = language or settings.whisper_language
 
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, _sync_transcribe)
+        try:
+            ranges = self._build_speech_ranges(file_path)
+        except WhisperServiceError as exc:
+            logger.warning("VAD preprocessing failed, falling back to whole-file transcription: %s", exc)
+            return await self._transcribe_chunk(model, file_path, language_code, 0.0)
 
-        raw_segments = result.get("segments", [])
-        detected_language = result.get("language", language or settings.whisper_language)
+        if len(ranges) <= 1:
+            return await self._transcribe_chunk(model, file_path, language_code, 0.0)
+
         segments: list[WhisperSegment] = []
-        if isinstance(raw_segments, list):
-            for segment in raw_segments:
-                if not isinstance(segment, dict):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for index, (start_sec, end_sec) in enumerate(ranges, start=1):
+                if end_sec <= start_sec:
                     continue
-                start = segment.get("start", 0.0)
-                end = segment.get("end", 0.0)
-                text = segment.get("text", "")
-                segments.append(
-                    {
-                        "start": float(start) if isinstance(start, (int, float)) else 0.0,
-                        "end": float(end) if isinstance(end, (int, float)) else 0.0,
-                        "text": text.strip() if isinstance(text, str) else "",
-                        "language": detected_language if isinstance(detected_language, str) else settings.whisper_language,
-                    }
+                chunk_path = Path(tmpdir) / f"vad_chunk_{index}.wav"
+                cut_result = subprocess.run(
+                    [
+                        "ffmpeg",
+                        "-hide_banner",
+                        "-nostdin",
+                        "-y",
+                        "-i",
+                        str(file_path),
+                        "-ss",
+                        str(start_sec),
+                        "-to",
+                        str(end_sec),
+                        "-vn",
+                        "-ac",
+                        "1",
+                        "-ar",
+                        "16000",
+                        "-c:a",
+                        "pcm_s16le",
+                        str(chunk_path),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=False,
                 )
+                if cut_result.returncode != 0 or not chunk_path.exists():
+                    logger.warning("VAD chunk extraction failed, falling back to whole-file transcription")
+                    return await self._transcribe_chunk(model, file_path, language_code, 0.0)
+                segments.extend(
+                    await self._transcribe_chunk(
+                        model=model,
+                        audio_path=chunk_path,
+                        language=language_code,
+                        offset_seconds=start_sec,
+                    )
+                )
+
+        if not segments:
+            return await self._transcribe_chunk(model, file_path, language_code, 0.0)
         return segments
 
     async def transcribe_with_timestamps(
