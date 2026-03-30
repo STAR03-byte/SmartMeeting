@@ -7,6 +7,7 @@
 - `backend-api.md`：后端 API 说明
 - `frontend-runbook.md`：前端启动与联调手册
 - `database-design.md`：数据库设计说明
+- `deployment/production-deployment.md`：生产部署说明
 
 ## 过程文档
 

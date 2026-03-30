@@ -72,7 +72,6 @@ npm run ci
 
 ### Next Steps
 - Real LLM integration (set LLM_API_KEY in .env)
-- Whisper ASR production deployment (install ffmpeg + openai-whisper)
 - Deployment documentation
 - Production environment configuration
 
