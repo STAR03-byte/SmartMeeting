@@ -28,6 +28,9 @@ python -m uvicorn backend.main:app --reload
 - `JWT_SECRET_KEY` / `JWT_ALGORITHM` / `JWT_ACCESS_TOKEN_EXPIRE_MINUTES`
 - `WHISPER_MODEL` / `WHISPER_DEVICE` / `WHISPER_LANGUAGE`
 
+生产环境建议：`LLM_PROVIDER=openai`，`LLM_FALLBACK_PROVIDER=ollama`，并显式填写 `JWT_SECRET_KEY` 与数据库连接信息。
+如果启用 `WHISPER_DEVICE=cuda`，还需要宿主机具备 NVIDIA Container Toolkit 和 CUDA 运行时支持。
+
 ## 数据库行为
 
 `backend/app/core/database.py` 默认优先连接 MySQL；若失败且允许回退，则自动切换到 SQLite。

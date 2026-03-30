@@ -88,6 +88,14 @@ LLM_PROVIDER=openai
 LLM_API_KEY=sk-your-key
 LLM_MODEL=gpt-4o-mini
 LLM_BASE_URL=https://api.openai.com/v1  # optional
+LLM_FALLBACK_PROVIDER=ollama
+OLLAMA_BASE_URL=http://host.docker.internal:11434
+OLLAMA_MODEL=llama3.1
+OLLAMA_TIMEOUT=60
+OLLAMA_TEMPERATURE=0.3
+OLLAMA_MAX_TOKENS=2000
+JWT_SECRET_KEY=change-me-in-production
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=1440
 ```
 
 ### Whisper (Speech Recognition)
@@ -104,6 +112,8 @@ WHISPER_MODEL=base
 WHISPER_DEVICE=cpu  # or "cuda" for GPU
 WHISPER_LANGUAGE=zh
 ```
+
+If you set `WHISPER_DEVICE=cuda`, make sure the host has NVIDIA Container Toolkit and a CUDA-capable PyTorch runtime available inside the container.
 
 ## Documents
 
