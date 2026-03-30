@@ -1,7 +1,7 @@
 # SmartMeeting 数据库性能复核基线
 
 **日期**: 2026-03-30  
-**状态**: Blocked
+**状态**: Verified
 
 ## 1. 目标
 
@@ -47,19 +47,22 @@
 
 ## 5. 当前阻塞
 
-本地 MySQL 默认账号 `root/root` 与 `smartmeeting/smartmeeting` 均无法直接连接，暂无法在当前环境跑 `check_health.sql` / `check_performance.sql` 获取真实输出。
+本次已使用本地 MySQL 账号 `root / 111zzzxxx` 成功执行检查。
 
 已实际尝试执行：
 
-- `mysql -u root -proot < scripts/db/check_health.sql`
-- `mysql -u root -proot < scripts/db/check_performance.sql`
+- `mysql -h 127.0.0.1 -u root -p111zzzxxx < scripts/db/check_health.sql`
+- `mysql -h 127.0.0.1 -u root -p111zzzxxx < scripts/db/check_performance.sql`
 
-结果均为 `ERROR 1045 (28000): Access denied for user 'root'@'localhost'`。
+早先失败是因为凭据错误：`ERROR 1045 (28000): Access denied for user 'root'@'localhost'`。
 
-## 6. 后续建议
+## 6. 实际输出摘要
 
-1. 在可用的 MySQL 环境中执行：
-   - `mysql -u <user> -p < scripts/db/check_health.sql`
-   - `mysql -u <user> -p < scripts/db/check_performance.sql`
-2. 将 EXPLAIN 输出整理进本文件或 DB README。
-3. 如发现全表扫描，再补索引迁移。
+- 健康检查确认存在 7 张表、2 个视图、多个触发器和存储过程。
+- `SHOW INDEX` 显示性能索引已生效，包括 `idx_meetings_status_start`、`idx_meetings_organizer_created`、`idx_transcripts_meeting_time`、`idx_tasks_assignee_status_due`、`idx_tasks_meeting_status_priority`、`idx_tasks_status_priority_due`、`idx_tasks_reporter_created`。
+- `EXPLAIN` 结果显示会议状态/时间排序、组织者查询、转写按会议读取、任务按报告人查询均命中索引；部分任务筛选场景仍显示 `Using filesort`，可作为后续微调优化点。
+
+## 7. 后续建议
+
+1. 在 DB README 或性能注释里补一条：任务筛选场景若要彻底去掉 `filesort`，可考虑针对特定排序条件再做索引微调。
+2. 若未来连接信息变化，继续按 `scripts/db/check_health.sql` / `check_performance.sql` 复核。
