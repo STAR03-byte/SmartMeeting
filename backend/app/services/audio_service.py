@@ -2,6 +2,7 @@
 
 import random
 from pathlib import Path
+from collections.abc import Sequence
 from uuid import uuid4
 
 from fastapi import UploadFile
@@ -9,7 +10,35 @@ from sqlalchemy.orm import Session
 
 from app.models.meeting_audio import MeetingAudio
 from app.models.meeting_transcript import MeetingTranscript
+from app.services.meeting_participant_service import list_participants
+from app.services.meeting_service import get_meeting
 from app.services.whisper_service import WhisperServiceError, transcribe_audio_file
+
+
+def _assign_speaker_labels(
+    transcripts: list[MeetingTranscript],
+    participants: Sequence[object],
+) -> list[MeetingTranscript]:
+    labeled: list[MeetingTranscript] = []
+    participant_count = len(participants)
+    for index, transcript in enumerate(transcripts):
+        if participant_count == 0:
+            labeled.append(transcript)
+            continue
+
+        participant = participants[index % participant_count]
+        speaker_user_id = getattr(participant, "id", None)
+        speaker_name = getattr(participant, "full_name", None)
+        if speaker_user_id is not None:
+            transcript.speaker_user_id = speaker_user_id
+        if speaker_name:
+            transcript.speaker_name = speaker_name
+        labeled.append(transcript)
+    return labeled
+
+
+def _fetch_meeting_participants(db: Session, meeting_id: int) -> Sequence[object]:
+    return list(list_participants(db, meeting_id))
 
 
 MOCK_TRANSCRIPT_TEMPLATES = [
@@ -89,6 +118,10 @@ def _generate_mock_transcripts(meeting_id: int, start_index: int) -> list[Meetin
 
 async def transcribe_latest_audio(db: Session, meeting_id: int) -> list[MeetingTranscript]:
 
+    meeting = get_meeting(db, meeting_id)
+    if not meeting:
+        return []
+
     latest_audio = (
         db.query(MeetingAudio)
         .filter(MeetingAudio.meeting_id == meeting_id)
@@ -110,12 +143,13 @@ async def transcribe_latest_audio(db: Session, meeting_id: int) -> list[MeetingT
         transcription = await transcribe_audio_file(latest_audio.storage_path)
     except WhisperServiceError:
         segments = _generate_mock_transcripts(meeting_id, next_segment_index)
+        participants = _fetch_meeting_participants(db, meeting_id)
         for segment in segments:
             db.add(segment)
         db.commit()
         for segment in segments:
             db.refresh(segment)
-        return segments
+        return _assign_speaker_labels(segments, participants)
 
     created_segments: list[MeetingTranscript] = []
 
@@ -140,4 +174,5 @@ async def transcribe_latest_audio(db: Session, meeting_id: int) -> list[MeetingT
     db.commit()
     for transcript in created_segments:
         db.refresh(transcript)
-    return created_segments
+    participants = _fetch_meeting_participants(db, meeting_id)
+    return _assign_speaker_labels(created_segments, participants)
