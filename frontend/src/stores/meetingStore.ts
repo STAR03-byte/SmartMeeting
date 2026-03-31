@@ -85,7 +85,8 @@ export const useMeetingStore = defineStore("meeting", {
       try {
         this.currentMeeting = await getMeeting(meetingId);
         this.transcripts = await getMeetingTranscripts(meetingId);
-        this.tasks = await getTasksByMeeting(meetingId);
+        const taskResult = await getTasksByMeeting(meetingId);
+        this.tasks = taskResult.items;
       } catch (error) {
         this.error = getApiErrorMessage(error);
         throw error;

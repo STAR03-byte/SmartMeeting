@@ -124,4 +124,41 @@ describe("meetings api module", () => {
     expect(getSpy).toHaveBeenCalledWith("/api/v1/shared/meetings/share-token-1");
     expect(result.meeting.title).toBe("Share");
   });
+
+  it("fetches tasks by meeting with paged contract", async () => {
+    const getSpy = vi.spyOn(apiClient, "get").mockResolvedValueOnce({
+      data: {
+        items: [
+          {
+            id: 9,
+            meeting_id: 3,
+            transcript_id: null,
+            title: "补齐联调文档",
+            description: null,
+            assignee_id: 1,
+            reporter_id: null,
+            priority: "medium",
+            status: "todo",
+            progress_note: null,
+            due_at: null,
+            completed_at: null,
+            is_overdue: false,
+            is_due_soon: false,
+            created_at: "2026-03-25T00:00:00Z",
+            updated_at: "2026-03-25T00:00:00Z",
+          },
+        ],
+        total: 1,
+      },
+    } as never);
+
+    const mod = await import("./meetings");
+    const result = await mod.getTasksByMeeting(3);
+
+    expect(getSpy).toHaveBeenCalledWith("/api/v1/tasks", {
+      params: { meeting_id: 3 },
+    });
+    expect(result.total).toBe(1);
+    expect(result.items[0].meeting_id).toBe(3);
+  });
 });

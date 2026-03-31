@@ -11,6 +11,7 @@ import type {
   SharedMeetingDetail,
   TaskCreatePayload,
   TaskItem,
+  TaskListResult,
   Transcript,
 } from "./types";
 
@@ -51,13 +52,17 @@ export async function getMeetingTranscripts(meetingId: number): Promise<Transcri
   return resp.data;
 }
 
-export async function getTasksByAssignee(assigneeId: number): Promise<TaskItem[]> {
-  const resp = await apiClient.get<TaskItem[]>(`/api/v1/tasks?assignee_id=${assigneeId}`);
+export async function getTasksByAssignee(assigneeId: number): Promise<TaskListResult> {
+  const resp = await apiClient.get<TaskListResult>("/api/v1/tasks", {
+    params: { assignee_id: assigneeId },
+  });
   return resp.data;
 }
 
-export async function getTasksByMeeting(meetingId: number): Promise<TaskItem[]> {
-  const resp = await apiClient.get<TaskItem[]>(`/api/v1/tasks?meeting_id=${meetingId}`);
+export async function getTasksByMeeting(meetingId: number): Promise<TaskListResult> {
+  const resp = await apiClient.get<TaskListResult>("/api/v1/tasks", {
+    params: { meeting_id: meetingId },
+  });
   return resp.data;
 }
 
