@@ -6,11 +6,13 @@
     "bootstrap": "python scripts/dev/bootstrap.py",
     "dev:backend": "python -m uvicorn backend.main:app --reload",
     "dev:frontend": "npm --prefix frontend run dev",
+    "smoke": "python scripts/dev/smoke.py",
     "test:backend": "python -m pytest backend/tests -v --tb=short",
     "check:frontend:type": "npm --prefix frontend run typecheck",
     "build:frontend": "npm --prefix frontend run build",
     "check:db:order": "python scripts/db/check_sql_file_order.py",
     "qa": "python scripts/dev/qa.py",
+    "qa:smoke": "python scripts/dev/qa.py --smoke",
     "ci": "npm run check:db:order && npm run test:backend && npm run check:frontend:type && npm run build:frontend"
   }
 }
