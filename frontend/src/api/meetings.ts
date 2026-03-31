@@ -5,6 +5,7 @@ import type {
   MeetingCreatePayload,
   MeetingDetail,
   MeetingListParams,
+  MeetingListResult,
   MeetingPostprocessResult,
   MeetingShareCreateResult,
   SharedMeetingDetail,
@@ -13,7 +14,7 @@ import type {
   Transcript,
 } from "./types";
 
-export type { Meeting, MeetingAudio, MeetingCreatePayload, MeetingDetail, MeetingListParams, MeetingPostprocessResult, MeetingShareCreateResult, SharedMeetingDetail, TaskCreatePayload, TaskItem, Transcript } from "./types";
+export type { Meeting, MeetingAudio, MeetingCreatePayload, MeetingDetail, MeetingListParams, MeetingListResult, MeetingPostprocessResult, MeetingShareCreateResult, SharedMeetingDetail, TaskCreatePayload, TaskItem, Transcript } from "./types";
 
 export interface MeetingExportPayload {
   format?: "txt" | "pdf" | "docx";
@@ -26,8 +27,8 @@ export interface MeetingExportResult {
   content: string;
 }
 
-export async function getMeetings(params?: MeetingListParams): Promise<Meeting[]> {
-  const resp = await apiClient.get<Meeting[]>("/api/v1/meetings", { params });
+export async function getMeetings(params?: MeetingListParams): Promise<MeetingListResult> {
+  const resp = await apiClient.get<MeetingListResult>("/api/v1/meetings", { params });
   return resp.data;
 }
 

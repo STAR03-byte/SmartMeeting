@@ -88,7 +88,9 @@ def test_meeting_crud_flow(auth_client) -> None:
 
     list_resp = auth_client.get("/api/v1/meetings")
     assert list_resp.status_code == 200
-    assert len(list_resp.json()) == 1
+    body = list_resp.json()
+    assert body["total"] == 1
+    assert len(body["items"]) == 1
 
 
 def test_participants_api_includes_user_email(auth_client) -> None:
@@ -956,19 +958,25 @@ def test_list_meetings_supports_filters_and_pagination(auth_client) -> None:
 
     organizer_filter_resp = auth_client.get(f"/api/v1/meetings?organizer_id={owner_a_id}")
     assert organizer_filter_resp.status_code == 200
-    organizer_data = organizer_filter_resp.json()
+    organizer_body = organizer_filter_resp.json()
+    organizer_data = organizer_body["items"]
+    assert organizer_body["total"] == 2
     assert len(organizer_data) == 2
     assert [item["id"] for item in organizer_data] == [meeting_c_id, meeting_a_id]
 
     status_filter_resp = auth_client.get("/api/v1/meetings?status=ongoing")
     assert status_filter_resp.status_code == 200
-    status_data = status_filter_resp.json()
+    status_body = status_filter_resp.json()
+    status_data = status_body["items"]
+    assert status_body["total"] == 1
     assert len(status_data) == 1
     assert status_data[0]["id"] == meeting_a_id
 
     limit_offset_resp = auth_client.get("/api/v1/meetings?limit=1&offset=1")
     assert limit_offset_resp.status_code == 200
-    limit_offset_data = limit_offset_resp.json()
+    limit_offset_body = limit_offset_resp.json()
+    limit_offset_data = limit_offset_body["items"]
+    assert limit_offset_body["total"] == 3
     assert len(limit_offset_data) == 1
     assert limit_offset_data[0]["id"] == meeting_b_id
 

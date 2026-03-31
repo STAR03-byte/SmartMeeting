@@ -15,6 +15,7 @@ import {
   type MeetingCreatePayload,
   type MeetingDetail,
   type MeetingListParams,
+  type MeetingListResult,
   type TaskCreatePayload,
   type TaskItem,
   type Transcript,
@@ -24,6 +25,7 @@ import { getApiErrorMessage } from "../api/client";
 
 interface MeetingState {
   meetings: Meeting[];
+  meetingsTotal: number;
   currentMeeting: MeetingDetail | null;
   transcripts: Transcript[];
   tasks: TaskItem[];
@@ -34,6 +36,7 @@ interface MeetingState {
 export const useMeetingStore = defineStore("meeting", {
   state: (): MeetingState => ({
     meetings: [],
+    meetingsTotal: 0,
     currentMeeting: null,
     transcripts: [],
     tasks: [],
@@ -45,7 +48,9 @@ export const useMeetingStore = defineStore("meeting", {
       this.loading = true;
       this.error = null;
       try {
-        this.meetings = await getMeetings(params);
+        const result: MeetingListResult = await getMeetings(params);
+        this.meetings = result.items;
+        this.meetingsTotal = result.total;
       } catch (error) {
         this.error = getApiErrorMessage(error);
         throw error;

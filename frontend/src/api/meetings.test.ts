@@ -5,7 +5,7 @@ import { apiClient } from "./client";
 describe("meetings api module", () => {
   it("fetches meetings list with params", async () => {
     const getSpy = vi.spyOn(apiClient, "get").mockResolvedValueOnce({
-      data: [{ id: 1, title: "Test Meeting" }],
+      data: { items: [{ id: 1, title: "Test Meeting" }], total: 1 },
     } as never);
 
     const mod = await import("./meetings");
@@ -14,8 +14,9 @@ describe("meetings api module", () => {
     expect(getSpy).toHaveBeenCalledWith("/api/v1/meetings", {
       params: { status: "planned", limit: 10 },
     });
-    expect(result).toHaveLength(1);
-    expect(result[0].title).toBe("Test Meeting");
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].title).toBe("Test Meeting");
+    expect(result.total).toBe(1);
   });
 
   it("creates a meeting", async () => {

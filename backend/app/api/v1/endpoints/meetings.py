@@ -13,6 +13,7 @@ from app.schemas.meeting import (
     MeetingDetailOut,
     MeetingExportOut,
     MeetingExportRequest,
+    MeetingListOut,
     MeetingOut,
     MeetingPostprocessOut,
     MeetingUpdate,
@@ -22,6 +23,7 @@ from app.schemas.task import TaskOut
 from app.services.audio_service import save_meeting_audio, transcribe_latest_audio
 from app.services.meeting_service import (
     build_meeting_summary_with_llm,
+    count_meetings,
     create_meeting,
     delete_meeting,
     generate_tasks_from_transcripts_with_llm,
@@ -58,7 +60,7 @@ def create_meeting_api(
     return create_meeting(db, payload)
 
 
-@router.get("", response_model=list[MeetingOut])
+@router.get("", response_model=MeetingListOut)
 def list_meetings_api(
     db: Annotated[Session, Depends(get_db)],
     status: Annotated[str | None, Query()] = None,
@@ -67,8 +69,15 @@ def list_meetings_api(
     sort_by: Annotated[str | None, Query()] = None,
     limit: Annotated[int | None, Query(ge=1, le=100)] = None,
     offset: Annotated[int, Query(ge=0)] = 0,
-) -> list[MeetingOut]:
+) -> MeetingListOut:
     """查询会议列表。"""
+
+    total = count_meetings(
+        db,
+        status=status,
+        organizer_id=organizer_id,
+        keyword=keyword,
+    )
 
     meetings = list_meetings(
         db,
@@ -79,7 +88,7 @@ def list_meetings_api(
         limit=limit,
         offset=offset,
     )
-    return [MeetingOut.model_validate(meeting) for meeting in meetings]
+    return MeetingListOut(items=[MeetingOut.model_validate(meeting) for meeting in meetings], total=total)
 
 
 @router.get("/{meeting_id}", response_model=MeetingDetailOut)
