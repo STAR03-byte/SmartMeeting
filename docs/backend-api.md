@@ -13,6 +13,18 @@
 - `GET /api/v1/meetings`
 - 返回: `MeetingListOut`
 
+Query 参数：
+
+- `status?: planned | ongoing | done | cancelled`
+- `organizer_id?: int`
+- `keyword?: string`（标题/描述关键词）
+- `sort_by?: string`
+  - `id_desc`（默认）
+  - `scheduled_start_at_asc`
+  - `scheduled_start_at_desc`
+- `limit?: int`（1..100）
+- `offset?: int`（>=0，默认 0）
+
 响应示例：
 
 ```json
@@ -113,7 +125,94 @@
 - 访问要求: 已登录；未登录或登录态失效返回 `401`
 - 无效 `share_token` 返回 `404 Shared meeting not found`
 
-## 3. 任务接口
+## 3. 用户接口
+
+### 3.1 查询用户列表
+
+- `GET /api/v1/users`
+- 返回：`UserOut[]`
+
+### 3.2 查询用户详情
+
+- `GET /api/v1/users/{user_id}`
+- 资源不存在返回 `404 User not found`
+
+### 3.3 创建用户
+
+- `POST /api/v1/users`
+- 返回：`UserOut`
+
+### 3.4 更新用户
+
+- `PATCH /api/v1/users/{user_id}`
+- 返回：`UserOut`
+
+### 3.5 删除用户
+
+- `DELETE /api/v1/users/{user_id}`
+- 成功返回 `204`
+
+## 4. 参与人接口
+
+### 4.1 查询参与人列表
+
+- `GET /api/v1/participants`
+- Query:
+  - `meeting_id?: int`
+- 返回：`MeetingParticipantOut[]`
+
+### 4.2 查询参与人详情
+
+- `GET /api/v1/participants/{participant_id}`
+- 资源不存在返回 `404 Participant not found`
+
+### 4.3 创建参与人
+
+- `POST /api/v1/participants`
+- 前置校验：`meeting_id`、`user_id` 必须存在
+- 返回：`MeetingParticipantOut`
+
+### 4.4 更新参与人
+
+- `PATCH /api/v1/participants/{participant_id}`
+- 返回：`MeetingParticipantOut`
+
+### 4.5 删除参与人
+
+- `DELETE /api/v1/participants/{participant_id}`
+- 成功返回 `204`
+
+## 5. 转写接口
+
+### 5.1 查询转写列表
+
+- `GET /api/v1/transcripts`
+- Query:
+  - `meeting_id?: int`
+- 返回：`MeetingTranscriptOut[]`
+
+### 5.2 查询转写详情
+
+- `GET /api/v1/transcripts/{transcript_id}`
+- 资源不存在返回 `404 Transcript not found`
+
+### 5.3 创建转写
+
+- `POST /api/v1/transcripts`
+- 前置校验：`meeting_id` 必须存在
+- 返回：`MeetingTranscriptOut`
+
+### 5.4 更新转写
+
+- `PATCH /api/v1/transcripts/{transcript_id}`
+- 返回：`MeetingTranscriptOut`
+
+### 5.5 删除转写
+
+- `DELETE /api/v1/transcripts/{transcript_id}`
+- 成功返回 `204`
+
+## 6. 任务接口
 
 ### 3.1 查询任务列表
 
@@ -185,7 +284,7 @@ Query 参数：
   - 切到 `done` 自动写入时间
   - 从 `done` 回退自动清空
 
-## 4. 错误码约定
+## 7. 错误码约定
 
 ### 4.1 统一错误响应结构
 
@@ -219,7 +318,7 @@ Query 参数：
 - `401`: 登录态失效或未登录（鉴权接口/分享页读取）
 - `422`: 请求参数校验失败
 
-## 5. 当前 AI 能力说明
+## 8. 当前 AI 能力说明
 
 - ASR: 本地 `Whisper`
 - 摘要: 优先 LLM 生成，失败时回退规则摘要（取前两段有效转写）
