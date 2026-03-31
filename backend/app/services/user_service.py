@@ -31,7 +31,7 @@ def get_user(db: Session, user_id: int) -> User | None:
 def update_user(db: Session, user: User, payload: UserUpdate) -> User:
     """更新用户。"""
 
-    data = payload.model_dump(exclude_unset=True)
+    data: dict[str, object] = payload.model_dump(exclude_unset=True)
     for key, value in data.items():
         setattr(user, key, value)
     db.add(user)

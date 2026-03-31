@@ -1,9 +1,11 @@
 """用户 Schema 定义。"""
 
 from datetime import datetime
+from typing import ClassVar
 from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field
+from pydantic.config import ConfigDict
 
 UserRole = Literal["admin", "member"]
 
@@ -40,4 +42,9 @@ class UserOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config: ClassVar[ConfigDict] = ConfigDict(from_attributes=True)
+
+
+class UserListOut(BaseModel):
+    items: list[UserOut]
+    total: int

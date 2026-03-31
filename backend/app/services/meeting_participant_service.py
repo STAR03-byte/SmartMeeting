@@ -55,11 +55,46 @@ def list_participants(db: Session, meeting_id: int | None = None) -> list[Meetin
 
 
 def list_participants_out(db: Session, meeting_id: int | None = None) -> list[MeetingParticipantOut]:
-    query = db.query(MeetingParticipant, User.email).join(User, MeetingParticipant.user_id == User.id)
+    query = db.query(MeetingParticipant)
     if meeting_id is not None:
         query = query.filter(MeetingParticipant.meeting_id == meeting_id)
-    rows = query.order_by(MeetingParticipant.id.desc()).all()
-    return [_build_participant_out(participant, email) for participant, email in rows]
+    participants = query.order_by(MeetingParticipant.id.desc()).all()
+    user_ids = [participant.user_id for participant in participants]
+    user_email_map: dict[int, str] = {}
+    if user_ids:
+        users = db.query(User).filter(User.id.in_(user_ids)).all()
+        user_email_map = {user.id: user.email for user in users}
+    return [_build_participant_out(participant, user_email_map.get(participant.user_id)) for participant in participants]
+
+
+
+
+def list_participants_out_paginated(
+    db: Session,
+    meeting_id: int | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> list[MeetingParticipantOut]:
+    query = db.query(MeetingParticipant)
+    if meeting_id is not None:
+        query = query.filter(MeetingParticipant.meeting_id == meeting_id)
+    query = query.order_by(MeetingParticipant.id.desc()).offset(offset)
+    if limit is not None:
+        query = query.limit(limit)
+    participants = query.all()
+    user_ids = [participant.user_id for participant in participants]
+    user_email_map: dict[int, str] = {}
+    if user_ids:
+        users = db.query(User).filter(User.id.in_(user_ids)).all()
+        user_email_map = {user.id: user.email for user in users}
+    return [_build_participant_out(participant, user_email_map.get(participant.user_id)) for participant in participants]
+
+
+def count_participants(db: Session, meeting_id: int | None = None) -> int:
+    query = db.query(MeetingParticipant)
+    if meeting_id is not None:
+        query = query.filter(MeetingParticipant.meeting_id == meeting_id)
+    return query.count()
 
 
 def get_participant(db: Session, participant_id: int) -> MeetingParticipant | None:
@@ -69,10 +104,11 @@ def get_participant(db: Session, participant_id: int) -> MeetingParticipant | No
 
 
 def get_participant_out(db: Session, participant_id: int) -> MeetingParticipantOut | None:
-    row = db.query(MeetingParticipant, User.email).join(User, MeetingParticipant.user_id == User.id).filter(MeetingParticipant.id == participant_id).first()
-    if not row:
+    participant = get_participant(db, participant_id)
+    if not participant:
         return None
-    participant, email = row
+    user = db.query(User).filter(User.id == participant.user_id).first()
+    email = user.email if user is not None else None
     return _build_participant_out(participant, email)
 
 
@@ -83,7 +119,7 @@ def update_participant(
 ) -> MeetingParticipant:
     """更新参与人。"""
 
-    data = payload.model_dump(exclude_unset=True)
+    data: dict[str, object] = payload.model_dump(exclude_unset=True)
     for key, value in data.items():
         setattr(participant, key, value)
     db.add(participant)

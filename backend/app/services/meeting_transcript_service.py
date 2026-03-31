@@ -38,7 +38,7 @@ def update_transcript(
 ) -> MeetingTranscript:
     """更新转写。"""
 
-    data = payload.model_dump(exclude_unset=True)
+    data: dict[str, object] = payload.model_dump(exclude_unset=True)
     for key, value in data.items():
         setattr(transcript, key, value)
     db.add(transcript)

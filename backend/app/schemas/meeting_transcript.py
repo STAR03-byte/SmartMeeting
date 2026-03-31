@@ -1,8 +1,10 @@
 """会议转写 Schema 定义。"""
 
 from datetime import datetime
+from typing import ClassVar
 
 from pydantic import BaseModel, Field
+from pydantic.config import ConfigDict
 
 
 class MeetingTranscriptCreate(BaseModel):
@@ -47,4 +49,9 @@ class MeetingTranscriptOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config: ClassVar[ConfigDict] = ConfigDict(from_attributes=True)
+
+
+class MeetingTranscriptListOut(BaseModel):
+    items: list[MeetingTranscriptOut]
+    total: int
