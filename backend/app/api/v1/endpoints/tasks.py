@@ -7,10 +7,11 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.task import TaskPriority, TaskStatus
-from app.schemas.task import TaskCreate, TaskOut, TaskUpdate
+from app.schemas.task import TaskCreate, TaskListOut, TaskOut, TaskUpdate
 from app.services.meeting_service import get_meeting
 from app.services.meeting_transcript_service import get_transcript
 from app.services.task_service import (
+    count_tasks,
     create_task,
     delete_task,
     get_task,
@@ -49,7 +50,7 @@ def create_task_api(
     return create_task(db, payload)
 
 
-@router.get("", response_model=list[TaskOut])
+@router.get("", response_model=TaskListOut)
 def list_tasks_api(
     db: Annotated[Session, Depends(get_db)],
     assignee_id: Annotated[int | None, Query()] = None,
@@ -57,8 +58,20 @@ def list_tasks_api(
     status: Annotated[TaskStatus | None, Query()] = None,
     priority: Annotated[TaskPriority | None, Query()] = None,
     keyword: Annotated[str | None, Query()] = None,
-) -> list[TaskOut]:
+    sort_by: Annotated[str | None, Query()] = None,
+    limit: Annotated[int | None, Query(ge=1, le=100)] = None,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> TaskListOut:
     """查询任务列表。"""
+
+    total = count_tasks(
+        db,
+        assignee_id=assignee_id,
+        meeting_id=meeting_id,
+        status=status,
+        priority=priority,
+        keyword=keyword,
+    )
 
     tasks = list_tasks(
         db,
@@ -67,8 +80,14 @@ def list_tasks_api(
         status=status,
         priority=priority,
         keyword=keyword,
+        sort_by=sort_by,
+        limit=limit,
+        offset=offset,
     )
-    return [TaskOut.model_validate(serialize_task_out(task)) for task in tasks]
+    return TaskListOut(
+        items=[TaskOut.model_validate(serialize_task_out(task)) for task in tasks],
+        total=total,
+    )
 
 
 @router.get("/{task_id}", response_model=TaskOut)

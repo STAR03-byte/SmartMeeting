@@ -60,3 +60,8 @@ class TaskOut(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class TaskListOut(BaseModel):
+    items: list[TaskOut]
+    total: int

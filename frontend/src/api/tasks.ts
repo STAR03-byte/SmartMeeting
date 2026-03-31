@@ -1,24 +1,12 @@
 import { apiClient } from "./client";
-import type { TaskItem, TaskPriority, TaskStatus } from "./types";
+import type { TaskItem, TaskListParams, TaskListResult, TaskPriority, TaskStatus } from "./types";
 
-export type { TaskItem, TaskPriority, TaskStatus } from "./types";
+export type { TaskItem, TaskListParams, TaskListResult, TaskPriority, TaskStatus } from "./types";
 
-export interface ListTasksParams {
-  assigneeId?: number;
-  meetingId?: number;
-  status?: TaskStatus;
-  priority?: TaskPriority;
-  keyword?: string;
-}
-
-export async function getTasks(params: ListTasksParams = {}): Promise<TaskItem[]> {
+export async function getTasks(params: TaskListParams = {}): Promise<TaskListResult> {
   const searchParams = new URLSearchParams();
-  if (typeof params.assigneeId === "number") {
-    searchParams.set("assignee_id", String(params.assigneeId));
-  }
-  if (typeof params.meetingId === "number") {
-    searchParams.set("meeting_id", String(params.meetingId));
-  }
+  if (typeof params.assignee_id === "number") searchParams.set("assignee_id", String(params.assignee_id));
+  if (typeof params.meeting_id === "number") searchParams.set("meeting_id", String(params.meeting_id));
   if (typeof params.status === "string") {
     searchParams.set("status", params.status);
   }
@@ -31,9 +19,18 @@ export async function getTasks(params: ListTasksParams = {}): Promise<TaskItem[]
       searchParams.set("keyword", normalizedKeyword);
     }
   }
+  if (typeof params.sort_by === "string" && params.sort_by.trim().length > 0) {
+    searchParams.set("sort_by", params.sort_by);
+  }
+  if (typeof params.limit === "number") {
+    searchParams.set("limit", String(params.limit));
+  }
+  if (typeof params.offset === "number") {
+    searchParams.set("offset", String(params.offset));
+  }
   const query = searchParams.toString();
   const url = query ? `/api/v1/tasks?${query}` : "/api/v1/tasks";
-  const resp = await apiClient.get<TaskItem[]>(url);
+  const resp = await apiClient.get<TaskListResult>(url);
   return resp.data;
 }
 

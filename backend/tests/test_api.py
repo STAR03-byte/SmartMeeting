@@ -789,9 +789,10 @@ def test_list_tasks_can_filter_by_meeting_id(auth_client) -> None:
 
     filter_resp = auth_client.get(f"/api/v1/tasks?meeting_id={meeting_a_id}")
     assert filter_resp.status_code == 200
-    data = filter_resp.json()
-    assert len(data) == 1
-    assert data[0]["meeting_id"] == meeting_a_id
+    body = filter_resp.json()
+    assert body["total"] == 1
+    assert len(body["items"]) == 1
+    assert body["items"][0]["meeting_id"] == meeting_a_id
 
 
 def test_list_tasks_filters_and_sets_reminder_flags(auth_client) -> None:
@@ -872,27 +873,104 @@ def test_list_tasks_filters_and_sets_reminder_flags(auth_client) -> None:
         f"?meeting_id={meeting_id}&status=todo&priority=high&keyword=线上"
     )
     assert filtered_resp.status_code == 200
-    data = filtered_resp.json()
-    assert len(data) == 1
-    assert data[0]["title"] == "紧急修复线上接口"
-    assert data[0]["is_overdue"] is True
-    assert data[0]["is_due_soon"] is False
+    body = filtered_resp.json()
+    assert body["total"] == 1
+    assert len(body["items"]) == 1
+    assert body["items"][0]["title"] == "紧急修复线上接口"
+    assert body["items"][0]["is_overdue"] is True
+    assert body["items"][0]["is_due_soon"] is False
 
     status_resp = auth_client.get(f"/api/v1/tasks?meeting_id={meeting_id}&status=in_progress")
     assert status_resp.status_code == 200
-    status_data = status_resp.json()
-    assert len(status_data) == 1
-    assert status_data[0]["title"] == "整理发布说明文档"
-    assert status_data[0]["is_overdue"] is False
-    assert status_data[0]["is_due_soon"] is False
+    status_body = status_resp.json()
+    assert status_body["total"] == 1
+    assert len(status_body["items"]) == 1
+    assert status_body["items"][0]["title"] == "整理发布说明文档"
+    assert status_body["items"][0]["is_overdue"] is False
+    assert status_body["items"][0]["is_due_soon"] is False
 
     done_list_resp = auth_client.get(f"/api/v1/tasks?meeting_id={meeting_id}&status=done")
     assert done_list_resp.status_code == 200
-    done_data = done_list_resp.json()
-    assert len(done_data) == 1
-    assert done_data[0]["title"] == "历史归档任务"
-    assert done_data[0]["is_overdue"] is False
-    assert done_data[0]["is_due_soon"] is False
+    done_body = done_list_resp.json()
+    assert done_body["total"] == 1
+    assert len(done_body["items"]) == 1
+    assert done_body["items"][0]["title"] == "历史归档任务"
+    assert done_body["items"][0]["is_overdue"] is False
+    assert done_body["items"][0]["is_due_soon"] is False
+
+
+def test_list_tasks_supports_pagination_total_and_due_at_sort(auth_client) -> None:
+    user_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "task_page_owner",
+            "email": "task_page_owner@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Task Page Owner",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    owner_id = user_resp.json()["id"]
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={"title": "分页排序会议", "organizer_id": owner_id},
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    early_resp = auth_client.post(
+        "/api/v1/tasks",
+        json={
+            "meeting_id": meeting_id,
+            "title": "early",
+            "assignee_id": owner_id,
+            "due_at": "2026-01-01T00:00:00Z",
+        },
+    )
+    assert early_resp.status_code == 201
+    early_id = early_resp.json()["id"]
+
+    late_resp = auth_client.post(
+        "/api/v1/tasks",
+        json={
+            "meeting_id": meeting_id,
+            "title": "late",
+            "assignee_id": owner_id,
+            "due_at": "2026-12-31T00:00:00Z",
+        },
+    )
+    assert late_resp.status_code == 201
+    late_id = late_resp.json()["id"]
+
+    null_resp = auth_client.post(
+        "/api/v1/tasks",
+        json={
+            "meeting_id": meeting_id,
+            "title": "null",
+            "assignee_id": owner_id,
+        },
+    )
+    assert null_resp.status_code == 201
+    null_id = null_resp.json()["id"]
+
+    sort_resp = auth_client.get(
+        f"/api/v1/tasks?meeting_id={meeting_id}&sort_by=due_at_asc"
+    )
+    assert sort_resp.status_code == 200
+    sort_body = sort_resp.json()
+    assert sort_body["total"] == 3
+    assert [item["id"] for item in sort_body["items"]] == [early_id, late_id, null_id]
+
+    page_resp = auth_client.get(
+        f"/api/v1/tasks?meeting_id={meeting_id}&sort_by=due_at_asc&limit=1&offset=1"
+    )
+    assert page_resp.status_code == 200
+    page_body = page_resp.json()
+    assert page_body["total"] == 3
+    assert len(page_body["items"]) == 1
+    assert page_body["items"][0]["id"] == late_id
 
 
 def test_invalid_task_filter_returns_422(auth_client) -> None:
