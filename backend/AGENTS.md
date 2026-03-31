@@ -1,6 +1,6 @@
 # Backend AGENTS.md
 
-FastAPI backend for SmartMeeting providing audio transcription, AI-driven meeting summarization, and automated task extraction.
+`backend/` 是 SmartMeeting 的 FastAPI 服务端，提供鉴权、会议/任务 API、音频处理、转写（Whisper）以及 AI 总结/任务抽取（含回退路径）。
 
 ## STRUCTURE
 
@@ -18,31 +18,31 @@ backend/app/
 
 | Task | Location |
 | :--- | :--- |
-| Add API endpoint | `app/api/v1/endpoints/` |
-| Define DB schema | `app/models/` |
-| Define API I/O | `app/schemas/` |
-| Add business logic | `app/services/` |
-| DB connection/env | `app/core/` |
+| 新增 API endpoint | `app/api/v1/endpoints/` |
+| 定义 DB schema（ORM） | `app/models/` |
+| 定义 API I/O（Pydantic） | `app/schemas/` |
+| 新增业务逻辑 | `app/services/` |
+| DB 连接 / 配置 / 安全 | `app/core/` |
 
 ## CONVENTIONS
 
-- **Services Layer**: Controllers (`endpoints/`) must not perform DB operations or heavy logic directly. Delegate all processing to `app/services/`.
-- **API Versioning**: All production endpoints reside under `/api/v1/` prefix.
-- **Model/Schema Split**: Keep `models/` strictly for DB persistence and `schemas/` for request/response serialization.
-- **Dependency Injection**: Use `Depends(get_db)` for database sessions in route handlers.
-- **Audio Storage**: Current implementation writes raw files under `backend/storage/audio/`.
-- **Services Local Rules**: Domain-specific service constraints live in `app/services/AGENTS.md`.
+- **路由薄、服务厚**：`endpoints/` 不直接做复杂业务或大量 DB 操作，统一下沉 `app/services/`。
+- **API 版本前缀**：生产端点统一在 `/api/v1/`。
+- **Model/Schema 分离**：`models/` 只做持久化；`schemas/` 只做请求/响应序列化与校验。
+- **依赖注入**：数据库 Session 用 `Depends(get_db)` 获取。
+- **音频存储**：当前实现写入 `backend/storage/audio/`。
+- **服务层本地规则**：详见 `app/services/AGENTS.md`。
 
 ## ANTI-PATTERNS
 
-- NO `db.query` inside `endpoints/` files.
-- NO hardcoded paths; use `app/core/config.py` settings.
-- Avoid fat models; keep logic in services.
-- DO NOT skip type hints for service function arguments.
+- 不要在 `endpoints/` 内直接写 `db.query` / 大段 SQLAlchemy 查询（应放 `services/`）。
+- 不要硬编码路径或配置；使用 `app/core/config.py` settings。
+- 避免“胖模型”；业务逻辑放在 services。
+- 不要省略服务函数参数类型标注。
 
 ## COMMANDS
 
-Run from `backend/` directory:
+在 `backend/` 目录运行：
 
 ```bash
 # Development server
@@ -50,4 +50,7 @@ python -m uvicorn app.main:app --reload
 
 # Testing
 pytest tests/ -v
+
+# Full suite (repo root)
+python -m pytest backend/tests -v --tb=short
 ```
