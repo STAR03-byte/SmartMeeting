@@ -11,6 +11,22 @@ def test_health_check(auth_client) -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_invalid_meeting_id_path_param_returns_422_with_error_code(auth_client) -> None:
+    response = auth_client.get("/api/v1/meetings/0")
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error_code"] == "REQUEST_VALIDATION_ERROR"
+
+
+def test_invalid_task_id_path_param_returns_422_with_error_code(auth_client) -> None:
+    response = auth_client.patch("/api/v1/tasks/0", json={"status": "todo"})
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error_code"] == "REQUEST_VALIDATION_ERROR"
+
+
 def test_user_crud_flow(auth_client) -> None:
     """用户创建和查询流程可用。"""
 
