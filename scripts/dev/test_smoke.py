@@ -8,7 +8,7 @@ from scripts.dev import smoke
 def test_smoke_runs_steps_in_order() -> None:
     calls: list[list[str]] = []
 
-    def _run(command, check=False):
+    def _run(command, check=False, **kwargs):
         calls.append(command)
         class Result:
             returncode = 0
@@ -18,4 +18,4 @@ def test_smoke_runs_steps_in_order() -> None:
     with patch("scripts.dev.smoke.subprocess.run", side_effect=_run):
         assert smoke.main() == 0
 
-    assert calls == smoke.STEPS
+    assert calls == [command for command, _description in smoke.STEPS]
