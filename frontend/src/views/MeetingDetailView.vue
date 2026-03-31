@@ -132,6 +132,68 @@
           </li>
         </ul>
       </el-card>
+
+      <el-card class="base-card">
+        <template #header>
+          <div class="panel-header">
+            <span>参与者</span>
+            <el-button text @click="refreshParticipants">刷新</el-button>
+          </div>
+        </template>
+
+        <div class="participant-create-row">
+          <el-select
+            v-model="participantForm.user_id"
+            filterable
+            clearable
+            placeholder="选择用户"
+            style="min-width: 220px"
+          >
+            <el-option
+              v-for="user in availableUsers"
+              :key="user.id"
+              :label="`${user.full_name} (${user.username})`"
+              :value="user.id"
+            />
+          </el-select>
+          <el-select v-model="participantForm.participant_role" style="width: 140px">
+            <el-option label="必须" value="required" />
+            <el-option label="可选" value="optional" />
+            <el-option label="旁听" value="observer" />
+          </el-select>
+          <el-button type="primary" :loading="creatingParticipant" @click="addParticipant">添加</el-button>
+        </div>
+
+        <el-empty v-if="participants.length === 0" description="暂无参与者" />
+        <ul v-else class="plain-list" v-loading="participantsLoading">
+          <li v-for="participant in participants" :key="participant.id" class="participant-row">
+            <div class="participant-main">
+              <strong>{{ resolveParticipantName(participant.user_id, participant.email) }}</strong>
+              <el-tag size="small" type="info">{{ participant.email || "无邮箱" }}</el-tag>
+              <el-tag size="small" :type="attendanceTag(participant.attendance_status)">
+                {{ attendanceLabel(participant.attendance_status) }}
+              </el-tag>
+            </div>
+            <div class="participant-actions">
+              <el-select
+                :model-value="participant.participant_role"
+                size="small"
+                style="width: 120px"
+                @change="(role: string) => changeParticipantRole(participant.id, role)"
+              >
+                <el-option label="必须" value="required" />
+                <el-option label="可选" value="optional" />
+                <el-option label="旁听" value="observer" />
+              </el-select>
+              <el-popconfirm title="确认移除该参与者？" @confirm="removeParticipant(participant.id)">
+                <template #reference>
+                  <el-button size="small" type="danger" plain>移除</el-button>
+                </template>
+              </el-popconfirm>
+            </div>
+          </li>
+        </ul>
+      </el-card>
     </div>
 
     <el-dialog v-model="showTaskDialog" title="新建任务" width="520px" @closed="resetTaskForm">
@@ -172,10 +234,16 @@ import { useRoute, useRouter } from "vue-router";
 
 import AppErrorAlert from "../components/AppErrorAlert.vue";
 import { createMeetingShareLink } from "../api/meetings";
-import { getMeetingParticipants } from "../api/participants";
+import {
+  createMeetingParticipant,
+  deleteMeetingParticipant,
+  getMeetingParticipants,
+  updateMeetingParticipant,
+} from "../api/participants";
+import { getUsers, type UserItem } from "../api/users";
 import { useAuthStore } from "../stores/authStore";
 import { useMeetingStore } from "../stores/meetingStore";
-import type { TaskCreatePayload } from "../api/types";
+import type { MeetingParticipantOut, TaskCreatePayload } from "../api/types";
 import type { TaskStatus } from "../api/tasks";
 import { copyShareLinkToClipboard } from "../utils/share-link";
 import { buildEmailShareDraft, openEmailShareDraft } from "../utils/email-share";
@@ -192,6 +260,8 @@ const meetingId = Number(route.params.id);
 
 const showTaskDialog = ref(false);
 const creatingTask = ref(false);
+const creatingParticipant = ref(false);
+const participantsLoading = ref(false);
 const taskFormRef = ref<FormInstance>();
 const recordingState = ref<"idle" | "recording" | "paused" | "processing" | "streaming">("idle");
 const recordingMimeType = ref("audio/webm");
@@ -202,6 +272,14 @@ let realtimeTimer: number | null = null;
 let mediaStream: MediaStream | null = null;
 let mediaRecorder: MediaRecorder | null = null;
 let recordedChunks: BlobPart[] = [];
+
+const participants = ref<MeetingParticipantOut[]>([]);
+const users = ref<UserItem[]>([]);
+
+const participantForm = reactive<{ user_id: number | null; participant_role: string }>({
+  user_id: null,
+  participant_role: "required",
+});
 
 const taskForm = reactive<TaskCreatePayload>({
   meeting_id: meetingId,
@@ -219,6 +297,10 @@ const taskRules: FormRules = {
 };
 
 const doneTaskCount = computed(() => store.tasks.filter((task) => task.status === "done").length);
+const availableUsers = computed(() => {
+  const existingUserIds = new Set(participants.value.map((item) => item.user_id));
+  return users.value.filter((user) => !existingUserIds.has(user.id));
+});
 const recordingStateLabel = computed(() => {
   const map: Record<typeof recordingState.value, string> = {
     idle: "未录音",
@@ -237,6 +319,7 @@ onMounted(async () => {
     return;
   }
   await reloadMeeting();
+  await Promise.all([refreshParticipants(), refreshUsers()]);
 });
 
 onBeforeUnmount(() => {
@@ -245,6 +328,69 @@ onBeforeUnmount(() => {
 
 async function reloadMeeting() {
   await store.fetchMeetingDetail(meetingId);
+  await refreshParticipants();
+}
+
+async function refreshParticipants() {
+  participantsLoading.value = true;
+  try {
+    participants.value = await getMeetingParticipants(meetingId);
+  } catch (err) {
+    notifyApiError(err);
+  } finally {
+    participantsLoading.value = false;
+  }
+}
+
+async function refreshUsers() {
+  try {
+    users.value = await getUsers();
+  } catch (err) {
+    notifyApiError(err);
+  }
+}
+
+async function addParticipant() {
+  if (!participantForm.user_id) {
+    ElMessage.warning("请先选择用户");
+    return;
+  }
+  creatingParticipant.value = true;
+  try {
+    await createMeetingParticipant({
+      meeting_id: meetingId,
+      user_id: participantForm.user_id,
+      participant_role: participantForm.participant_role,
+    });
+    participantForm.user_id = null;
+    participantForm.participant_role = "required";
+    ElMessage.success("参与者已添加");
+    await refreshParticipants();
+  } catch (err) {
+    notifyApiError(err);
+  } finally {
+    creatingParticipant.value = false;
+  }
+}
+
+async function changeParticipantRole(participantId: number, role: string) {
+  try {
+    await updateMeetingParticipant(participantId, { participant_role: role });
+    ElMessage.success("参与者角色已更新");
+    await refreshParticipants();
+  } catch (err) {
+    notifyApiError(err);
+  }
+}
+
+async function removeParticipant(participantId: number) {
+  try {
+    await deleteMeetingParticipant(participantId);
+    ElMessage.success("参与者已移除");
+    await refreshParticipants();
+  } catch (err) {
+    notifyApiError(err);
+  }
 }
 
 async function copyShareLink() {
@@ -524,6 +670,34 @@ function priorityTag(p: string): string {
   const map: Record<string, string> = { high: "danger", medium: "warning", low: "info" };
   return map[p] ?? "";
 }
+
+function resolveParticipantName(userId: number, email: string | null): string {
+  const user = users.value.find((item) => item.id === userId);
+  if (user) {
+    return `${user.full_name} (${user.username})`;
+  }
+  return email ?? `用户 #${userId}`;
+}
+
+function attendanceLabel(status: string): string {
+  const map: Record<string, string> = {
+    invited: "待确认",
+    accepted: "已接受",
+    declined: "已拒绝",
+    attended: "已参会",
+  };
+  return map[status] ?? status;
+}
+
+function attendanceTag(status: string): string {
+  const map: Record<string, string> = {
+    invited: "info",
+    accepted: "success",
+    declined: "danger",
+    attended: "warning",
+  };
+  return map[status] ?? "info";
+}
 </script>
 
 <style scoped>
@@ -666,6 +840,38 @@ function priorityTag(p: string): string {
 
 .task-actions {
   flex-shrink: 0;
+}
+
+.participant-create-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.participant-row {
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.participant-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.participant-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 @media (max-width: 900px) {
