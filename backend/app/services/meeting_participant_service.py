@@ -1,5 +1,6 @@
 """会议参与人服务层。"""
 
+from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.meeting_participant import MeetingParticipant
@@ -25,6 +26,17 @@ def _build_participant_out(participant: MeetingParticipant, email: str | None) -
 
 def create_participant(db: Session, payload: MeetingParticipantCreate) -> MeetingParticipant:
     """创建会议参与人。"""
+
+    existing = (
+        db.query(MeetingParticipant)
+        .filter(
+            MeetingParticipant.meeting_id == payload.meeting_id,
+            MeetingParticipant.user_id == payload.user_id,
+        )
+        .first()
+    )
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="Participant already exists in meeting")
 
     participant = MeetingParticipant(**payload.model_dump())
     db.add(participant)

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -12,6 +12,7 @@ class MeetingParticipant(Base):
     """会议参与人关系。"""
 
     __tablename__ = "meeting_participants"
+    __table_args__ = (UniqueConstraint("meeting_id", "user_id", name="uk_meeting_participants_unique"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     meeting_id: Mapped[int] = mapped_column(ForeignKey("meetings.id"), nullable=False, index=True)

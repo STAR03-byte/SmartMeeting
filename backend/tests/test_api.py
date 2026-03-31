@@ -150,6 +150,68 @@ def test_participants_api_includes_user_email(auth_client) -> None:
     assert body[0]["email"] == "participant1@example.com"
 
 
+def test_create_participant_rejects_duplicate_in_same_meeting(auth_client) -> None:
+    user_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "participant_duplicate",
+            "email": "participant_duplicate@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Participant Duplicate",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    user_id = user_resp.json()["id"]
+
+    organizer_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "organizer_participant_duplicate",
+            "email": "organizer_participant_duplicate@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Organizer Participant Duplicate",
+            "role": "member",
+        },
+    )
+    assert organizer_resp.status_code == 201
+    organizer_id = organizer_resp.json()["id"]
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "参与人去重会议",
+            "description": "同一会议不可重复添加同一用户",
+            "organizer_id": organizer_id,
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    first_create_resp = auth_client.post(
+        "/api/v1/participants",
+        json={
+            "meeting_id": meeting_id,
+            "user_id": user_id,
+            "participant_role": "required",
+            "attendance_status": "invited",
+        },
+    )
+    assert first_create_resp.status_code == 201
+
+    second_create_resp = auth_client.post(
+        "/api/v1/participants",
+        json={
+            "meeting_id": meeting_id,
+            "user_id": user_id,
+            "participant_role": "optional",
+            "attendance_status": "invited",
+        },
+    )
+    assert second_create_resp.status_code == 409
+    assert second_create_resp.json()["detail"] == "Participant already exists in meeting"
+
+
 def test_get_participant_by_id_returns_email_and_fields(auth_client) -> None:
     user_resp = auth_client.post(
         "/api/v1/users",
