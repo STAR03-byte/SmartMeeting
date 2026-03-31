@@ -124,6 +124,7 @@ import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { useMeetingStore } from "../stores/meetingStore";
 import AppErrorAlert from "../components/AppErrorAlert.vue";
+import { notifyApiError } from "../utils/notify";
 import type { MeetingCreatePayload, MeetingListParams, MeetingStatus } from "../api/types";
 import { getUsers, type UserItem } from "../api/users";
 
@@ -213,8 +214,8 @@ async function handleCreate() {
     });
     showCreateDialog.value = false;
     ElMessage.success("会议创建成功");
-  } catch {
-    ElMessage.error(store.error || "创建失败");
+  } catch (err) {
+    notifyApiError(err, { prefix: "创建失败" });
   } finally {
     creating.value = false;
   }
@@ -224,8 +225,8 @@ async function handleDelete(meetingId: number) {
   try {
     await store.removeMeeting(meetingId);
     ElMessage.success("已删除");
-  } catch {
-    ElMessage.error(store.error || "删除失败");
+  } catch (err) {
+    notifyApiError(err, { prefix: "删除失败" });
   }
 }
 
