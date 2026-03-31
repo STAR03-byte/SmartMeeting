@@ -171,7 +171,6 @@ import { ElMessage } from "element-plus";
 import { useRoute, useRouter } from "vue-router";
 
 import AppErrorAlert from "../components/AppErrorAlert.vue";
-import { getApiErrorMessage } from "../api/client";
 import { createMeetingShareLink } from "../api/meetings";
 import { getMeetingParticipants } from "../api/participants";
 import { useAuthStore } from "../stores/authStore";
@@ -180,6 +179,7 @@ import type { TaskCreatePayload } from "../api/types";
 import type { TaskStatus } from "../api/tasks";
 import { copyShareLinkToClipboard } from "../utils/share-link";
 import { buildEmailShareDraft, openEmailShareDraft } from "../utils/email-share";
+import { notifyApiError } from "../utils/notify";
 import { buildRecordingFile, pickRecordingMimeType } from "../utils/recorder";
 
 type TaskStatusValue = TaskStatus;
@@ -253,7 +253,7 @@ async function copyShareLink() {
     await copyShareLinkToClipboard(window.location.origin, result.share_path);
     ElMessage.success(result.created_now ? "分享链接已生成并复制" : "分享链接已复制");
   } catch (err) {
-    ElMessage.error(getApiErrorMessage(err));
+    notifyApiError(err);
   }
 }
 
@@ -275,7 +275,7 @@ async function distributeByEmail() {
     openEmailShareDraft(draft);
     ElMessage.success("已打开邮件客户端");
   } catch (err) {
-    ElMessage.error(getApiErrorMessage(err));
+    notifyApiError(err);
   }
 }
 
@@ -291,7 +291,7 @@ async function onFilePicked(file: { raw?: File }) {
     await store.uploadAudioAndTranscribe(meetingId, file.raw);
     ElMessage.success("音频上传并转写完成");
   } catch (err) {
-    ElMessage.error(getApiErrorMessage(err));
+    notifyApiError(err);
   }
 }
 
@@ -300,7 +300,7 @@ async function runPostprocess() {
     await store.runPostprocess(meetingId);
     ElMessage.success("已生成会议纪要与任务");
   } catch (err) {
-    ElMessage.error(getApiErrorMessage(err));
+    notifyApiError(err);
   }
 }
 
@@ -316,7 +316,7 @@ async function downloadSummary() {
     URL.revokeObjectURL(url);
     ElMessage.success("纪要已导出");
   } catch (err) {
-    ElMessage.error(getApiErrorMessage(err));
+    notifyApiError(err);
   }
 }
 
@@ -352,7 +352,7 @@ async function startRecording() {
     ElMessage.success("已开始录音");
   } catch (err) {
     cleanupRecorder();
-    ElMessage.error(getApiErrorMessage(err));
+    notifyApiError(err);
   }
 }
 
@@ -406,7 +406,7 @@ async function stopRecording() {
     await store.uploadAudioAndTranscribe(meetingId, file);
     ElMessage.success("录音上传并转写完成");
   } catch (err) {
-    ElMessage.error(getApiErrorMessage(err));
+    notifyApiError(err);
   } finally {
     cleanupRecorder();
     recordingState.value = "idle";
@@ -443,7 +443,7 @@ function startRealtimePolling() {
       recordingState.value = "streaming";
     } catch (err) {
       recordingState.value = "recording";
-      ElMessage.error(getApiErrorMessage(err));
+      notifyApiError(err);
     }
   }, 3000);
 }
@@ -468,7 +468,7 @@ async function createTask() {
     showTaskDialog.value = false;
     ElMessage.success("任务创建成功");
   } catch (err) {
-    ElMessage.error(getApiErrorMessage(err));
+    notifyApiError(err);
   } finally {
     creatingTask.value = false;
   }
@@ -490,7 +490,7 @@ async function handleStatusChange(taskId: number, newStatus: TaskStatusValue) {
     await store.changeTaskStatus(taskId, newStatus);
     ElMessage.success("状态已更新");
   } catch (err) {
-    ElMessage.error(getApiErrorMessage(err));
+    notifyApiError(err);
   }
 }
 
@@ -501,7 +501,7 @@ async function copySummary() {
     await navigator.clipboard.writeText(summary);
     ElMessage.success("摘要已复制");
   } catch (err) {
-    ElMessage.error(getApiErrorMessage(err));
+    notifyApiError(err);
   }
 }
 
