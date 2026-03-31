@@ -69,6 +69,7 @@ import { ElMessage } from "element-plus";
 
 import { getApiErrorMessage } from "../api/client";
 import AppErrorAlert from "../components/AppErrorAlert.vue";
+import { notifyApiError } from "../utils/notify";
 import { createUser, deleteUser, getUsers, type UserItem, type UserRole } from "../api/users";
 
 const users = ref<UserItem[]>([]);
@@ -114,7 +115,7 @@ async function submitUser() {
     form.role = "member";
     await refreshUsers();
   } catch (err) {
-    ElMessage.error(getApiErrorMessage(err));
+    notifyApiError(err);
   } finally {
     submitting.value = false;
   }
@@ -126,7 +127,7 @@ async function handleDelete(userId: number) {
     ElMessage.success("已删除");
     await refreshUsers();
   } catch (err) {
-    ElMessage.error(getApiErrorMessage(err));
+    notifyApiError(err);
   }
 }
 

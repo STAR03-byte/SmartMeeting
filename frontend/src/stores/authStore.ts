@@ -48,7 +48,15 @@ export const useAuthStore = defineStore("auth", {
         this.currentUser = null;
         return;
       }
-      this.currentUser = await fetchCurrentUser<UserItem>();
+
+      this.error = null;
+      try {
+        this.currentUser = await fetchCurrentUser<UserItem>();
+      } catch (error) {
+        this.error = getApiErrorMessage(error);
+        this.currentUser = null;
+        throw error;
+      }
     },
     signOut() {
       this.currentUser = null;
