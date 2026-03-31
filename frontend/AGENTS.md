@@ -51,4 +51,7 @@ npm --prefix frontend install --cache "D:\SmartMeeting\.npm-cache"
 npm --prefix frontend run dev
 npm --prefix frontend run typecheck
 npm --prefix frontend run build
+
+# Tests
+npx --prefix frontend vitest run
 ```
