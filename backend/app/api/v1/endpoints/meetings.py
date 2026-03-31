@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -83,7 +83,10 @@ def list_meetings_api(
 
 
 @router.get("/{meeting_id}", response_model=MeetingDetailOut)
-def get_meeting_api(meeting_id: int, db: Annotated[Session, Depends(get_db)]) -> MeetingDetailOut:
+def get_meeting_api(
+    meeting_id: Annotated[int, Path(ge=1)],
+    db: Annotated[Session, Depends(get_db)],
+) -> MeetingDetailOut:
     """查询会议详情。"""
 
     meeting = get_meeting(db, meeting_id)

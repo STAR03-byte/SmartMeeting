@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -82,7 +82,11 @@ def get_task_api(task_id: int, db: Annotated[Session, Depends(get_db)]) -> TaskO
 
 
 @router.patch("/{task_id}", response_model=TaskOut)
-def update_task_api(task_id: int, payload: TaskUpdate, db: Annotated[Session, Depends(get_db)]) -> TaskOut:
+def update_task_api(
+    task_id: Annotated[int, Path(ge=1)],
+    payload: TaskUpdate,
+    db: Annotated[Session, Depends(get_db)],
+) -> TaskOut:
     """更新任务。"""
 
     task = get_task(db, task_id)

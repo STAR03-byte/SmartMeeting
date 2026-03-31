@@ -116,6 +116,32 @@
 
 ## 4. 错误码约定
 
+### 4.1 统一错误响应结构
+
+后端所有错误响应统一返回 JSON：
+
+```json
+{
+  "detail": "...",
+  "error_code": "..."
+}
+```
+
+- `detail`：可读错误信息；对 `422` 请求参数校验失败时为错误数组（来自 FastAPI `RequestValidationError`）。
+- `error_code`：稳定的机器可读错误码（便于前端按类处理）。
+
+### 4.2 通用 error_code 映射
+
+| HTTP status | error_code |
+|---:|---|
+| 400 | `BAD_REQUEST` |
+| 401 | `UNAUTHORIZED` |
+| 403 | `FORBIDDEN` |
+| 404 | `NOT_FOUND` |
+| 409 | `CONFLICT` |
+| 422 | `REQUEST_VALIDATION_ERROR` |
+| other 4xx | `CLIENT_ERROR` |
+
 - `400`: 业务前置条件不满足（无音频、无转写、非法状态流转）
 - `500`: AI 服务不可用且无可恢复降级路径
 - `404`: 资源不存在（meeting/task/transcript/user/share token）
