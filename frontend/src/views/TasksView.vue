@@ -99,6 +99,7 @@ import { ElMessage } from "element-plus";
 
 import { getApiErrorMessage } from "../api/client";
 import AppErrorAlert from "../components/AppErrorAlert.vue";
+import { notifyApiError } from "../utils/notify";
 import {
   getTasks,
   updateTaskStatus,
@@ -153,7 +154,7 @@ async function changeStatus(taskId: number, status: TaskStatus) {
     }
     ElMessage.success("任务状态已更新");
   } catch (err) {
-    ElMessage.error(getApiErrorMessage(err));
+    notifyApiError(err);
     await refreshTasks();
   }
 }
