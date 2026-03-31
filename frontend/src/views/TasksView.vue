@@ -12,7 +12,7 @@
 
     <el-card class="base-card filter-card">
       <div class="filter-row">
-        <el-select v-model="filters.status" placeholder="状态" clearable style="width: 140px" @change="refreshTasks">
+        <el-select v-model="filters.status" placeholder="状态" clearable style="width: 140px" @change="applyFiltersAndRefresh">
           <el-option label="待办" value="todo" />
           <el-option label="进行中" value="in_progress" />
           <el-option label="已完成" value="done" />
@@ -23,7 +23,7 @@
           placeholder="优先级"
           clearable
           style="width: 140px"
-          @change="refreshTasks"
+          @change="applyFiltersAndRefresh"
         >
           <el-option label="高" value="high" />
           <el-option label="中" value="medium" />
@@ -35,11 +35,17 @@
           placeholder="搜索任务标题"
           clearable
           style="max-width: 280px"
-          @keyup.enter="refreshTasks"
-          @clear="refreshTasks"
+          @keyup.enter="applyFiltersAndRefresh"
+          @clear="applyFiltersAndRefresh"
         />
 
-        <el-button type="primary" @click="refreshTasks">应用筛选</el-button>
+        <el-select v-model="sortBy" placeholder="排序" style="width: 180px" @change="handleSortChange">
+          <el-option label="按创建时间（新→旧）" value="id_desc" />
+          <el-option label="按截止时间（近→远）" value="due_at_asc" />
+          <el-option label="按截止时间（远→近）" value="due_at_desc" />
+        </el-select>
+
+        <el-button type="primary" @click="applyFiltersAndRefresh">应用筛选</el-button>
       </div>
     </el-card>
 
@@ -90,6 +96,16 @@
         </el-table-column>
       </el-table>
     </el-card>
+
+    <el-pagination
+      v-if="totalCount > pageSize"
+      class="pagination"
+      layout="prev, pager, next"
+      :total="totalCount"
+      :page-size="pageSize"
+      :current-page="currentPage"
+      @current-change="handlePageChange"
+    />
   </section>
 </template>
 
@@ -103,7 +119,8 @@ import { notifyApiError } from "../utils/notify";
 import {
   getTasks,
   updateTaskStatus,
-  type ListTasksParams,
+  type TaskListParams,
+  type TaskListResult,
   type TaskItem,
   type TaskPriority,
   type TaskStatus,
@@ -112,6 +129,12 @@ import {
 const tasks = ref<TaskItem[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
+
+const currentPage = ref(1);
+const pageSize = 20;
+const totalCount = ref(0);
+const sortBy = ref("id_desc");
+
 const filters = reactive<{
   status: TaskStatus | undefined;
   priority: TaskPriority | undefined;
@@ -122,11 +145,21 @@ const filters = reactive<{
   keyword: "",
 });
 
+function applyFiltersAndRefresh() {
+  currentPage.value = 1;
+  refreshTasks();
+}
+
 async function refreshTasks() {
   loading.value = true;
   error.value = null;
+  totalCount.value = 0;
   try {
-    const params: ListTasksParams = {};
+    const params: TaskListParams = {
+      limit: pageSize,
+      offset: (currentPage.value - 1) * pageSize,
+      sort_by: sortBy.value,
+    };
     if (filters.status) {
       params.status = filters.status;
     }
@@ -137,12 +170,24 @@ async function refreshTasks() {
     if (normalizedKeyword.length > 0) {
       params.keyword = normalizedKeyword;
     }
-    tasks.value = await getTasks(params);
+    const result: TaskListResult = await getTasks(params);
+    tasks.value = result.items;
+    totalCount.value = result.total;
   } catch (err) {
     error.value = getApiErrorMessage(err);
   } finally {
     loading.value = false;
   }
+}
+
+function handlePageChange(page: number) {
+  currentPage.value = page;
+  refreshTasks();
+}
+
+function handleSortChange() {
+  currentPage.value = 1;
+  refreshTasks();
 }
 
 async function changeStatus(taskId: number, status: TaskStatus) {
@@ -240,5 +285,11 @@ function formatDate(iso: string | null): string {
 
 .meeting-link:hover {
   text-decoration: underline;
+}
+
+.pagination {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>

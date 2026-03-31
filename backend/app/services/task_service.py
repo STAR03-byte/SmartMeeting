@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -36,6 +37,9 @@ def list_tasks(
     status: Literal["todo", "in_progress", "done"] | None = None,
     priority: Literal["high", "medium", "low"] | None = None,
     keyword: str | None = None,
+    sort_by: str | None = None,
+    limit: int | None = None,
+    offset: int = 0,
 ) -> list[Task]:
     """查询任务列表，可按执行人筛选。"""
 
@@ -52,7 +56,45 @@ def list_tasks(
         normalized_keyword = keyword.strip()
         if normalized_keyword:
             query = query.filter(Task.title.ilike(f"%{normalized_keyword}%"))
-    return query.order_by(Task.id.desc()).all()
+
+    if sort_by == "due_at_asc":
+        query = query.order_by(Task.due_at.asc().nullslast(), Task.id.desc())
+    elif sort_by == "due_at_desc":
+        query = query.order_by(Task.due_at.desc().nullslast(), Task.id.desc())
+    else:
+        query = query.order_by(Task.id.desc())
+
+    query = query.offset(offset)
+
+    if limit is not None:
+        query = query.limit(limit)
+
+    return query.all()
+
+
+def count_tasks(
+    db: Session,
+    assignee_id: int | None = None,
+    meeting_id: int | None = None,
+    status: Literal["todo", "in_progress", "done"] | None = None,
+    priority: Literal["high", "medium", "low"] | None = None,
+    keyword: str | None = None,
+) -> int:
+    query = db.query(func.count(Task.id))
+    if assignee_id is not None:
+        query = query.filter(Task.assignee_id == assignee_id)
+    if meeting_id is not None:
+        query = query.filter(Task.meeting_id == meeting_id)
+    if status is not None:
+        query = query.filter(Task.status == status)
+    if priority is not None:
+        query = query.filter(Task.priority == priority)
+    if keyword:
+        normalized_keyword = keyword.strip()
+        if normalized_keyword:
+            query = query.filter(Task.title.ilike(f"%{normalized_keyword}%"))
+    result = query.scalar()
+    return int(result or 0)
 
 
 def serialize_task_out(task: Task) -> dict[str, object]:

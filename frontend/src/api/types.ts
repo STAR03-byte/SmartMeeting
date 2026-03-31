@@ -109,6 +109,22 @@ export interface TaskItem {
   updated_at: string;
 }
 
+export interface TaskListParams {
+  assignee_id?: number;
+  meeting_id?: number;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  keyword?: string;
+  sort_by?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface TaskListResult {
+  items: TaskItem[];
+  total: number;
+}
+
 export interface MeetingAudio {
   id: number;
   meeting_id: number;

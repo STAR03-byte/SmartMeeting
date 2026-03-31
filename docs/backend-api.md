@@ -117,9 +117,53 @@
 ### 3.1 查询任务列表
 
 - `GET /api/v1/tasks`
-- 支持过滤:
-  - `assignee_id`
-  - `meeting_id`
+
+返回：`TaskListOut`（`{ items, total }`）
+
+Query 参数：
+
+- 过滤（可选）：
+  - `assignee_id?: int`
+  - `meeting_id?: int`
+  - `status?: TaskStatus`（`todo | in_progress | done`）
+  - `priority?: TaskPriority`（`high | medium | low`）
+  - `keyword?: string`（任务标题模糊匹配，trim 后为空则忽略）
+- 分页（可选）：
+  - `limit?: int`（1..100）
+  - `offset?: int`（>=0，默认 0）
+- 排序（可选）：
+  - `sort_by?: string`
+    - `id_desc`（默认，按创建顺序近似：`id desc`）
+    - `due_at_asc`（截止时间近→远，`null` 排最后）
+    - `due_at_desc`（截止时间远→近，`null` 排最后）
+
+响应示例：
+
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "meeting_id": 10,
+      "transcript_id": null,
+      "title": "补齐接口文档",
+      "description": "补齐接口文档",
+      "assignee_id": 1,
+      "reporter_id": null,
+      "priority": "medium",
+      "status": "todo",
+      "progress_note": null,
+      "due_at": "2026-03-31T10:00:00Z",
+      "completed_at": null,
+      "is_overdue": false,
+      "is_due_soon": false,
+      "created_at": "2026-03-31T09:50:00Z",
+      "updated_at": "2026-03-31T09:50:00Z"
+    }
+  ],
+  "total": 123
+}
+```
 
 ### 3.2 更新任务状态
 
