@@ -157,6 +157,7 @@ const createRules: FormRules = {
 };
 
 async function loadMeetings() {
+  totalCount.value = 0;
   const params: MeetingListParams = {
     limit: pageSize,
     offset: (currentPage.value - 1) * pageSize,
@@ -165,6 +166,7 @@ async function loadMeetings() {
   if (filterKeyword.value) params.keyword = filterKeyword.value;
   if (filterSortBy.value) params.sort_by = filterSortBy.value;
   await store.fetchMeetings(params);
+  totalCount.value = store.meetingsTotal;
 }
 
 async function loadUsers() {

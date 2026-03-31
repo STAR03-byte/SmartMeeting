@@ -1,9 +1,10 @@
 """会议 Schema 定义。"""
 
 from datetime import datetime
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import BaseModel, Field
+from pydantic.config import ConfigDict
 
 from app.schemas.meeting_transcript import MeetingTranscriptOut
 from app.schemas.task import TaskOut
@@ -55,7 +56,12 @@ class MeetingOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config: ClassVar[ConfigDict] = ConfigDict(from_attributes=True)
+
+
+class MeetingListOut(BaseModel):
+    items: list[MeetingOut]
+    total: int
 
 
 class MeetingDetailOut(MeetingOut):

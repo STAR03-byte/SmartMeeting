@@ -11,7 +11,33 @@
 ### 2.1 查询会议列表
 
 - `GET /api/v1/meetings`
-- 返回: `MeetingOut[]`
+- 返回: `MeetingListOut`
+
+响应示例：
+
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "title": "Weekly Sync",
+      "description": "...",
+      "status": "planned",
+      "organizer_id": 1,
+      "scheduled_start_at": "2026-03-31T10:00:00",
+      "scheduled_end_at": "2026-03-31T10:30:00",
+      "actual_start_at": null,
+      "actual_end_at": null,
+      "summary": null,
+      "postprocessed_at": null,
+      "postprocess_version": null,
+      "created_at": "2026-03-31T09:50:00",
+      "updated_at": "2026-03-31T09:50:00"
+    }
+  ],
+  "total": 1
+}
+```
 
 ### 2.2 查询会议详情
 

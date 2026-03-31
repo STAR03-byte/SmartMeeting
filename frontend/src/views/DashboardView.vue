@@ -103,7 +103,7 @@ const greeting = computed(() => {
   return name ? `${timeGreeting}，${name}！欢迎使用 SmartMeeting` : `${timeGreeting}！欢迎使用 SmartMeeting`;
 });
 
-const totalMeetings = computed(() => store.meetings.length);
+const totalMeetings = computed(() => store.meetingsTotal || store.meetings.length);
 const ongoingMeetings = computed(() => store.meetings.filter((m) => m.status === "ongoing").length);
 const plannedMeetings = computed(() => store.meetings.filter((m) => m.status === "planned").length);
 const doneMeetings = computed(() => store.meetings.filter((m) => m.status === "done").length);
@@ -140,7 +140,7 @@ function formatDate(iso: string | null): string {
 }
 
 onMounted(async () => {
-  await store.fetchMeetings();
+  await store.fetchMeetings({ limit: 100, offset: 0 });
 });
 </script>
 

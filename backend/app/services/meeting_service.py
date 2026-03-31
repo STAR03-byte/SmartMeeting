@@ -75,6 +75,31 @@ def list_meetings(
     return query.all()
 
 
+def count_meetings(
+    db: Session,
+    status: str | None = None,
+    organizer_id: int | None = None,
+    keyword: str | None = None,
+) -> int:
+    query = db.query(Meeting)
+
+    if status is not None:
+        query = query.filter(Meeting.status == status)
+
+    if organizer_id is not None:
+        query = query.filter(Meeting.organizer_id == organizer_id)
+
+    if keyword:
+        normalized_keyword = keyword.strip()
+        if normalized_keyword:
+            query = query.filter(
+                (Meeting.title.ilike(f"%{normalized_keyword}%"))
+                | (Meeting.description.ilike(f"%{normalized_keyword}%"))
+            )
+
+    return query.count()
+
+
 def match_meeting_keyword(meeting: Meeting, keyword: str) -> bool:
     normalized_keyword = keyword.strip()
     if not normalized_keyword:

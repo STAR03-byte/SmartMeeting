@@ -52,6 +52,11 @@ export interface MeetingListParams {
   offset?: number;
 }
 
+export interface MeetingListResult {
+  items: Meeting[];
+  total: number;
+}
+
 export interface MeetingDetail extends Meeting {
   organizer: UserItem;
 }
