@@ -150,6 +150,193 @@ def test_participants_api_includes_user_email(auth_client) -> None:
     assert body[0]["email"] == "participant1@example.com"
 
 
+def test_get_participant_by_id_returns_email_and_fields(auth_client) -> None:
+    user_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "participant_detail",
+            "email": "participant_detail@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Participant Detail",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    user_id = user_resp.json()["id"]
+
+    organizer_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "organizer_participant_detail",
+            "email": "organizer_participant_detail@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Organizer Participant Detail",
+            "role": "member",
+        },
+    )
+    assert organizer_resp.status_code == 201
+    organizer_id = organizer_resp.json()["id"]
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "参与人详情会议",
+            "description": "测试参与人详情返回",
+            "organizer_id": organizer_id,
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    create_resp = auth_client.post(
+        "/api/v1/participants",
+        json={
+            "meeting_id": meeting_id,
+            "user_id": user_id,
+            "participant_role": "required",
+            "attendance_status": "invited",
+        },
+    )
+    assert create_resp.status_code == 201
+    participant_id = create_resp.json()["id"]
+
+    get_resp = auth_client.get(f"/api/v1/participants/{participant_id}")
+    assert get_resp.status_code == 200
+    body = get_resp.json()
+    assert body["id"] == participant_id
+    assert body["meeting_id"] == meeting_id
+    assert body["user_id"] == user_id
+    assert body["email"] == "participant_detail@example.com"
+    assert body["participant_role"] == "required"
+    assert body["attendance_status"] == "invited"
+
+
+def test_update_participant_api_updates_fields(auth_client) -> None:
+    user_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "participant_update",
+            "email": "participant_update@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Participant Update",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    user_id = user_resp.json()["id"]
+
+    organizer_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "organizer_participant_update",
+            "email": "organizer_participant_update@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Organizer Participant Update",
+            "role": "member",
+        },
+    )
+    assert organizer_resp.status_code == 201
+    organizer_id = organizer_resp.json()["id"]
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "参与人更新会议",
+            "description": "测试参与人更新",
+            "organizer_id": organizer_id,
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    create_resp = auth_client.post(
+        "/api/v1/participants",
+        json={
+            "meeting_id": meeting_id,
+            "user_id": user_id,
+            "participant_role": "optional",
+            "attendance_status": "invited",
+        },
+    )
+    assert create_resp.status_code == 201
+    participant_id = create_resp.json()["id"]
+
+    update_resp = auth_client.patch(
+        f"/api/v1/participants/{participant_id}",
+        json={
+            "participant_role": "required",
+            "attendance_status": "accepted",
+        },
+    )
+    assert update_resp.status_code == 200
+    body = update_resp.json()
+    assert body["id"] == participant_id
+    assert body["participant_role"] == "required"
+    assert body["attendance_status"] == "accepted"
+
+
+def test_delete_participant_api_removes_and_handles_not_found(auth_client) -> None:
+    user_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "participant_delete",
+            "email": "participant_delete@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Participant Delete",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    user_id = user_resp.json()["id"]
+
+    organizer_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "organizer_participant_delete",
+            "email": "organizer_participant_delete@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Organizer Participant Delete",
+            "role": "member",
+        },
+    )
+    assert organizer_resp.status_code == 201
+    organizer_id = organizer_resp.json()["id"]
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "参与人删除会议",
+            "description": "测试参与人删除",
+            "organizer_id": organizer_id,
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    create_resp = auth_client.post(
+        "/api/v1/participants",
+        json={
+            "meeting_id": meeting_id,
+            "user_id": user_id,
+            "participant_role": "required",
+            "attendance_status": "invited",
+        },
+    )
+    assert create_resp.status_code == 201
+    participant_id = create_resp.json()["id"]
+
+    delete_resp = auth_client.delete(f"/api/v1/participants/{participant_id}")
+    assert delete_resp.status_code == 204
+
+    get_deleted_resp = auth_client.get(f"/api/v1/participants/{participant_id}")
+    assert get_deleted_resp.status_code == 404
+    assert get_deleted_resp.json()["detail"] == "Participant not found"
+
+    delete_again_resp = auth_client.delete(f"/api/v1/participants/{participant_id}")
+    assert delete_again_resp.status_code == 404
+    assert delete_again_resp.json()["detail"] == "Participant not found"
+
+
 def test_create_meeting_rejects_nonexistent_organizer(auth_client) -> None:
     create_resp = auth_client.post(
         "/api/v1/meetings",
