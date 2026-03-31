@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-03-25
-**Commit:** 1c0278c
+**Generated:** 2026-03-31
+**Commit:** 76fadd4
 **Branch:** main
 
 ## OVERVIEW
@@ -35,7 +35,9 @@ SmartMeeting/
 | 前端页面流程编排 | `frontend/src/views/` | 大页面集中，优先调用 store/api 而非直接拼 URL |
 | 前端路由与守卫 | `frontend/src/router/index.ts` | 登录守卫依赖 auth store |
 | 数据库变更与回滚 | `database/migrations/`, `database/rollback/` | 执行入口在 `scripts/db/*.sql` |
-| CI 与基础校验 | `.github/workflows/ci.yml` | backend tests + frontend typecheck/build |
+| CI 与基础校验 | `.github/workflows/ci.yml` | db script order check + backend tests + frontend typecheck/build |
+| DB 脚本顺序校验 | `scripts/db/check_sql_file_order.py` | CI 会校验 `scripts/db/run_all.sql` 与 `database/migrations/` 顺序一致 |
+| 工程自检（本地） | `scripts/dev/qa.py` | 串行跑 db order + backend tests + frontend typecheck/build |
 
 ## CODE MAP
 
@@ -82,6 +84,10 @@ python -m pip install -r backend/requirements.txt
 python -m uvicorn backend.main:app --reload
 python -m pytest backend/tests -v --tb=short
 
+# engineering
+python scripts/dev/bootstrap.py
+python scripts/dev/qa.py
+
 # frontend
 npm --prefix frontend install --cache "D:\SmartMeeting\.npm-cache"
 npm --prefix frontend run dev
@@ -99,7 +105,14 @@ mysql -u <user> -p < scripts/db/check_performance.sql
 - `./AGENTS.md`（root）
   - `./backend/AGENTS.md`
     - `./backend/app/services/AGENTS.md`
+    - `./backend/app/api/v1/endpoints/AGENTS.md`
+    - `./backend/tests/AGENTS.md`
   - `./frontend/AGENTS.md`
     - `./frontend/src/api/AGENTS.md`
     - `./frontend/src/views/AGENTS.md`
+    - `./frontend/src/stores/AGENTS.md`
   - `./database/AGENTS.md`
+  - `./scripts/AGENTS.md`
+    - `./scripts/db/AGENTS.md`
+    - `./scripts/dev/AGENTS.md`
+  - `./docs/AGENTS.md`
