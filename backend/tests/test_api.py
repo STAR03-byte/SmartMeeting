@@ -1,5 +1,6 @@
 """后端核心接口测试。"""
 
+from app.core.security import get_password_hash
 from app.services.llm_service import LLMServiceError
 
 
@@ -504,6 +505,92 @@ def test_get_shared_meeting_invalid_token_returns_404(auth_client) -> None:
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Shared meeting not found"
+
+
+def test_meeting_share_requires_organizer(client) -> None:
+    organizer_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "share_owner_auth",
+            "email": "share_owner_auth@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Share Owner Auth",
+            "role": "member",
+        },
+    )
+    assert organizer_resp.status_code == 201
+    organizer_id = organizer_resp.json()["id"]
+
+    other_user_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "share_other_auth",
+            "email": "share_other_auth@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Share Other Auth",
+            "role": "member",
+        },
+    )
+    assert other_user_resp.status_code == 201
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "权限分享会议",
+            "description": "仅组织者可分享",
+            "organizer_id": organizer_id,
+        },
+        headers={"Authorization": "Bearer invalid"},
+    )
+    assert meeting_resp.status_code == 401
+
+    organizer_login_resp = client.post(
+        "/api/v1/auth/login",
+        data={"username": "share_owner_auth", "password": "plain-password"},
+    )
+    assert organizer_login_resp.status_code == 200
+    organizer_token = organizer_login_resp.json()["access_token"]
+    organizer_headers = {"Authorization": f"Bearer {organizer_token}"}
+
+    other_login_resp = client.post(
+        "/api/v1/auth/login",
+        data={"username": "share_other_auth", "password": "plain-password"},
+    )
+    assert other_login_resp.status_code == 200
+    other_token = other_login_resp.json()["access_token"]
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "权限分享会议",
+            "description": "仅组织者可分享",
+            "organizer_id": organizer_id,
+        },
+        headers=organizer_headers,
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    transcript_resp = client.post(
+        "/api/v1/transcripts",
+        json={
+            "meeting_id": meeting_id,
+            "speaker_user_id": organizer_id,
+            "speaker_name": "Owner",
+            "segment_index": 1,
+            "content": "请大家确认分享权限。",
+        },
+        headers=organizer_headers,
+    )
+    assert transcript_resp.status_code == 201
+
+    postprocess_resp = client.post(f"/api/v1/meetings/{meeting_id}/postprocess", headers=organizer_headers)
+    assert postprocess_resp.status_code == 200
+
+    forbidden_share_resp = client.post(f"/api/v1/meetings/{meeting_id}/share", headers=other_headers)
+    assert forbidden_share_resp.status_code == 403
+    assert forbidden_share_resp.json()["detail"] == "Only meeting organizer can create share link"
 
 
 def test_meeting_postprocess_idempotent_and_force_regenerate(auth_client) -> None:
