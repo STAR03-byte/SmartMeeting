@@ -53,6 +53,48 @@ def test_user_crud_flow(auth_client) -> None:
     assert len(list_resp.json()) == 1
 
 
+def test_create_user_rejects_duplicate_username_or_email(auth_client) -> None:
+    first_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "duplicate_user",
+            "email": "duplicate_user@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Duplicate User",
+            "role": "member",
+        },
+    )
+    assert first_resp.status_code == 201
+
+    duplicate_username_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "duplicate_user",
+            "email": "another_email@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Duplicate Username",
+            "role": "member",
+        },
+    )
+    assert duplicate_username_resp.status_code == 409
+    assert duplicate_username_resp.json()["detail"] == "Username or email already exists"
+    assert duplicate_username_resp.json()["error_code"] == "CONFLICT"
+
+    duplicate_email_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "another_user",
+            "email": "duplicate_user@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Duplicate Email",
+            "role": "member",
+        },
+    )
+    assert duplicate_email_resp.status_code == 409
+    assert duplicate_email_resp.json()["detail"] == "Username or email already exists"
+    assert duplicate_email_resp.json()["error_code"] == "CONFLICT"
+
+
 def test_user_management_requires_admin_role(client) -> None:
     member_resp = client.post(
         "/api/v1/users",

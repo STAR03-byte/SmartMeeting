@@ -1,6 +1,7 @@
 """用户 REST API。"""
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -20,8 +21,11 @@ def _require_admin(current_user: CurrentUserOut) -> None:
 @router.post("", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def create_user_api(payload: UserCreate, db: Session = Depends(get_db)) -> UserOut:
     """创建用户。"""
-
-    return create_user(db, payload)
+    try:
+        return create_user(db, payload)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Username or email already exists") from exc
 
 
 @router.get("", response_model=list[UserOut])
@@ -32,7 +36,7 @@ def list_users_api(
     """查询用户列表。"""
 
     _require_admin(current_user)
-    return list_users(db)
+    return [UserOut.model_validate(user) for user in list_users(db)]
 
 
 @router.get("/{user_id}", response_model=UserOut)
