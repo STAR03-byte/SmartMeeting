@@ -1,12 +1,14 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.limiter import limiter
 from app.schemas.auth import CurrentUserOut, TokenOut
 from app.services.auth_service import authenticate_user, create_user_access_token
 from app.services.audit_service import create_audit_log
@@ -30,10 +32,13 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Annotate
 
 
 @router.post("/login", response_model=TokenOut)
+@limiter.limit(settings.auth_login_rate_limit)
 def login(
+    request: Request,
     payload: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Annotated[Session, Depends(get_db)],
 ) -> TokenOut:
+    _ = request
     user = authenticate_user(db, payload.username, payload.password)
     if user is None:
         create_audit_log(

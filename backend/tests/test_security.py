@@ -14,3 +14,21 @@ def test_create_access_token_contains_subject() -> None:
 
     assert isinstance(token, str)
     assert token != "42"
+
+
+def test_login_rate_limit_rejects_excess_attempts(client) -> None:
+    for _ in range(5):
+        resp = client.post(
+            "/api/v1/auth/login",
+            data={"username": "missing", "password": "bad"},
+        )
+        assert resp.status_code == 401
+
+    limited_resp = client.post(
+        "/api/v1/auth/login",
+        data={"username": "missing", "password": "bad"},
+    )
+
+    assert limited_resp.status_code == 429
+    body = limited_resp.json()
+    assert body["error_code"] == "CLIENT_ERROR"

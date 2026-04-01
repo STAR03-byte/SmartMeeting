@@ -7,11 +7,14 @@ import logging
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy.exc import OperationalError
 
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import Base, engine
+from app.core.limiter import limiter
 from app.services.llm_service import LLMServiceError
 from app.services.whisper_service import WhisperServiceError
 
@@ -34,6 +37,8 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
 app.include_router(api_router, prefix="/api/v1")
 
 
@@ -100,6 +105,17 @@ async def handle_http_exception(_: Request, exc: HTTPException) -> JSONResponse:
             "error_code": error_code,
         },
         headers=exc.headers,
+    )
+
+
+@app.exception_handler(RateLimitExceeded)
+async def handle_rate_limit(_: Request, exc: RateLimitExceeded) -> JSONResponse:
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": str(exc.detail),
+            "error_code": "CLIENT_ERROR",
+        },
     )
 
 

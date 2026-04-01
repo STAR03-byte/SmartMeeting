@@ -46,6 +46,7 @@ def _create_test_app_and_db():
             db.close()
 
     app.dependency_overrides[get_db] = override_get_db
+    app.state.limiter.reset()
     return app
 
 
