@@ -530,6 +530,153 @@ def test_participant_management_requires_organizer_or_admin(client) -> None:
     assert admin_delete_resp.status_code == 204
 
 
+def test_task_management_requires_assignee_reporter_organizer_or_admin(client) -> None:
+    organizer_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "task_auth_owner",
+            "email": "task_auth_owner@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Task Auth Owner",
+            "role": "member",
+        },
+    )
+    assert organizer_resp.status_code == 201
+    organizer_id = organizer_resp.json()["id"]
+
+    assignee_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "task_auth_assignee",
+            "email": "task_auth_assignee@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Task Auth Assignee",
+            "role": "member",
+        },
+    )
+    assert assignee_resp.status_code == 201
+    assignee_id = assignee_resp.json()["id"]
+
+    reporter_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "task_auth_reporter",
+            "email": "task_auth_reporter@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Task Auth Reporter",
+            "role": "member",
+        },
+    )
+    assert reporter_resp.status_code == 201
+    reporter_id = reporter_resp.json()["id"]
+
+    outsider_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "task_auth_outsider",
+            "email": "task_auth_outsider@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Task Auth Outsider",
+            "role": "member",
+        },
+    )
+    assert outsider_resp.status_code == 201
+    outsider_id = outsider_resp.json()["id"]
+
+    admin_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "task_auth_admin",
+            "email": "task_auth_admin@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Task Auth Admin",
+            "role": "admin",
+        },
+    )
+    assert admin_resp.status_code == 201
+
+    def login_headers(username: str) -> dict[str, str]:
+        login_resp = client.post("/api/v1/auth/login", data={"username": username, "password": "plain-password"})
+        assert login_resp.status_code == 200
+        return {"Authorization": f"Bearer {login_resp.json()['access_token']}"}
+
+    organizer_headers = login_headers("task_auth_owner")
+    assignee_headers = login_headers("task_auth_assignee")
+    reporter_headers = login_headers("task_auth_reporter")
+    outsider_headers = login_headers("task_auth_outsider")
+    admin_headers = login_headers("task_auth_admin")
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "任务权限会议",
+            "description": "测试任务权限",
+            "organizer_id": organizer_id,
+        },
+        headers=organizer_headers,
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    forbidden_create_resp = client.post(
+        "/api/v1/tasks",
+        json={
+            "meeting_id": meeting_id,
+            "title": "越权创建任务",
+            "assignee_id": assignee_id,
+            "reporter_id": reporter_id,
+        },
+        headers=outsider_headers,
+    )
+    assert forbidden_create_resp.status_code == 403
+    assert forbidden_create_resp.json()["detail"] == "Not authorized to manage tasks for this meeting"
+
+    organizer_task_resp = client.post(
+        "/api/v1/tasks",
+        json={
+            "meeting_id": meeting_id,
+            "title": "组织者创建任务",
+            "assignee_id": assignee_id,
+            "reporter_id": reporter_id,
+        },
+        headers=organizer_headers,
+    )
+    assert organizer_task_resp.status_code == 201
+    task_id = organizer_task_resp.json()["id"]
+
+    forbidden_update_resp = client.patch(
+        f"/api/v1/tasks/{task_id}",
+        json={"status": "in_progress"},
+        headers=outsider_headers,
+    )
+    assert forbidden_update_resp.status_code == 403
+    assert forbidden_update_resp.json()["detail"] == "Not authorized to manage this task"
+
+    assignee_update_resp = client.patch(
+        f"/api/v1/tasks/{task_id}",
+        json={"status": "in_progress"},
+        headers=assignee_headers,
+    )
+    assert assignee_update_resp.status_code == 200
+
+    reporter_update_resp = client.patch(
+        f"/api/v1/tasks/{task_id}",
+        json={"status": "done"},
+        headers=reporter_headers,
+    )
+    assert reporter_update_resp.status_code == 200
+
+    outsider_delete_resp = client.delete(f"/api/v1/tasks/{task_id}", headers=outsider_headers)
+    assert outsider_delete_resp.status_code == 403
+    assert outsider_delete_resp.json()["detail"] == "Not authorized to manage this task"
+
+    admin_delete_resp = client.delete(f"/api/v1/tasks/{task_id}", headers=admin_headers)
+    assert admin_delete_resp.status_code == 204
+
+    organizer_delete_resp = client.delete(f"/api/v1/tasks/{task_id}", headers=organizer_headers)
+    assert organizer_delete_resp.status_code == 404
+
+
 def test_create_meeting_rejects_nonexistent_organizer(auth_client) -> None:
     create_resp = auth_client.post(
         "/api/v1/meetings",

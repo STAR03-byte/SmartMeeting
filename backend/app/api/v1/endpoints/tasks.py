@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.schemas.auth import CurrentUserOut
 from app.schemas.task import TaskPriority, TaskStatus
 from app.schemas.task import TaskCreate, TaskListOut, TaskOut, TaskUpdate
 from app.services.meeting_service import get_meeting
@@ -25,16 +26,37 @@ from .auth import get_current_user
 router = APIRouter(prefix="/tasks", tags=["tasks"], dependencies=[Depends(get_current_user)])
 
 
+def _assert_meeting_task_permission(meeting, current_user: CurrentUserOut) -> None:
+    if current_user.role == "admin":
+        return
+    if meeting.organizer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to manage tasks for this meeting")
+
+
+def _assert_task_permission(task, meeting, current_user: CurrentUserOut) -> None:
+    if current_user.role == "admin":
+        return
+    if meeting.organizer_id == current_user.id:
+        return
+    if task.assignee_id == current_user.id:
+        return
+    if task.reporter_id == current_user.id:
+        return
+    raise HTTPException(status_code=403, detail="Not authorized to manage this task")
+
+
 @router.post("", response_model=TaskOut, status_code=status.HTTP_201_CREATED)
 def create_task_api(
     payload: TaskCreate,
     db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> TaskOut:
     """创建任务。"""
 
     meeting = get_meeting(db, payload.meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+    _assert_meeting_task_permission(meeting, current_user)
 
     if payload.transcript_id is not None:
         transcript = get_transcript(db, payload.transcript_id)
@@ -105,21 +127,34 @@ def update_task_api(
     task_id: Annotated[int, Path(ge=1)],
     payload: TaskUpdate,
     db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> TaskOut:
     """更新任务。"""
 
     task = get_task(db, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    meeting = get_meeting(db, task.meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    _assert_task_permission(task, meeting, current_user)
     updated_task = update_task(db, task, payload)
     return TaskOut.model_validate(serialize_task_out(updated_task))
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task_api(task_id: int, db: Annotated[Session, Depends(get_db)]) -> None:
+def delete_task_api(
+    task_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
+) -> None:
     """删除任务。"""
 
     task = get_task(db, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
+    meeting = get_meeting(db, task.meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    _assert_task_permission(task, meeting, current_user)
     delete_task(db, task)
