@@ -113,6 +113,24 @@ def test_build_meeting_summary_with_llm_empty_input_returns_empty_version() -> N
     assert version == "empty-v1"
 
 
+def test_build_meeting_summary_with_llm_returns_llm_summary_on_success() -> None:
+    meeting = Meeting(title="周会", organizer_id=1)
+    transcripts = [MeetingTranscript(content="第一段内容"), MeetingTranscript(content="第二段内容")]
+
+    async def run() -> tuple[str, str]:
+        with patch(
+            "app.services.meeting_service.llm_generate_meeting_summary",
+            new_callable=AsyncMock,
+            return_value="LLM 生成的摘要",
+        ):
+            return await build_meeting_summary_with_llm(meeting, transcripts)
+
+    summary, version = asyncio.run(run())
+
+    assert summary == "LLM 生成的摘要"
+    assert version == "llm-summary-v1"
+
+
 def test_generate_tasks_from_transcripts_extracts_multiple_actions() -> None:
     db = make_session()
     try:
