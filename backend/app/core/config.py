@@ -88,5 +88,11 @@ class Settings(BaseSettings):
             item.strip() for item in self.high_priority_keywords.split(",") if item.strip()
         )
 
+    def validate_security(self) -> None:
+        env = self.app_env.strip().lower()
+        if env in {"prod", "production"} and self.jwt_secret_key == "change-me-in-production":
+            raise ValueError("JWT_SECRET_KEY must be set to a strong secret in production")
+
 
 settings = Settings()
+settings.validate_security()
