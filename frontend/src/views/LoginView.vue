@@ -11,8 +11,8 @@
           <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
             <defs>
               <linearGradient id="brandGrad" x1="0" y1="0" x2="56" y2="56">
-                <stop offset="0%" stop-color="#4F46E5"/>
-                <stop offset="100%" stop-color="#7C3AED"/>
+                <stop offset="0%" stop-color="var(--el-color-primary)"/>
+                <stop offset="100%" stop-color="var(--el-color-primary-light-3)"/>
               </linearGradient>
             </defs>
             <rect width="56" height="56" rx="16" fill="url(#brandGrad)"/>
@@ -173,7 +173,7 @@ async function register() {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: #F8FAFC;
+  background: var(--el-bg-color-page);
   position: relative;
   overflow: hidden;
 }
@@ -189,8 +189,8 @@ async function register() {
   width: 100%;
   height: 100%;
   background: 
-    radial-gradient(ellipse at 30% 20%, rgba(79, 70, 229, 0.12) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 80%, rgba(124, 58, 237, 0.08) 0%, transparent 50%);
+    radial-gradient(ellipse at 30% 20%, var(--el-color-primary-light-9) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 80%, var(--el-color-primary-light-8) 0%, transparent 50%);
 }
 
 .login-bg-grid {
@@ -198,9 +198,10 @@ async function register() {
   width: 100%;
   height: 100%;
   background-image: 
-    linear-gradient(rgba(79, 70, 229, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(79, 70, 229, 0.03) 1px, transparent 1px);
+    linear-gradient(var(--el-border-color-lighter) 1px, transparent 1px),
+    linear-gradient(90deg, var(--el-border-color-lighter) 1px, transparent 1px);
   background-size: 40px 40px;
+  opacity: 0.5;
 }
 
 .login-container {
@@ -224,29 +225,29 @@ async function register() {
 .brand-icon svg {
   display: block;
   margin: 0 auto;
-  filter: drop-shadow(0 8px 20px rgba(79, 70, 229, 0.3));
+  filter: drop-shadow(var(--el-box-shadow-light));
 }
 
 .login-brand h1 {
   margin: 0;
-  font-size: 36px;
-  font-weight: 800;
-  color: #0F172A;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--el-text-color-primary);
   letter-spacing: -0.5px;
 }
 
 .login-brand p {
   margin: 8px 0 0;
-  color: #64748B;
+  color: var(--el-text-color-secondary);
   font-size: 15px;
 }
 
 .login-card {
   width: 100%;
-  border-radius: 16px;
-  border: 1px solid #E2E8F0;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
-  background: #FFFFFF;
+  border-radius: var(--el-border-radius-base);
+  border: none;
+  box-shadow: var(--el-box-shadow-light) !important;
+  background: var(--el-bg-color);
 }
 
 .login-card :deep(.el-card__body) {
@@ -258,45 +259,49 @@ async function register() {
 }
 
 .login-card :deep(.el-tabs__nav-wrap::after) {
-  display: none;
+  height: 1px;
+  background-color: var(--el-border-color-lighter);
 }
 
 .login-card :deep(.el-tabs__item) {
-  font-size: 16px;
-  font-weight: 600;
-  color: #64748B;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--el-text-color-regular);
   padding: 0 20px;
 }
 
 .login-card :deep(.el-tabs__item.is-active) {
-  color: #4F46E5;
+  color: var(--el-color-primary);
+  font-weight: 600;
 }
 
 .login-card :deep(.el-tabs__active-bar) {
-  height: 3px;
-  background: linear-gradient(90deg, #4F46E5, #7C3AED);
+  height: 2px;
+  background: var(--el-color-primary);
   border-radius: 2px;
 }
 
 .login-form-item :deep(.el-form-item__label) {
-  font-weight: 600;
-  color: #0F172A;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
   font-size: 14px;
   margin-bottom: 8px;
 }
 
 .login-form-item :deep(.el-input__wrapper) {
-  border-radius: 8px;
-  box-shadow: 0 0 0 1px #E2E8F0 inset;
+  border-radius: var(--el-border-radius-small);
+  box-shadow: 0 0 0 1px var(--el-border-color-light) inset;
   padding: 4px 14px;
+  background-color: var(--el-fill-color-lighter);
 }
 
 .login-form-item :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1px #818CF8 inset;
+  box-shadow: 0 0 0 1px var(--el-color-primary-light-5) inset;
 }
 
 .login-form-item :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15) inset;
+  box-shadow: 0 0 0 1px var(--el-color-primary) inset;
+  background-color: var(--el-bg-color);
 }
 
 .login-btn {
@@ -304,24 +309,25 @@ async function register() {
   height: 48px;
   font-size: 15px;
   font-weight: 600;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+  border-radius: var(--el-border-radius-small);
+  background: var(--el-color-primary);
   border: none;
   margin-top: 12px;
-  transition: all 0.3s;
+  transition: all 0.3s ease;
 }
 
 .login-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--el-color-primary-light-7);
+  background: var(--el-color-primary-light-3);
 }
 
 .login-footer {
-  margin-top: 20px;
+  margin-top: 24px;
   text-align: center;
   font-size: 13px;
-  color: #64748B;
+  color: var(--el-text-color-placeholder);
   padding-top: 16px;
-  border-top: 1px solid #E2E8F0;
+  border-top: 1px solid var(--el-border-color-lighter);
 }
 </style>

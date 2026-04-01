@@ -227,7 +227,7 @@ function formatDate(iso: string | null): string {
 .tasks-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
 .hero-header {
@@ -235,60 +235,88 @@ function formatDate(iso: string | null): string {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: linear-gradient(120deg, #eef8ff 0%, #f8f6ff 100%);
-  border: 1px solid #dce8f4;
-  border-radius: 18px;
-  padding: 24px;
+  background: linear-gradient(135deg, var(--el-color-primary-light-9) 0%, var(--el-color-primary-light-8) 100%);
+  border-radius: var(--el-border-radius-base);
+  padding: 32px 40px;
+  box-shadow: var(--el-box-shadow-light);
 }
 
 .hero-header h1 {
   margin: 0;
-  font-size: 30px;
-  color: #1d2f45;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--el-color-primary-dark-2);
+  letter-spacing: -0.5px;
 }
 
 .hero-header p {
-  margin: 8px 0 0;
-  color: #4b6077;
+  margin: 12px 0 0;
+  color: var(--el-color-primary);
+  font-size: 16px;
 }
 
 .base-card {
-  border-radius: 12px;
+  border-radius: var(--el-border-radius-base);
+  border: none;
+  box-shadow: var(--el-box-shadow-light) !important;
 }
 
 .filter-card {
-  padding-bottom: 0;
+  background: var(--el-bg-color);
 }
 
 .filter-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 16px;
   align-items: center;
 }
 
 .muted-text {
-  color: #8aa0b8;
+  color: var(--el-text-color-placeholder);
 }
 
 .task-done {
   text-decoration: line-through;
-  color: #94a3b8;
+  color: var(--el-text-color-secondary);
 }
 
 .meeting-link {
-  color: #0c4a84;
+  color: var(--el-color-primary);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 600;
+  padding: 4px 8px;
+  background: var(--el-color-primary-light-9);
+  border-radius: var(--el-border-radius-small);
+  transition: all 0.2s ease;
 }
 
 .meeting-link:hover {
-  text-decoration: underline;
+  background: var(--el-color-primary-light-8);
+  color: var(--el-color-primary-dark-2);
 }
 
 .pagination {
-  margin-top: 8px;
+  margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+
+/* Custom Table Styles */
+:deep(.el-table) {
+  --el-table-border-color: var(--el-border-color-lighter);
+  --el-table-header-bg-color: var(--el-fill-color-light);
+  --el-table-row-hover-bg-color: var(--el-color-primary-light-9);
+}
+
+:deep(.el-table__header-wrapper th) {
+  height: 56px;
+  font-weight: 600;
+  color: var(--el-text-color-regular);
+  border-bottom: none;
+}
+
+:deep(.el-table__body-wrapper td) {
+  padding: 16px 0;
 }
 </style>

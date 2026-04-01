@@ -311,27 +311,10 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-:root {
-  --primary: #4F46E5;
-  --primary-light: #818CF8;
-  --secondary: #7C3AED;
-  --bg: #F8FAFC;
-  --surface: #FFFFFF;
-  --border: #E2E8F0;
-  --text: #0F172A;
-  --text-muted: #64748B;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-}
-
 .meeting-list-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  min-height: 100vh;
-  background: var(--bg);
-  padding: 20px;
+  gap: 24px;
 }
 
 .page-header {
@@ -342,78 +325,75 @@ onMounted(async () => {
 
 .page-header h1 {
   margin: 0;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
-  color: var(--text);
-}
-
-.page-header :deep(.el-button--primary) {
-  background: var(--primary);
-  border-color: var(--primary);
+  color: var(--el-text-color-primary);
+  letter-spacing: -0.5px;
 }
 
 .filter-section {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 16px 20px;
+  background: var(--el-bg-color);
+  border-radius: var(--el-border-radius-base);
+  padding: 24px;
+  box-shadow: var(--el-box-shadow-light);
 }
 
 .filter-bar {
   margin: 0;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .filter-bar :deep(.el-form-item) {
   margin-bottom: 0;
-}
-
-.filter-bar :deep(.el-select .el-input__wrapper) {
-  border-radius: var(--radius-sm);
-}
-
-.filter-bar :deep(.el-button--primary) {
-  background: var(--primary);
-  border-color: var(--primary);
+  margin-right: 0;
 }
 
 .meetings-section {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 20px;
+  background: var(--el-bg-color);
+  border-radius: var(--el-border-radius-base);
+  padding: 24px;
+  box-shadow: var(--el-box-shadow-light);
 }
 
 .meetings-table {
-  border-radius: var(--radius-sm);
+  border-radius: var(--el-border-radius-small);
+  overflow: hidden;
 }
 
-.meetings-table :deep(.el-table th) {
-  background: var(--bg);
+.meetings-table :deep(.el-table__header-wrapper th) {
+  background: var(--el-fill-color-light);
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--el-text-color-regular);
+  height: 56px;
+  border-bottom: none;
 }
 
-.meetings-table :deep(.el-table td) {
-  padding: 14px 0;
+.meetings-table :deep(.el-table__body-wrapper td) {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+}
+
+.meetings-table :deep(.el-table__row:hover > td) {
+  background-color: var(--el-color-primary-light-9) !important;
 }
 
 .meeting-link {
-  color: var(--primary);
+  color: var(--el-text-color-primary);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 15px;
+  transition: color 0.2s ease;
 }
 
 .meeting-link:hover {
-  color: var(--primary-light);
+  color: var(--el-color-primary);
 }
 
 .pagination {
-  margin-top: 20px;
+  margin-top: 24px;
   display: flex;
   justify-content: flex-end;
-}
-
-.pagination :deep(.el-pager li.is-active) {
-  background: var(--primary);
 }
 </style>

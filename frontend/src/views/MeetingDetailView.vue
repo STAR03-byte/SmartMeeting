@@ -1,199 +1,325 @@
 <template>
-  <section class="detail-page" v-loading="store.loading">
+  <section class="detail-page">
     <el-page-header @back="goBack" content="会议工作台" />
 
     <AppErrorAlert :error="store.error" :closable="false" />
 
-    <el-card v-if="store.currentMeeting" class="base-card">
-      <div class="header-row">
-        <div>
-          <h2>{{ store.currentMeeting.title }}</h2>
-          <p>{{ store.currentMeeting.description || "暂无描述" }}</p>
-          <p class="organizer-line">
-            组织者：{{ store.currentMeeting.organizer.full_name }} · 状态：{{ statusLabel(store.currentMeeting.status) }}
-          </p>
-        </div>
-        <div class="summary-actions">
-          <el-button @click="reloadMeeting">刷新</el-button>
-          <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="copyShareLink">生成分享链接</el-button>
-          <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="distributeByEmail">邮件分发</el-button>
-          <el-button type="primary" @click="showTaskDialog = true">新建任务</el-button>
-        </div>
-      </div>
+    <el-skeleton animated :loading="store.loading">
+      <template #template>
+        <el-card class="base-card">
+          <div class="header-row" style="margin-bottom: 24px;">
+            <div style="flex: 1;">
+              <el-skeleton-item variant="h1" style="width: 40%; margin-bottom: 16px;" />
+              <el-skeleton-item variant="text" style="width: 60%; margin-bottom: 12px;" />
+              <el-skeleton-item variant="text" style="width: 30%;" />
+            </div>
+            <div style="display: flex; gap: 12px; align-items: flex-start;">
+              <el-skeleton-item variant="button" style="width: 64px;" />
+              <el-skeleton-item variant="button" style="width: 112px;" />
+              <el-skeleton-item variant="button" style="width: 88px;" />
+              <el-skeleton-item variant="button" style="width: 88px;" />
+            </div>
+          </div>
+          <div style="display: flex; gap: 12px; margin-bottom: 24px; padding: 20px; background: var(--el-fill-color-light); border-radius: var(--el-border-radius-small);">
+            <el-skeleton-item variant="rect" style="flex: 1; height: 60px; border-radius: var(--el-border-radius-small);" />
+            <el-skeleton-item variant="rect" style="flex: 1; height: 60px; border-radius: var(--el-border-radius-small);" />
+            <el-skeleton-item variant="rect" style="flex: 1; height: 60px; border-radius: var(--el-border-radius-small);" />
+          </div>
+          <div style="display: flex; gap: 12px; margin-bottom: 24px; padding: 20px; border: 1px solid var(--el-border-color-lighter); border-radius: var(--el-border-radius-small);">
+            <el-skeleton-item variant="button" style="width: 120px;" />
+            <el-skeleton-item variant="button" style="width: 88px;" />
+            <el-skeleton-item variant="button" style="width: 88px;" />
+            <el-skeleton-item variant="button" style="width: 104px;" />
+            <el-skeleton-item variant="button" style="width: 120px;" />
+          </div>
+          <el-skeleton-item variant="text" style="width: 120px; height: 20px; margin-bottom: 16px;" />
+          <el-skeleton-item variant="rect" style="width: 100%; height: 120px; border-radius: var(--el-border-radius-small);" />
+        </el-card>
+      </template>
+      <template #default>
+        <el-card v-if="store.currentMeeting" class="base-card">
+          <div class="header-row">
+            <div>
+              <h2>{{ store.currentMeeting.title }}</h2>
+              <p>{{ store.currentMeeting.description || "暂无描述" }}</p>
+              <p class="organizer-line">
+                组织者：{{ store.currentMeeting.organizer.full_name }} · 状态：{{ statusLabel(store.currentMeeting.status) }}
+              </p>
+            </div>
+            <div class="summary-actions">
+              <el-button @click="reloadMeeting">刷新</el-button>
+              <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="copyShareLink">生成分享链接</el-button>
+              <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="distributeByEmail">邮件分发</el-button>
+              <el-button type="primary" @click="showTaskDialog = true">新建任务</el-button>
+            </div>
+          </div>
 
-      <el-row :gutter="12" class="stats-row">
-        <el-col :span="8"><el-statistic title="转写片段" :value="store.transcripts.length" /></el-col>
-        <el-col :span="8"><el-statistic title="任务数" :value="store.tasks.length" /></el-col>
-        <el-col :span="8"><el-statistic title="已完成任务" :value="doneTaskCount" /></el-col>
-      </el-row>
+          <el-row :gutter="12" class="stats-row">
+            <el-col :span="8"><el-statistic title="转写片段" :value="store.transcripts.length" /></el-col>
+            <el-col :span="8"><el-statistic title="任务数" :value="store.tasks.length" /></el-col>
+            <el-col :span="8"><el-statistic title="已完成任务" :value="doneTaskCount" /></el-col>
+          </el-row>
 
-      <div class="action-row">
-        <el-upload
-          :auto-upload="false"
-          :show-file-list="false"
-          accept="audio/*"
-          :on-change="onFilePicked"
-          :disabled="recordingState !== 'idle'"
-        >
-          <el-button type="primary">上传音频并转写</el-button>
-        </el-upload>
-        <el-button
-          type="primary"
-          plain
-          :disabled="recordingState === 'recording' || recordingState === 'paused'"
-          @click="startRecording"
-        >
-          开始录音
-        </el-button>
-        <el-button
-          :disabled="recordingState !== 'recording'"
-          @click="pauseRecording"
-        >
-          暂停录音
-        </el-button>
-        <el-button
-          :disabled="recordingState !== 'paused'"
-          @click="resumeRecording"
-        >
-          继续录音
-        </el-button>
-        <el-button
-          type="danger"
-          :loading="recordingState === 'processing'"
-          :disabled="recordingState !== 'recording' && recordingState !== 'paused'"
-          @click="stopRecording"
-        >
-          停止并转写
-        </el-button>
-        <el-button type="success" @click="runPostprocess">生成纪要与任务</el-button>
-        <el-button @click="downloadSummary" :disabled="!store.currentMeeting.summary">导出纪要</el-button>
-        <el-button @click="copySummary" :disabled="!store.currentMeeting.summary">复制摘要</el-button>
-      </div>
+          <div class="action-row">
+            <el-upload
+              :auto-upload="false"
+              :show-file-list="false"
+              accept="audio/*"
+              :on-change="onFilePicked"
+              :disabled="recordingState !== 'idle'"
+            >
+              <el-button type="primary">上传音频并转写</el-button>
+            </el-upload>
+            <el-button
+              type="primary"
+              plain
+              :disabled="recordingState === 'recording' || recordingState === 'paused'"
+              @click="startRecording"
+            >
+              开始录音
+            </el-button>
+            <el-button
+              :disabled="recordingState !== 'recording'"
+              @click="pauseRecording"
+            >
+              暂停录音
+            </el-button>
+            <el-button
+              :disabled="recordingState !== 'paused'"
+              @click="resumeRecording"
+            >
+              继续录音
+            </el-button>
+            <el-button
+              type="danger"
+              :loading="recordingState === 'processing'"
+              :disabled="recordingState !== 'recording' && recordingState !== 'paused'"
+              @click="stopRecording"
+            >
+              停止并转写
+            </el-button>
+            <el-button type="success" @click="runPostprocess">生成纪要与任务</el-button>
+            <el-button @click="downloadSummary" :disabled="!store.currentMeeting.summary">导出纪要</el-button>
+            <el-button @click="copySummary" :disabled="!store.currentMeeting.summary">复制摘要</el-button>
+          </div>
 
-      <div class="recording-status" :class="recordingState">
-        录音状态：{{ recordingStateLabel }}
-      </div>
+          <div class="recording-status" :class="recordingState">
+            录音状态：{{ recordingStateLabel }}
+          </div>
 
-      <div class="summary-block" :class="{ empty: !store.currentMeeting.summary }">
-        {{ store.currentMeeting.summary || "暂无会议摘要" }}
-      </div>
-    </el-card>
+          <div class="summary-container" ref="summaryBlockRef">
+            <div
+              class="summary-block"
+              :class="{ empty: !store.currentMeeting.summary, 'is-clamped': showExpandBtn && !isExpanded }"
+            >
+              {{ store.currentMeeting.summary || "暂无会议摘要" }}
+            </div>
+            <transition name="expand-btn">
+              <div class="expand-action" v-if="showExpandBtn">
+                <el-button text type="primary" @click="isExpanded = !isExpanded">
+                  {{ isExpanded ? "折叠摘要" : "展开全文" }}
+                  <span class="expand-arrow" :class="{ 'is-rotated': isExpanded }">▼</span>
+                </el-button>
+              </div>
+            </transition>
+          </div>
+        </el-card>
+      </template>
+    </el-skeleton>
 
     <div class="panel-grid">
-      <el-card class="base-card">
-        <template #header>
-          <div class="panel-header">
-            <span>转写片段</span>
-            <el-button text @click="reloadMeeting">刷新</el-button>
-          </div>
-        </template>
-
-        <el-empty v-if="store.transcripts.length === 0" description="暂无转写内容" />
-        <ul v-else class="plain-list">
-          <li v-for="item in store.transcripts" :key="item.id" class="transcript-row">
-            <div class="transcript-meta">
-              <strong>#{{ item.segment_index }}</strong>
-              <span>{{ item.speaker_name || item.source }}</span>
+      <el-skeleton animated :loading="store.loading">
+        <template #template>
+          <el-card class="base-card">
+            <template #header>
+              <div class="panel-header">
+                <el-skeleton-item variant="text" style="width: 64px; height: 24px;" />
+                <el-skeleton-item variant="text" style="width: 32px; height: 24px;" />
+              </div>
+            </template>
+            <div class="plain-list">
+              <div v-for="i in 3" :key="i" class="transcript-row" style="background: var(--el-fill-color-lighter); border-radius: var(--el-border-radius-small);">
+                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                  <el-skeleton-item variant="text" style="width: 24px;" />
+                  <el-skeleton-item variant="text" style="width: 64px;" />
+                </div>
+                <el-skeleton-item variant="text" style="width: 100%; margin-bottom: 8px;" />
+                <el-skeleton-item variant="text" style="width: 80%;" />
+              </div>
             </div>
-            <p>{{ item.content }}</p>
-          </li>
-        </ul>
-      </el-card>
-
-      <el-card class="base-card">
-        <template #header>
-          <div class="panel-header">
-            <span>任务列表</span>
-            <el-button text @click="reloadMeeting">刷新</el-button>
-          </div>
+          </el-card>
         </template>
+        <template #default>
+          <el-card class="base-card">
+            <template #header>
+              <div class="panel-header">
+                <span>转写片段</span>
+                <el-button text @click="reloadMeeting">刷新</el-button>
+              </div>
+            </template>
 
-        <el-empty v-if="store.tasks.length === 0" description="暂无任务" />
-        <ul v-else class="plain-list">
-          <li v-for="task in store.tasks" :key="task.id" class="task-row">
-            <div class="task-info">
-              <span class="task-title" :class="{ done: task.status === 'done' }">{{ task.title }}</span>
-              <el-tag size="small" :type="priorityTag(task.priority)">{{ priorityLabel(task.priority) }}</el-tag>
-              <el-tag v-if="task.is_overdue" size="small" type="danger">已逾期</el-tag>
-              <el-tag v-else-if="task.is_due_soon" size="small" type="warning">即将到期</el-tag>
+            <el-empty v-if="store.transcripts.length === 0" description="暂无转写内容" />
+            <ul v-else class="plain-list">
+              <li v-for="item in store.transcripts" :key="item.id" class="transcript-row">
+                <div class="transcript-meta">
+                  <strong>#{{ item.segment_index }}</strong>
+                  <span>{{ item.speaker_name || item.source }}</span>
+                </div>
+                <p>{{ item.content }}</p>
+              </li>
+            </ul>
+          </el-card>
+        </template>
+      </el-skeleton>
+
+      <el-skeleton animated :loading="store.loading">
+        <template #template>
+          <el-card class="base-card">
+            <template #header>
+              <div class="panel-header">
+                <el-skeleton-item variant="text" style="width: 64px; height: 24px;" />
+                <el-skeleton-item variant="text" style="width: 32px; height: 24px;" />
+              </div>
+            </template>
+            <div class="plain-list">
+              <div v-for="i in 3" :key="i" class="task-row" style="background: var(--el-fill-color-lighter); border-radius: var(--el-border-radius-small);">
+                <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                  <el-skeleton-item variant="text" style="width: 120px;" />
+                  <el-skeleton-item variant="rect" style="width: 32px; height: 24px; border-radius: 4px;" />
+                </div>
+                <el-skeleton-item variant="rect" style="width: 110px; height: 32px; border-radius: 4px;" />
+              </div>
             </div>
-            <div class="task-actions">
+          </el-card>
+        </template>
+        <template #default>
+          <el-card class="base-card">
+            <template #header>
+              <div class="panel-header">
+                <span>任务列表</span>
+                <el-button text @click="reloadMeeting">刷新</el-button>
+              </div>
+            </template>
+
+            <el-empty v-if="store.tasks.length === 0" description="暂无任务" />
+            <ul v-else class="plain-list">
+              <li v-for="task in store.tasks" :key="task.id" class="task-row">
+                <div class="task-info">
+                  <span class="task-title" :class="{ done: task.status === 'done' }">{{ task.title }}</span>
+                  <el-tag size="small" :type="priorityTag(task.priority)">{{ priorityLabel(task.priority) }}</el-tag>
+                  <el-tag v-if="task.is_overdue" size="small" type="danger">已逾期</el-tag>
+                  <el-tag v-else-if="task.is_due_soon" size="small" type="warning">即将到期</el-tag>
+                </div>
+                <div class="task-actions">
+                  <el-select
+                    :model-value="task.status"
+                    size="small"
+                    style="width: 110px"
+                    @change="(val: string) => handleStatusChange(task.id, val as TaskStatusValue)"
+                  >
+                    <el-option label="待办" value="todo" />
+                    <el-option label="进行中" value="in_progress" />
+                    <el-option label="已完成" value="done" />
+                  </el-select>
+                </div>
+              </li>
+            </ul>
+          </el-card>
+        </template>
+      </el-skeleton>
+
+      <el-skeleton animated :loading="participantsLoading">
+        <template #template>
+          <el-card class="base-card">
+            <template #header>
+              <div class="panel-header">
+                <el-skeleton-item variant="text" style="width: 48px; height: 24px;" />
+                <el-skeleton-item variant="text" style="width: 32px; height: 24px;" />
+              </div>
+            </template>
+            <div class="participant-create-row" style="background: var(--el-fill-color-light);">
+              <el-skeleton-item variant="rect" style="width: 220px; height: 32px; border-radius: 4px;" />
+              <el-skeleton-item variant="rect" style="width: 140px; height: 32px; border-radius: 4px;" />
+              <el-skeleton-item variant="button" style="width: 64px; height: 32px;" />
+            </div>
+            <div class="plain-list">
+              <div v-for="i in 3" :key="i" class="participant-row" style="background: var(--el-fill-color-lighter); border-radius: var(--el-border-radius-small);">
+                <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                  <el-skeleton-item variant="text" style="width: 100px;" />
+                  <el-skeleton-item variant="rect" style="width: 120px; height: 24px; border-radius: 4px;" />
+                </div>
+                <div style="display: flex; gap: 12px;">
+                  <el-skeleton-item variant="rect" style="width: 120px; height: 32px; border-radius: 4px;" />
+                  <el-skeleton-item variant="button" style="width: 56px; height: 32px;" />
+                </div>
+              </div>
+            </div>
+          </el-card>
+        </template>
+        <template #default>
+          <el-card class="base-card">
+            <template #header>
+              <div class="panel-header">
+                <span>参与者</span>
+                <el-button text @click="refreshParticipants">刷新</el-button>
+              </div>
+            </template>
+
+            <div class="participant-create-row">
               <el-select
-                :model-value="task.status"
-                size="small"
-                style="width: 110px"
-                @change="(val: string) => handleStatusChange(task.id, val as TaskStatusValue)"
+                v-model="participantForm.user_id"
+                filterable
+                clearable
+                placeholder="选择用户"
+                style="min-width: 220px"
               >
-                <el-option label="待办" value="todo" />
-                <el-option label="进行中" value="in_progress" />
-                <el-option label="已完成" value="done" />
+                <el-option
+                  v-for="user in availableUsers"
+                  :key="user.id"
+                  :label="`${user.full_name} (${user.username})`"
+                  :value="user.id"
+                />
               </el-select>
-            </div>
-          </li>
-        </ul>
-      </el-card>
-
-      <el-card class="base-card">
-        <template #header>
-          <div class="panel-header">
-            <span>参与者</span>
-            <el-button text @click="refreshParticipants">刷新</el-button>
-          </div>
-        </template>
-
-        <div class="participant-create-row">
-          <el-select
-            v-model="participantForm.user_id"
-            filterable
-            clearable
-            placeholder="选择用户"
-            style="min-width: 220px"
-          >
-            <el-option
-              v-for="user in availableUsers"
-              :key="user.id"
-              :label="`${user.full_name} (${user.username})`"
-              :value="user.id"
-            />
-          </el-select>
-          <el-select v-model="participantForm.participant_role" style="width: 140px">
-            <el-option label="必须" value="required" />
-            <el-option label="可选" value="optional" />
-            <el-option label="旁听" value="observer" />
-          </el-select>
-          <el-button type="primary" :loading="creatingParticipant" @click="addParticipant">添加</el-button>
-        </div>
-
-        <el-empty v-if="participants.length === 0" description="暂无参与者" />
-        <ul v-else class="plain-list" v-loading="participantsLoading">
-          <li v-for="participant in participants" :key="participant.id" class="participant-row">
-            <div class="participant-main">
-              <strong>{{ resolveParticipantName(participant.user_id, participant.email) }}</strong>
-              <el-tag size="small" type="info">{{ participant.email || "无邮箱" }}</el-tag>
-              <el-tag size="small" :type="attendanceTag(participant.attendance_status)">
-                {{ attendanceLabel(participant.attendance_status) }}
-              </el-tag>
-            </div>
-            <div class="participant-actions">
-              <el-select
-                :model-value="participant.participant_role"
-                size="small"
-                style="width: 120px"
-                @change="(role: string) => changeParticipantRole(participant.id, role)"
-              >
+              <el-select v-model="participantForm.participant_role" style="width: 140px">
                 <el-option label="必须" value="required" />
                 <el-option label="可选" value="optional" />
                 <el-option label="旁听" value="observer" />
               </el-select>
-              <el-popconfirm title="确认移除该参与者？" @confirm="removeParticipant(participant.id)">
-                <template #reference>
-                  <el-button size="small" type="danger" plain>移除</el-button>
-                </template>
-              </el-popconfirm>
+              <el-button type="primary" :loading="creatingParticipant" @click="addParticipant">添加</el-button>
             </div>
-          </li>
-        </ul>
-      </el-card>
+
+            <el-empty v-if="participants.length === 0" description="暂无参与者" />
+            <ul v-else class="plain-list">
+              <li v-for="participant in participants" :key="participant.id" class="participant-row">
+                <div class="participant-main">
+                  <strong>{{ resolveParticipantName(participant.user_id, participant.email) }}</strong>
+                  <el-tag size="small" type="info">{{ participant.email || "无邮箱" }}</el-tag>
+                  <el-tag size="small" :type="attendanceTag(participant.attendance_status)">
+                    {{ attendanceLabel(participant.attendance_status) }}
+                  </el-tag>
+                </div>
+                <div class="participant-actions">
+                  <el-select
+                    :model-value="participant.participant_role"
+                    size="small"
+                    style="width: 120px"
+                    @change="(role: string) => changeParticipantRole(participant.id, role)"
+                  >
+                    <el-option label="必须" value="required" />
+                    <el-option label="可选" value="optional" />
+                    <el-option label="旁听" value="observer" />
+                  </el-select>
+                  <el-popconfirm title="确认移除该参与者？" @confirm="removeParticipant(participant.id)">
+                    <template #reference>
+                      <el-button size="small" type="danger" plain>移除</el-button>
+                    </template>
+                  </el-popconfirm>
+                </div>
+              </li>
+            </ul>
+          </el-card>
+        </template>
+      </el-skeleton>
     </div>
 
     <el-dialog v-model="showTaskDialog" title="新建任务" width="520px" @closed="resetTaskForm">
@@ -227,10 +353,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { useRoute, useRouter } from "vue-router";
+// @ts-ignore
+import { prepare, layout } from "@chenglou/pretext";
 
 import AppErrorAlert from "../components/AppErrorAlert.vue";
 import { createMeetingShareLink } from "../api/meetings";
@@ -312,6 +440,56 @@ const recordingStateLabel = computed(() => {
   return map[recordingState.value];
 });
 
+// === Pretext & Truncation State ===
+const maxClampLines = ref(4);
+const totalLineCount = ref(0);
+
+const summaryBlockRef = ref<HTMLElement | null>(null);
+const summaryWidth = ref(0);
+const isExpanded = ref(false);
+const showExpandBtn = ref(false);
+let resizeObserver: ResizeObserver | null = null;
+
+// Caching variables for pretext
+let cachedSummaryText = "";
+let cachedPrepared: any = null;
+let cachedWidth = -1;
+
+watch(() => store.currentMeeting?.summary, () => {
+  measureSummary();
+});
+
+function measureSummary() {
+  const summaryText = store.currentMeeting?.summary;
+  if (!summaryText || summaryWidth.value <= 0) {
+    showExpandBtn.value = false;
+    return;
+  }
+
+  // 动态响应移动端 (宽度小于 768px 显示 3 行，否则 4 行)
+  maxClampLines.value = window.innerWidth <= 768 ? 3 : 4;
+
+  try {
+    // 缓存 prepare 结果
+    if (summaryText !== cachedSummaryText || !cachedPrepared) {
+      cachedSummaryText = summaryText;
+      cachedPrepared = prepare(summaryText, "15px sans-serif", { whiteSpace: "pre-wrap" });
+    }
+
+    // 只有宽度变化超过 2px 且非初始状态，或者还没有 totalLineCount 时，才重新 layout
+    if (Math.abs(cachedWidth - summaryWidth.value) > 2 || totalLineCount.value === 0) {
+      const { lineCount } = layout(cachedPrepared, summaryWidth.value, 27);
+      totalLineCount.value = lineCount;
+      cachedWidth = summaryWidth.value;
+    }
+
+    showExpandBtn.value = totalLineCount.value > maxClampLines.value;
+  } catch (err) {
+    console.error("Pretext measure error", err);
+  }
+}
+// ==================================
+
 onMounted(async () => {
   if (!Number.isFinite(meetingId)) {
     ElMessage.error("会议ID无效");
@@ -320,10 +498,27 @@ onMounted(async () => {
   }
   await reloadMeeting();
   await Promise.all([refreshParticipants(), refreshUsers()]);
+
+  resizeObserver = new ResizeObserver((entries) => {
+    for (let entry of entries) {
+      if (entry.contentBoxSize) {
+        summaryWidth.value = entry.contentBoxSize[0].inlineSize;
+      } else {
+        summaryWidth.value = entry.contentRect.width;
+      }
+      measureSummary();
+    }
+  });
+  if (summaryBlockRef.value) {
+    resizeObserver.observe(summaryBlockRef.value);
+  }
 });
 
 onBeforeUnmount(() => {
   cleanupRecorder();
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+  }
 });
 
 async function reloadMeeting() {
@@ -684,7 +879,7 @@ function attendanceLabel(status: string): string {
     invited: "待确认",
     accepted: "已接受",
     declined: "已拒绝",
-    attended: "已参会",
+    attended: "已参加",
   };
   return map[status] ?? status;
 }
@@ -704,19 +899,19 @@ function attendanceTag(status: string): string {
 .detail-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 8px;
+  gap: 24px;
 }
 
 .base-card {
-  border-radius: 16px;
+  border-radius: var(--el-border-radius-base);
   border: none;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--el-box-shadow-light) !important;
+  background: var(--el-bg-color);
 }
 
 .base-card :deep(.el-card__header) {
   padding: 20px 24px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
 
 .base-card :deep(.el-card__body) {
@@ -731,39 +926,32 @@ function attendanceTag(status: string): string {
 }
 
 .header-row h2 {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 700;
-  color: #303133;
-  margin: 0 0 8px 0;
+  color: var(--el-text-color-primary);
+  margin: 0 0 12px 0;
+  letter-spacing: -0.5px;
 }
 
 .header-row p {
-  color: #606266;
+  color: var(--el-text-color-regular);
   margin: 4px 0;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .summary-actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
 
-.summary-actions :deep(.el-button) {
-  border-radius: 10px;
-  font-weight: 500;
-}
-
-.summary-actions :deep(.el-button--primary) {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-}
-
 .stats-row {
-  margin-top: 16px;
-  padding: 16px;
-  background: #f5f7fa;
-  border-radius: 12px;
+  margin-top: 24px;
+  padding: 20px;
+  background: var(--el-fill-color-light);
+  border-radius: var(--el-border-radius-small);
 }
 
 .stats-row :deep(.el-col) {
@@ -773,72 +961,113 @@ function attendanceTag(status: string): string {
 .panel-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-
-.panel-grid :deep(.el-card) {
-  border-radius: 16px;
-  border: none;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  gap: 24px;
 }
 
 .action-row {
   display: flex;
-  gap: 10px;
-  margin: 16px 0;
+  gap: 12px;
+  margin: 24px 0;
   flex-wrap: wrap;
-  padding: 16px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
-  border-radius: 12px;
-}
-
-.action-row :deep(.el-button) {
-  border-radius: 10px;
-  font-weight: 500;
+  padding: 20px;
+  background: var(--el-fill-color-lighter);
+  border-radius: var(--el-border-radius-small);
+  border: 1px solid var(--el-border-color-lighter);
 }
 
 .organizer-line {
-  margin: 8px 0 0;
-  color: #909399;
-  font-size: 14px;
+  margin: 12px 0 0 !important;
+  color: var(--el-text-color-secondary) !important;
+  font-size: 14px !important;
 }
 
+.summary-container {
+  margin-top: 24px;
+}
+
+/* === 过渡与截断样式 === */
 .summary-block {
   margin: 0;
-  padding: 16px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
-  border-radius: 12px;
-  border: 1px solid #ebeef5;
+  padding: 24px;
+  background: var(--el-fill-color-lighter);
+  border-radius: var(--el-border-radius-small);
+  border: 1px solid var(--el-border-color-lighter);
   white-space: pre-wrap;
-  line-height: 1.8;
+  line-height: 27px; /* 与 js 计算逻辑同步 */
+  font-size: 15px;
+  color: var(--el-text-color-primary);
+  
+  /* 动画核心: max-height 与 padding */
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s ease;
+  max-height: calc(v-bind('totalLineCount') * 27px + 48px);
+  overflow: hidden;
 }
 
 .summary-block.empty {
-  color: #c0c4cc;
+  color: var(--el-text-color-placeholder);
   font-style: italic;
+  text-align: center;
+  padding: 40px;
+  max-height: unset;
 }
 
+.summary-block.is-clamped {
+  max-height: calc(v-bind('maxClampLines') * 27px + 48px);
+  display: -webkit-box;
+  -webkit-line-clamp: v-bind('maxClampLines');
+  -webkit-box-orient: vertical;
+}
+
+.expand-action {
+  text-align: center;
+  margin-top: 8px;
+}
+
+.expand-btn-enter-active,
+.expand-btn-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.expand-btn-enter-from,
+.expand-btn-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.expand-arrow {
+  display: inline-block;
+  margin-left: 4px;
+  transition: transform 0.3s ease;
+  font-size: 12px;
+}
+
+.expand-arrow.is-rotated {
+  transform: rotate(180deg);
+}
+/* =================== */
+
 .recording-status {
-  margin-bottom: 12px;
-  padding: 8px 16px;
-  border-radius: 8px;
+  margin-bottom: 16px;
+  padding: 10px 16px;
+  border-radius: var(--el-border-radius-small);
   font-weight: 500;
   display: inline-block;
+  font-size: 14px;
 }
 
 .recording-status.recording {
-  background: #fee;
-  color: #f56c6c;
+  background: var(--el-color-danger-light-9);
+  color: var(--el-color-danger);
 }
 
 .recording-status.paused {
-  background: #fef0e6;
-  color: #e6a23c;
+  background: var(--el-color-warning-light-9);
+  color: var(--el-color-warning);
 }
 
 .recording-status.processing {
-  background: #e6f7ff;
-  color: #409eff;
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
 }
 
 .panel-header {
@@ -846,7 +1075,7 @@ function attendanceTag(status: string): string {
   align-items: center;
   justify-content: space-between;
   font-weight: 600;
-  color: #303133;
+  color: var(--el-text-color-primary);
   font-size: 16px;
 }
 
@@ -856,40 +1085,41 @@ function attendanceTag(status: string): string {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .transcript-row,
 .task-row {
-  padding: 14px 16px;
-  background: #fafafa;
-  border-radius: 12px;
-  border: 1px solid #f0f0f0;
-  transition: all 0.3s;
+  padding: 16px 20px;
+  background: var(--el-fill-color-lighter);
+  border-radius: var(--el-border-radius-small);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
 }
 
 .transcript-row:hover,
 .task-row:hover {
-  background: #fff;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  background: var(--el-color-primary-light-9);
+  border-color: var(--el-color-primary-light-7);
 }
 
 .transcript-meta {
   display: flex;
   gap: 12px;
   align-items: center;
-  color: #606266;
+  color: var(--el-text-color-secondary);
   font-size: 13px;
 }
 
 .transcript-meta strong {
-  color: #667eea;
+  color: var(--el-color-primary);
 }
 
 .transcript-row p {
-  margin: 10px 0 0;
+  margin: 12px 0 0;
   line-height: 1.7;
-  color: #303133;
+  color: var(--el-text-color-primary);
+  font-size: 14px;
 }
 
 .task-row {
@@ -901,19 +1131,20 @@ function attendanceTag(status: string): string {
 .task-info {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex: 1;
   min-width: 0;
 }
 
 .task-title {
-  font-weight: 600;
-  color: #303133;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+  font-size: 15px;
 }
 
 .task-title.done {
   text-decoration: line-through;
-  color: #c0c4cc;
+  color: var(--el-text-color-placeholder);
 }
 
 .task-actions {
@@ -922,53 +1153,49 @@ function attendanceTag(status: string): string {
 
 .participant-create-row {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 16px;
-  padding: 16px;
-  background: #f5f7fa;
-  border-radius: 12px;
-}
-
-.participant-create-row :deep(.el-select) {
-  min-width: 180px;
+  margin-bottom: 20px;
+  padding: 20px;
+  background: var(--el-fill-color-light);
+  border-radius: var(--el-border-radius-small);
 }
 
 .participant-row {
-  padding: 14px 16px;
-  background: #fafafa;
-  border-radius: 12px;
-  border: 1px solid #f0f0f0;
+  padding: 16px 20px;
+  background: var(--el-fill-color-lighter);
+  border-radius: var(--el-border-radius-small);
+  border: 1px solid transparent;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  transition: all 0.3s;
+  gap: 16px;
+  transition: all 0.2s ease;
 }
 
 .participant-row:hover {
-  background: #fff;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  background: var(--el-color-primary-light-9);
+  border-color: var(--el-color-primary-light-7);
 }
 
 .participant-main {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
   flex-wrap: wrap;
 }
 
 .participant-main strong {
-  font-weight: 600;
-  color: #303133;
+  font-weight: 500;
+  color: var(--el-text-color-primary);
 }
 
 .participant-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 @media (max-width: 900px) {
