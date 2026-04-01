@@ -79,6 +79,8 @@ def _default_error_code_for_status(status_code: int) -> str:
         return "CONFLICT"
     if status_code == 422:
         return "REQUEST_VALIDATION_ERROR"
+    if status_code == 429:
+        return "TOO_MANY_REQUESTS"
     if 400 <= status_code < 500:
         return "CLIENT_ERROR"
     return "INTERNAL_SERVER_ERROR"
@@ -114,7 +116,7 @@ async def handle_rate_limit(_: Request, exc: RateLimitExceeded) -> JSONResponse:
         status_code=429,
         content={
             "detail": str(exc.detail),
-            "error_code": "CLIENT_ERROR",
+            "error_code": "TOO_MANY_REQUESTS",
         },
     )
 

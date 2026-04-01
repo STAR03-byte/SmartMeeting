@@ -310,6 +310,7 @@ Query 参数：
 | 404 | `NOT_FOUND` |
 | 409 | `CONFLICT` |
 | 422 | `REQUEST_VALIDATION_ERROR` |
+| 429 | `TOO_MANY_REQUESTS` |
 | other 4xx | `CLIENT_ERROR` |
 
 - `400`: 业务前置条件不满足（无音频、无转写、非法状态流转）

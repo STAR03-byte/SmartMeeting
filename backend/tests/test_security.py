@@ -31,4 +31,4 @@ def test_login_rate_limit_rejects_excess_attempts(client) -> None:
 
     assert limited_resp.status_code == 429
     body = limited_resp.json()
-    assert body["error_code"] == "CLIENT_ERROR"
+    assert body["error_code"] == "TOO_MANY_REQUESTS"
