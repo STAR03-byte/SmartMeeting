@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.models.meeting_audio import MeetingAudio
 from app.models.meeting_transcript import MeetingTranscript
+from app.core.config import settings
 from app.services.meeting_participant_service import list_participants
 from app.services.meeting_service import get_meeting
 from app.services.whisper_service import WhisperServiceError, transcribe_audio_file
@@ -76,7 +77,9 @@ def save_meeting_audio(db: Session, meeting_id: int, upload: UploadFile) -> Meet
     storage_path = storage_dir / safe_name
 
     content = upload.file.read()
-    storage_path.write_bytes(content)
+    if len(content) > settings.meeting_audio_max_size_bytes:
+        raise ValueError("Uploaded audio file exceeds size limit")
+    _ = storage_path.write_bytes(content)
 
     audio = MeetingAudio(
         meeting_id=meeting_id,

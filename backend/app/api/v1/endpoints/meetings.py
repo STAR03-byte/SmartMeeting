@@ -39,7 +39,7 @@ from .auth import get_current_user
 router = APIRouter(prefix="/meetings", tags=["meetings"], dependencies=[Depends(get_current_user)])
 
 
-def _assert_meeting_permission(meeting, current_user: CurrentUserOut) -> None:
+def _assert_meeting_permission(meeting: MeetingOut, current_user: CurrentUserOut) -> None:
     if current_user.role == "admin":
         return
     if meeting.organizer_id != current_user.id:
@@ -242,7 +242,16 @@ def upload_meeting_audio_api(
         raise HTTPException(status_code=404, detail="Meeting not found")
     _assert_meeting_permission(meeting, current_user)
 
-    return save_meeting_audio(db, meeting_id, file)
+    try:
+        return save_meeting_audio(db, meeting_id, file)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=413,
+            detail={
+                "detail": str(exc),
+                "error_code": "PAYLOAD_TOO_LARGE",
+            },
+        ) from exc
 
 
 @router.post(

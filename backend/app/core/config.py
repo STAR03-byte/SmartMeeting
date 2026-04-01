@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     whisper_language: str = "zh"  # Chinese
     whisper_hot_words: str = ""
     whisper_normalize_to_simplified: bool = True
+    meeting_audio_max_size_bytes: int = 100 * 1024 * 1024
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[2] / ".env",

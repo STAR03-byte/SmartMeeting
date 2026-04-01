@@ -918,6 +918,45 @@ def test_meeting_management_requires_organizer_or_admin(client) -> None:
     assert admin_delete_resp.status_code == 204
 
 
+def test_upload_meeting_audio_rejects_oversized_file(auth_client, monkeypatch) -> None:
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "meeting_audio_max_size_bytes", 8, raising=False)
+
+    user_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "audio_limit_owner",
+            "email": "audio_limit_owner@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Audio Limit Owner",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "音频限制会议",
+            "description": "测试音频上传大小限制",
+            "organizer_id": organizer_id,
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    oversized_resp = auth_client.post(
+        f"/api/v1/meetings/{meeting_id}/audio",
+        files={"file": ("oversized.wav", b"123456789", "audio/wav")},
+    )
+
+    assert oversized_resp.status_code == 413
+    assert oversized_resp.json()["detail"] == "Uploaded audio file exceeds size limit"
+    assert oversized_resp.json()["error_code"] == "PAYLOAD_TOO_LARGE"
+
+
 def test_transcript_management_requires_organizer_or_admin(client) -> None:
     organizer_resp = client.post(
         "/api/v1/users",
