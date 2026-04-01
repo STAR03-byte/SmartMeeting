@@ -28,6 +28,13 @@ def test_invalid_task_id_path_param_returns_422_with_error_code(auth_client) -> 
     assert body["error_code"] == "REQUEST_VALIDATION_ERROR"
 
 
+def test_get_nonexistent_meeting_returns_404(auth_client) -> None:
+    response = auth_client.get("/api/v1/meetings/9999")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Meeting not found"
+
+
 def test_user_crud_flow(auth_client) -> None:
     """用户创建和查询流程可用。"""
 
