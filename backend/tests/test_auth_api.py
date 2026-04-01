@@ -1,7 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
+from app.core.database import get_db
 
 from app.core.security import get_password_hash
+from app.models.audit_log import AuditLog
 
 
 @pytest.mark.usefixtures("client")
@@ -43,3 +45,59 @@ def test_login_rejects_invalid_credentials(client: TestClient) -> None:
     )
 
     assert resp.status_code == 401
+
+
+@pytest.mark.usefixtures("client")
+def test_login_writes_audit_logs_for_success_and_failure(client: TestClient) -> None:
+    user_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "audit_login_user",
+            "email": "audit_login_user@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Audit Login User",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    user_id = user_resp.json()["id"]
+
+    bad_login_resp = client.post(
+        "/api/v1/auth/login",
+        data={"username": "audit_login_user", "password": "wrong-password"},
+    )
+    assert bad_login_resp.status_code == 401
+
+    ok_login_resp = client.post(
+        "/api/v1/auth/login",
+        data={"username": "audit_login_user", "password": "plain-password"},
+    )
+    assert ok_login_resp.status_code == 200
+
+    override_get_db = client.app.dependency_overrides[get_db]
+    db_gen = override_get_db()
+    db = next(db_gen)
+    try:
+        login_success = (
+            db.query(AuditLog)
+            .filter(
+                AuditLog.entity_type == "auth",
+                AuditLog.entity_id == user_id,
+                AuditLog.action == "LOGIN_SUCCESS",
+            )
+            .first()
+        )
+        assert login_success is not None
+        assert login_success.actor_user_id == user_id
+
+        login_failed = (
+            db.query(AuditLog)
+            .filter(
+                AuditLog.entity_type == "auth",
+                AuditLog.action == "LOGIN_FAILED",
+            )
+            .first()
+        )
+        assert login_failed is not None
+    finally:
+        db_gen.close()
