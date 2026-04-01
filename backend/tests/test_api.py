@@ -399,6 +399,137 @@ def test_delete_participant_api_removes_and_handles_not_found(auth_client) -> No
     assert delete_again_resp.json()["detail"] == "Participant not found"
 
 
+def test_participant_management_requires_organizer_or_admin(client) -> None:
+    organizer_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "participant_auth_owner",
+            "email": "participant_auth_owner@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Participant Auth Owner",
+            "role": "member",
+        },
+    )
+    assert organizer_resp.status_code == 201
+    organizer_id = organizer_resp.json()["id"]
+
+    other_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "participant_auth_other",
+            "email": "participant_auth_other@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Participant Auth Other",
+            "role": "member",
+        },
+    )
+    assert other_resp.status_code == 201
+    other_user_id = other_resp.json()["id"]
+
+    admin_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "participant_auth_admin",
+            "email": "participant_auth_admin@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Participant Auth Admin",
+            "role": "admin",
+        },
+    )
+    assert admin_resp.status_code == 201
+    admin_user_id = admin_resp.json()["id"]
+
+    organizer_login_resp = client.post(
+        "/api/v1/auth/login",
+        data={"username": "participant_auth_owner", "password": "plain-password"},
+    )
+    assert organizer_login_resp.status_code == 200
+    organizer_headers = {"Authorization": f"Bearer {organizer_login_resp.json()['access_token']}"}
+
+    other_login_resp = client.post(
+        "/api/v1/auth/login",
+        data={"username": "participant_auth_other", "password": "plain-password"},
+    )
+    assert other_login_resp.status_code == 200
+    other_headers = {"Authorization": f"Bearer {other_login_resp.json()['access_token']}"}
+
+    admin_login_resp = client.post(
+        "/api/v1/auth/login",
+        data={"username": "participant_auth_admin", "password": "plain-password"},
+    )
+    assert admin_login_resp.status_code == 200
+    admin_headers = {"Authorization": f"Bearer {admin_login_resp.json()['access_token']}"}
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "参与者权限会议",
+            "description": "仅组织者或管理员可管理参与者",
+            "organizer_id": organizer_id,
+        },
+        headers=organizer_headers,
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    forbidden_create_resp = client.post(
+        "/api/v1/participants",
+        json={
+            "meeting_id": meeting_id,
+            "user_id": other_user_id,
+            "participant_role": "required",
+            "attendance_status": "invited",
+        },
+        headers=other_headers,
+    )
+    assert forbidden_create_resp.status_code == 403
+    assert forbidden_create_resp.json()["detail"] == "Not authorized to manage participants for this meeting"
+
+    organizer_create_resp = client.post(
+        "/api/v1/participants",
+        json={
+            "meeting_id": meeting_id,
+            "user_id": other_user_id,
+            "participant_role": "required",
+            "attendance_status": "invited",
+        },
+        headers=organizer_headers,
+    )
+    assert organizer_create_resp.status_code == 201
+    participant_id = organizer_create_resp.json()["id"]
+
+    forbidden_list_resp = client.get(f"/api/v1/participants?meeting_id={meeting_id}", headers=other_headers)
+    assert forbidden_list_resp.status_code == 403
+    assert forbidden_list_resp.json()["detail"] == "Not authorized to manage participants for this meeting"
+
+    admin_list_resp = client.get(f"/api/v1/participants?meeting_id={meeting_id}", headers=admin_headers)
+    assert admin_list_resp.status_code == 200
+    assert len(admin_list_resp.json()) == 1
+
+    forbidden_update_resp = client.patch(
+        f"/api/v1/participants/{participant_id}",
+        json={"attendance_status": "accepted"},
+        headers=other_headers,
+    )
+    assert forbidden_update_resp.status_code == 403
+    assert forbidden_update_resp.json()["detail"] == "Not authorized to manage participants for this meeting"
+
+    admin_update_resp = client.patch(
+        f"/api/v1/participants/{participant_id}",
+        json={"attendance_status": "accepted"},
+        headers=admin_headers,
+    )
+    assert admin_update_resp.status_code == 200
+    assert admin_update_resp.json()["attendance_status"] == "accepted"
+
+    forbidden_delete_resp = client.delete(f"/api/v1/participants/{participant_id}", headers=other_headers)
+    assert forbidden_delete_resp.status_code == 403
+    assert forbidden_delete_resp.json()["detail"] == "Not authorized to manage participants for this meeting"
+
+    admin_delete_resp = client.delete(f"/api/v1/participants/{participant_id}", headers=admin_headers)
+    assert admin_delete_resp.status_code == 204
+
+
 def test_create_meeting_rejects_nonexistent_organizer(auth_client) -> None:
     create_resp = auth_client.post(
         "/api/v1/meetings",
