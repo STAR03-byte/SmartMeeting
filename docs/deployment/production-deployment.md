@@ -96,3 +96,32 @@ docker compose --env-file .env.prod -f infrastructure/compose/docker-compose.pro
 - 登录可用
 - 会议上传与转写可回退到 mock ASR
 - LLM 不可用时可回退到规则生成
+
+## 8. K8s 生产建议
+
+`infrastructure/k8s/` 提供最小可用模板：
+
+- `configmap.yml`: 非敏感配置（数据库主机、模型参数、限流阈值）
+- `deployment.yml`: backend/frontend/nginx 的副本数、探针、资源请求与限制
+- `service.yml`: 服务暴露策略（`smartmeeting-nginx` 使用 `LoadBalancer`）
+
+> 生产环境需要额外创建 Secret（仓库不提交密钥），至少包括：
+>
+> - `smartmeeting-db-secret`: `db-user`, `db-password`
+> - `smartmeeting-app-secret`: `jwt-secret`, `llm-api-key`
+
+可按以下顺序部署：
+
+```bash
+kubectl apply -f infrastructure/k8s/configmap.yml
+kubectl apply -f infrastructure/k8s/deployment.yml
+kubectl apply -f infrastructure/k8s/service.yml
+```
+
+部署后建议检查：
+
+```bash
+kubectl get pods
+kubectl get svc
+kubectl describe deployment smartmeeting-backend
+```
