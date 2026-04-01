@@ -10,7 +10,7 @@ docker compose up --build
 ```
 
 - Frontend: `http://localhost:5174`
-- Backend: `http://localhost:8000`
+- Backend: `http://localhost:${BACKEND_BIND_PORT:-8000}`
 - MySQL: `localhost:3307`
 
 Default account: configured in the seed data
@@ -26,6 +26,7 @@ python -m uvicorn backend.main:app --reload
 **Frontend:**
 ```bash
 npm --prefix frontend install --cache "D:\SmartMeeting\.npm-cache"
+set SMARTMEETING_DEV_BACKEND_URL=http://127.0.0.1:8888  # optional when backend is not on 8000
 npm --prefix frontend run dev
 ```
 

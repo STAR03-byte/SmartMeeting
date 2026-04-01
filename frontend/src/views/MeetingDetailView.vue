@@ -704,18 +704,42 @@ function attendanceTag(status: string): string {
 .detail-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+  padding: 8px;
 }
 
 .base-card {
-  border-radius: 12px;
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.base-card :deep(.el-card__header) {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.base-card :deep(.el-card__body) {
+  padding: 24px;
 }
 
 .header-row {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: 24px;
   align-items: flex-start;
+}
+
+.header-row h2 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #303133;
+  margin: 0 0 8px 0;
+}
+
+.header-row p {
+  color: #606266;
+  margin: 4px 0;
 }
 
 .summary-actions {
@@ -725,65 +749,105 @@ function attendanceTag(status: string): string {
   justify-content: flex-end;
 }
 
+.summary-actions :deep(.el-button) {
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.summary-actions :deep(.el-button--primary) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+}
+
 .stats-row {
-  margin-top: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 12px;
+}
+
+.stats-row :deep(.el-col) {
+  text-align: center;
 }
 
 .panel-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 20px;
+}
+
+.panel-grid :deep(.el-card) {
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .action-row {
   display: flex;
   gap: 10px;
-  margin: 14px 0;
+  margin: 16px 0;
   flex-wrap: wrap;
+  padding: 16px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
+  border-radius: 12px;
+}
+
+.action-row :deep(.el-button) {
+  border-radius: 10px;
+  font-weight: 500;
 }
 
 .organizer-line {
-  margin: 0;
-  color: #486078;
+  margin: 8px 0 0;
+  color: #909399;
+  font-size: 14px;
 }
 
 .summary-block {
   margin: 0;
-  padding: 10px;
-  background: #f7fbff;
-  border-radius: 8px;
-  border: 1px solid #d7e6f5;
+  padding: 16px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
+  border-radius: 12px;
+  border: 1px solid #ebeef5;
   white-space: pre-wrap;
+  line-height: 1.8;
 }
 
 .summary-block.empty {
-  color: #94a3b8;
+  color: #c0c4cc;
+  font-style: italic;
 }
 
 .recording-status {
   margin-bottom: 12px;
-  color: #486078;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  display: inline-block;
 }
 
 .recording-status.recording {
-  color: #dc2626;
-  font-weight: 600;
+  background: #fee;
+  color: #f56c6c;
 }
 
 .recording-status.paused {
-  color: #d97706;
-  font-weight: 600;
+  background: #fef0e6;
+  color: #e6a23c;
 }
 
 .recording-status.processing {
-  color: #1d4ed8;
-  font-weight: 600;
+  background: #e6f7ff;
+  color: #409eff;
 }
 
 .panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  font-weight: 600;
+  color: #303133;
+  font-size: 16px;
 }
 
 .plain-list {
@@ -792,26 +856,40 @@ function attendanceTag(status: string): string {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .transcript-row,
 .task-row {
-  padding: 10px 12px;
-  background: #f8fafc;
-  border-radius: 8px;
+  padding: 14px 16px;
+  background: #fafafa;
+  border-radius: 12px;
+  border: 1px solid #f0f0f0;
+  transition: all 0.3s;
+}
+
+.transcript-row:hover,
+.task-row:hover {
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .transcript-meta {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   align-items: center;
-  color: #486078;
+  color: #606266;
+  font-size: 13px;
+}
+
+.transcript-meta strong {
+  color: #667eea;
 }
 
 .transcript-row p {
-  margin: 8px 0 0;
-  line-height: 1.6;
+  margin: 10px 0 0;
+  line-height: 1.7;
+  color: #303133;
 }
 
 .task-row {
@@ -823,19 +901,19 @@ function attendanceTag(status: string): string {
 .task-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex: 1;
   min-width: 0;
 }
 
 .task-title {
-  font-weight: 500;
-  color: #1d2f45;
+  font-weight: 600;
+  color: #303133;
 }
 
 .task-title.done {
   text-decoration: line-through;
-  color: #94a3b8;
+  color: #c0c4cc;
 }
 
 .task-actions {
@@ -844,28 +922,47 @@ function attendanceTag(status: string): string {
 
 .participant-create-row {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 12px;
+}
+
+.participant-create-row :deep(.el-select) {
+  min-width: 180px;
 }
 
 .participant-row {
-  padding: 10px 12px;
-  background: #f8fafc;
-  border-radius: 8px;
+  padding: 14px 16px;
+  background: #fafafa;
+  border-radius: 12px;
+  border: 1px solid #f0f0f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  transition: all 0.3s;
+}
+
+.participant-row:hover {
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .participant-main {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
   flex-wrap: wrap;
+}
+
+.participant-main strong {
+  font-weight: 600;
+  color: #303133;
 }
 
 .participant-actions {

@@ -27,7 +27,7 @@ def _assert_transcript_permission(meeting, current_user: CurrentUserOut) -> None
     if current_user.role == "admin":
         return
     if meeting.organizer_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to manage transcripts for this meeting")
+        raise HTTPException(status_code=403, detail="无权管理此会议的转写内容")
 
 
 @router.post("", response_model=MeetingTranscriptOut, status_code=status.HTTP_201_CREATED)

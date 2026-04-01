@@ -109,6 +109,23 @@
         <el-form-item label="地点">
           <el-input v-model="createForm.location" placeholder="可选" />
         </el-form-item>
+        <el-form-item label="参与者">
+          <el-select
+            v-model="selectedParticipantIds"
+            multiple
+            filterable
+            clearable
+            placeholder="选择参与人员（可选）"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="user in selectableParticipants"
+              :key="user.id"
+              :label="`${user.full_name}（${user.username}）`"
+              :value="user.id"
+            />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showCreateDialog = false">取消</el-button>
@@ -127,6 +144,7 @@ import AppErrorAlert from "../components/AppErrorAlert.vue";
 import { notifyApiError } from "../utils/notify";
 import type { MeetingCreatePayload, MeetingListParams, MeetingStatus } from "../api/types";
 import { getUsers, type UserItem } from "../api/users";
+import { createMeetingParticipant } from "../api/participants";
 
 const store = useMeetingStore();
 
@@ -141,6 +159,7 @@ const showCreateDialog = ref(false);
 const creating = ref(false);
 const createFormRef = ref<FormInstance>();
 const users = ref<UserItem[]>([]);
+const selectedParticipantIds = ref<number[]>([]);
 
 const createForm = reactive<MeetingCreatePayload>({
   title: "",
@@ -176,6 +195,16 @@ async function loadUsers() {
   }
 }
 
+function getSelectableParticipants() {
+  return users.value.filter((u) => u.id !== createForm.organizer_id);
+}
+
+const selectableParticipants = ref<UserItem[]>([]);
+
+function updateSelectableParticipants() {
+  selectableParticipants.value = getSelectableParticipants();
+}
+
 function applyFilter() {
   currentPage.value = 1;
   loadMeetings();
@@ -205,7 +234,7 @@ async function handleCreate() {
 
   creating.value = true;
   try {
-    await store.createMeeting({
+    const meeting = await store.createMeeting({
       ...createForm,
       scheduled_start_at: createForm.scheduled_start_at
         ? new Date(createForm.scheduled_start_at).toISOString()
@@ -214,8 +243,25 @@ async function handleCreate() {
         ? new Date(createForm.scheduled_end_at).toISOString()
         : null,
     });
+
+    if (selectedParticipantIds.value.length > 0) {
+      for (const userId of selectedParticipantIds.value) {
+        try {
+          await createMeetingParticipant({
+            meeting_id: meeting.id,
+            user_id: userId,
+            participant_role: "optional",
+          });
+        } catch (err) {
+          console.warn("添加参与者失败:", userId, err);
+        }
+      }
+      ElMessage.success(`会议创建成功，已添加 ${selectedParticipantIds.value.length} 位参与者`);
+    } else {
+      ElMessage.success("会议创建成功");
+    }
+
     showCreateDialog.value = false;
-    ElMessage.success("会议创建成功");
   } catch (err) {
     notifyApiError(err, { prefix: "创建失败" });
   } finally {
@@ -239,6 +285,7 @@ function resetCreateForm() {
   createForm.scheduled_start_at = null;
   createForm.scheduled_end_at = null;
   createForm.location = null;
+  selectedParticipantIds.value = [];
   createFormRef.value?.resetFields();
 }
 
@@ -277,7 +324,8 @@ onMounted(async () => {
 .meeting-list-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
+  padding: 8px;
 }
 
 .page-header {
@@ -288,29 +336,91 @@ onMounted(async () => {
 
 .page-header h1 {
   margin: 0;
-  font-size: 24px;
-  color: #1d2f45;
+  font-size: 28px;
+  font-weight: 700;
+  color: #303133;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .filter-bar {
-  background: #f8fafc;
-  padding: 12px 16px;
-  border-radius: 8px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
+  padding: 20px 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  border: 1px solid #f0f0f0;
 }
 
-.meeting-link {
-  color: #0c4a84;
-  text-decoration: none;
+.filter-bar :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+
+.filter-bar :deep(.el-select .el-input__wrapper) {
+  border-radius: 10px;
+}
+
+.filter-bar :deep(.el-button--primary) {
+  border-radius: 10px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
   font-weight: 500;
 }
 
+.filter-bar :deep(.el-button) {
+  border-radius: 10px;
+}
+
+.meeting-list-page :deep(.el-table) {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.meeting-list-page :deep(.el-table th) {
+  background: #f5f7fa;
+  font-weight: 600;
+  color: #606266;
+}
+
+.meeting-list-page :deep(.el-table td) {
+  padding: 16px 0;
+}
+
+.meeting-link {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
 .meeting-link:hover {
-  text-decoration: underline;
+  color: #764ba2;
 }
 
 .pagination {
-  margin-top: 8px;
+  margin-top: 16px;
   display: flex;
   justify-content: flex-end;
+}
+
+.pagination :deep(.el-pagination) {
+  padding: 12px 16px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.pagination :deep(.el-pager li.is-active) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.page-header :deep(.el-button--primary) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  padding: 12px 24px;
 }
 </style>

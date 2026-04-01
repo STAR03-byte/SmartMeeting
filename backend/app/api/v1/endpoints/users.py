@@ -11,6 +11,16 @@ from app.services.user_service import create_user, delete_user, get_user, list_u
 from .auth import get_current_user
 
 router = APIRouter(prefix="/users", tags=["users"])
+open_router = APIRouter(tags=["register"])
+
+
+@open_router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+def register_user(payload: UserCreate, db: Session = Depends(get_db)) -> UserOut:
+    try:
+        return create_user(db, payload)
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="用户名或邮箱已存在") from exc
 
 
 def _require_admin(current_user: CurrentUserOut) -> None:

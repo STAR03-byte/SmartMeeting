@@ -81,7 +81,7 @@ def test_login_writes_audit_logs_for_success_and_failure(client: TestClient) -> 
         login_success = (
             db.query(AuditLog)
             .filter(
-                AuditLog.entity_type == "auth",
+                AuditLog.entity_type == "users",
                 AuditLog.entity_id == user_id,
                 AuditLog.action == "LOGIN_SUCCESS",
             )
@@ -93,7 +93,7 @@ def test_login_writes_audit_logs_for_success_and_failure(client: TestClient) -> 
         login_failed = (
             db.query(AuditLog)
             .filter(
-                AuditLog.entity_type == "auth",
+                AuditLog.entity_type == "users",
                 AuditLog.action == "LOGIN_FAILED",
             )
             .first()

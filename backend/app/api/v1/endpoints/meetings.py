@@ -43,7 +43,7 @@ def _assert_meeting_permission(meeting: MeetingOut, current_user: CurrentUserOut
     if current_user.role == "admin":
         return
     if meeting.organizer_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to manage this meeting")
+        raise HTTPException(status_code=403, detail="无权管理此会议")
 
 
 @router.post("", response_model=MeetingOut, status_code=status.HTTP_201_CREATED)
@@ -56,7 +56,7 @@ def create_meeting_api(
     if not organizer:
         raise HTTPException(status_code=404, detail="Organizer not found")
     if current_user.role != "admin" and current_user.id != payload.organizer_id:
-        raise HTTPException(status_code=403, detail="Not authorized to manage this meeting")
+        raise HTTPException(status_code=403, detail="无权管理此会议")
 
     if (
         payload.scheduled_start_at is not None

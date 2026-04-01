@@ -53,11 +53,12 @@ services:
       WHISPER_MODEL: ${WHISPER_MODEL:-base}
       WHISPER_DEVICE: ${WHISPER_DEVICE:-cpu}
       WHISPER_LANGUAGE: ${WHISPER_LANGUAGE:-zh}
+      MEETING_AUDIO_MAX_SIZE_BYTES: ${MEETING_AUDIO_MAX_SIZE_BYTES:-104857600}
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "${BACKEND_BIND_PORT:-8000}:8000"
     volumes:
       - backend_data:/app/data
       - backend_storage:/app/backend/storage

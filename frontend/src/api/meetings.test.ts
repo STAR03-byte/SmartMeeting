@@ -161,4 +161,32 @@ describe("meetings api module", () => {
     expect(result.total).toBe(1);
     expect(result.items[0].meeting_id).toBe(3);
   });
+
+  it("fetches transcripts by meeting query", async () => {
+    const getSpy = vi.spyOn(apiClient, "get").mockResolvedValueOnce({
+      data: [
+        {
+          id: 1,
+          meeting_id: 3,
+          speaker_user_id: 1,
+          speaker_name: "PM",
+          segment_index: 1,
+          start_time_sec: null,
+          end_time_sec: null,
+          language_code: "zh-CN",
+          source: "whisper",
+          content: "请完善发布计划",
+          created_at: "2026-03-25T00:00:00Z",
+          updated_at: "2026-03-25T00:00:00Z",
+        },
+      ],
+    } as never);
+
+    const mod = await import("./meetings");
+    const result = await mod.getMeetingTranscripts(3);
+
+    expect(getSpy).toHaveBeenCalledWith("/api/v1/transcripts?meeting_id=3");
+    expect(result).toHaveLength(1);
+    expect(result[0].meeting_id).toBe(3);
+  });
 });

@@ -30,7 +30,7 @@ def _assert_meeting_task_permission(meeting, current_user: CurrentUserOut) -> No
     if current_user.role == "admin":
         return
     if meeting.organizer_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to manage tasks for this meeting")
+        raise HTTPException(status_code=403, detail="无权管理此会议的任务")
 
 
 def _assert_task_permission(task, meeting, current_user: CurrentUserOut) -> None:
@@ -42,7 +42,7 @@ def _assert_task_permission(task, meeting, current_user: CurrentUserOut) -> None
         return
     if task.reporter_id == current_user.id:
         return
-    raise HTTPException(status_code=403, detail="Not authorized to manage this task")
+    raise HTTPException(status_code=403, detail="无权管理此任务")
 
 
 @router.post("", response_model=TaskOut, status_code=status.HTTP_201_CREATED)

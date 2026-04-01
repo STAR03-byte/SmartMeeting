@@ -99,15 +99,49 @@ class WhisperTranscriber:
         try:
             opencc_module = importlib.import_module("opencc")
         except ImportError:
-            logger.warning("OpenCC not installed; skip simplified Chinese normalization")
-            return text
+            logger.warning("OpenCC not installed; using simple fallback conversion")
+            return self._simple_traditional_to_simplified(text)
 
         try:
             converter = getattr(opencc_module, "OpenCC")("t2s")
             return converter.convert(text)
         except Exception as exc:  # noqa: BLE001
-            logger.warning("OpenCC conversion failed, keep original text: %s", exc)
-            return text
+            logger.warning("OpenCC conversion failed, using fallback: %s", exc)
+            return self._simple_traditional_to_simplified(text)
+
+    def _simple_traditional_to_simplified(self, text: str) -> str:
+        _CONV = {
+            "為": "为", "們": "们", "裡": "里", "說": "说", "時": "时",
+            "會": "会", "對": "对", "這": "这", "來": "来", "個": "个",
+            "嗎": "吗", "呢": "呢", "吧": "吧", "啊": "啊", "哦": "哦",
+            "喲": "哟", "嘍": "喽", "噓": "嘘", "嘖": "咂", "嗚": "呜",
+            "嗬": "嗬", "嘛": "嘛", "喪": "丧", "單": "单", "呂": "吕",
+            "嗶": "哔", "嗻": "喆", "嘀": "嘀", "銘": "铭", "銼": "锉",
+            "銷": "销", "錢": "钱", "鍋": "锅", "鍵": "键", "錄": "录",
+            "錦": "锦", "錘": "锤", "錐": "锥", "鏟": "铲", "鏈": "链",
+            "鏡": "镜", "鑒": "鉴", "鑰": "钥", "鑼": "锣", "鑽": "钻",
+            "鑾": "銮", "钑": "钑", "鏨": "錾", "鏃": "镞", "鏘": "镲",
+            "鑄": "铸", "硯": "砚", "碩": "硕", "碾": "碾", "磚": "砖",
+            "礁": "礁", "礙": "碍", "礦": "矿", "礬": "矾", "礰": "砾",
+            "祿": "禄", "禍": "祸", "視": "视", "稅": "税", "筆": "笔",
+            "節": "节", "範": "范", "築": "筑", "篩": "筛", "簽": "签",
+            "簡": "简", "籠": "笼", "紅": "红", "紋": "纹", "紡": "纺",
+            "絞": "绞", "統": "统", "絲": "丝", "絕": "绝", "維": "维",
+            "綁": "绑", "綢": "绸", "線": "线", "總": "总", "麗": "丽",
+            "萬": "万", "蓮": "莲", "獲": "获", "嚴": "严", "喚": "唤",
+            "團": "团", "圍": "围", "學": "学", "褲": "裤", "腸": "肠",
+            "製": "制", "複": "复", "鐘": "钟", "鋼": "钢", "意識": "意识",
+            "讓": "让", "幫": "帮", "準備": "准备", "時間": "时间",
+            "問題": "问题", "應該": "应该", "這樣": "这样", "因為": "因为",
+            "還": "还", "後": "后", "隻": "只", "認": "认", "夠": "够",
+            "邊": "边", "見": "见", "過": "过", "進": "进", "遠": "远",
+            "聲": "声", "聽": "听", "說話": "说话", "這個": "这个",
+            "什麼": "什么", "請": "请", "沒": "没", "從": "从", "對": "对",
+        }
+        result = text
+        for t, s in _CONV.items():
+            result = result.replace(t, s)
+        return result
 
     def _get_audio_duration_seconds(self, file_path: Path) -> float:
         if shutil.which("ffprobe") is None:

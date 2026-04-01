@@ -148,65 +148,154 @@ onMounted(async () => {
 .dashboard-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
+  padding: 8px;
 }
 
 .hero-header {
-  background: linear-gradient(120deg, #f3f9ff 0%, #fff6ea 100%);
-  border: 1px solid #dce8f4;
-  border-radius: 18px;
-  padding: 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 24px;
+  padding: 32px 36px;
+  box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-header::before {
+  content: '';
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  top: -100px;
+  right: -50px;
 }
 
 .hero-header h1 {
   margin: 0;
-  font-size: 34px;
-  letter-spacing: 0.3px;
-  color: #1d2f45;
+  font-size: 32px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
 }
 
 .hero-header p {
-  margin: 10px 0 0;
-  color: #4b6077;
+  margin: 12px 0 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 16px;
 }
 
 .hero-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 16px;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.hero-actions :deep(.el-button) {
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.hero-actions :deep(.el-button--primary) {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+.hero-actions :deep(.el-button--primary:hover) {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.hero-actions :deep(.el-button) {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
 }
 
 .stats-row {
-  margin-top: 4px;
+  margin-top: 0;
+}
+
+.stats-row :deep(.el-col) {
+  padding: 0 12px;
 }
 
 .stat-card {
-  border-radius: 12px;
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.stat-card :deep(.el-statistic__head) {
+  font-size: 14px;
+  color: #909399;
+  font-weight: 500;
+}
+
+.stat-card :deep(.el-statistic__content) {
+  font-size: 28px;
+  font-weight: 700;
+  color: #303133;
 }
 
 .base-card {
-  border-radius: 12px;
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.base-card :deep(.el-card__header) {
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.base-card :deep(.el-card__body) {
+  padding: 20px 24px;
 }
 
 .panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  font-weight: 600;
+  color: #303133;
 }
 
 .meeting-link {
-  color: #0c4a84;
+  color: #667eea;
   text-decoration: none;
   font-weight: 500;
+  transition: color 0.3s;
 }
 
 .meeting-link:hover {
-  text-decoration: underline;
+  color: #764ba2;
+  text-decoration: none;
 }
 
 .meeting-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.meeting-grid :deep(.el-card) {
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s;
+}
+
+.meeting-grid :deep(.el-card:hover) {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
 }
 </style>

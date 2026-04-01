@@ -14,6 +14,8 @@ npm --prefix frontend run dev
 
 - 默认前端地址: `http://127.0.0.1:5173`
 - Vite 代理配置见: `frontend/vite.config.ts`
+- 默认后端代理目标: `http://127.0.0.1:8000`
+- 如后端运行在其他端口（例如 8888），启动前设置：`set SMARTMEETING_DEV_BACKEND_URL=http://127.0.0.1:8888`
 
 ## 3. 页面与联调流程
 

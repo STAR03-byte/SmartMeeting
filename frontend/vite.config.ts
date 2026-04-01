@@ -4,6 +4,8 @@ import AutoImport from "unplugin-auto-import/vite";
 import Components from "unplugin-vue-components/vite";
 import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
 
+const devBackendUrl = process.env.SMARTMEETING_DEV_BACKEND_URL?.trim() || "http://127.0.0.1:8888";
+
 export default defineConfig({
   plugins: [
     vue(),
@@ -35,11 +37,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8000",
+        target: devBackendUrl,
         changeOrigin: true,
       },
       "/health": {
-        target: "http://127.0.0.1:8000",
+        target: devBackendUrl,
         changeOrigin: true,
       }
     }

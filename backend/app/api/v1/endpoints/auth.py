@@ -1,4 +1,5 @@
 from typing import Annotated
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi import Request
@@ -16,6 +17,8 @@ from app.services.user_service import get_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+logger = logging.getLogger(__name__)
 
 
 def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Annotated[Session, Depends(get_db)]) -> CurrentUserOut:
@@ -38,29 +41,20 @@ def login(
     payload: Annotated[OAuth2PasswordRequestForm, Depends()],
     db: Annotated[Session, Depends(get_db)],
 ) -> TokenOut:
-    _ = request
-    user = authenticate_user(db, payload.username, payload.password)
-    if user is None:
-        create_audit_log(
-            db=db,
-            actor_user_id=None,
-            entity_type="auth",
-            entity_id=0,
-            action="LOGIN_FAILED",
-            before_data=None,
-            after_data={"username": payload.username},
-        )
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    create_audit_log(
-        db=db,
-        actor_user_id=user.id,
-        entity_type="auth",
-        entity_id=user.id,
-        action="LOGIN_SUCCESS",
-        before_data=None,
-        after_data={"username": user.username},
-    )
-    return TokenOut(access_token=create_user_access_token(user))
+    try:
+        logger.info("Login attempt for user: %s", payload.username)
+        user = authenticate_user(db, payload.username, payload.password)
+        if user is None:
+            logger.warning("Login failed for user: %s - invalid credentials", payload.username)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        token = create_user_access_token(user)
+        logger.info("Login successful for user: %s", payload.username)
+        return TokenOut(access_token=token)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("Login error for user %s: %s", payload.username, exc)
+        raise
 
 
 @router.get("/me", response_model=CurrentUserOut)

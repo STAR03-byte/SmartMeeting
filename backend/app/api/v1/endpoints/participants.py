@@ -30,7 +30,7 @@ def _assert_participant_management_permission(meeting, current_user: CurrentUser
     if current_user.role == "admin":
         return
     if meeting.organizer_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to manage participants for this meeting")
+        raise HTTPException(status_code=403, detail="无权管理此会议的参与人员")
 
 
 @router.post("", response_model=MeetingParticipantOut, status_code=status.HTTP_201_CREATED)

@@ -22,14 +22,17 @@
           <el-form-item label="姓名">
             <el-input v-model="form.full_name" placeholder="请输入姓名" />
           </el-form-item>
-          <el-form-item label="角色">
-            <el-select v-model="form.role">
-              <el-option label="管理员" value="admin" />
-              <el-option label="成员" value="member" />
+          <el-form-item label="角色" placeholder="请选择用户角色">
+            <el-select v-model="form.role" placeholder="请选择用户角色">
+              <el-option label="管理员（可管理所有会议和用户）" value="admin" />
+              <el-option label="成员（可参与会议和任务）" value="member" />
             </el-select>
           </el-form-item>
-          <el-form-item label="密码">
-            <el-input v-model="form.password_hash" type="password" show-password placeholder="请输入密码" />
+          <el-form-item label="密码" prop="password">
+            <el-input v-model="form.password_hash" type="password" show-password placeholder="请设置登录密码（至少8位）" />
+          </el-form-item>
+          <el-form-item label="确认密码">
+            <el-input v-model="confirmPassword" type="password" show-password placeholder="请再次输入密码" />
           </el-form-item>
           <el-button type="primary" :loading="submitting" @click="submitUser">创建用户</el-button>
         </el-form>
@@ -86,9 +89,11 @@ const form = reactive<{
   username: "",
   email: "",
   full_name: "",
-  password_hash: "hashed_password_123",
+  password_hash: "",
   role: "member",
 });
+
+const confirmPassword = ref("");
 
 async function refreshUsers() {
   loading.value = true;
@@ -103,6 +108,27 @@ async function refreshUsers() {
 }
 
 async function submitUser() {
+  if (!form.username || form.username.length < 3) {
+    ElMessage.warning("用户名至少需要3个字符");
+    return;
+  }
+  if (!form.email) {
+    ElMessage.warning("请输入邮箱地址");
+    return;
+  }
+  if (!form.full_name) {
+    ElMessage.warning("请输入姓名");
+    return;
+  }
+  if (!form.password_hash || form.password_hash.length < 8) {
+    ElMessage.warning("密码至少需要8个字符");
+    return;
+  }
+  if (form.password_hash !== confirmPassword.value) {
+    ElMessage.warning("两次输入的密码不一致");
+    return;
+  }
+
   submitting.value = true;
   try {
     await createUser({ ...form });
@@ -110,7 +136,8 @@ async function submitUser() {
     form.username = "";
     form.email = "";
     form.full_name = "";
-    form.password_hash = "hashed_password_123";
+    form.password_hash = "";
+    confirmPassword.value = "";
     form.role = "member";
     await refreshUsers();
   } catch (err) {

@@ -30,8 +30,14 @@ npm --prefix frontend run dev
 
 Vite 代理：
 
-- `/api` → `http://127.0.0.1:8000`
-- `/health` → `http://127.0.0.1:8000`
+- `/api` → `SMARTMEETING_DEV_BACKEND_URL`（默认 `http://127.0.0.1:8000`）
+- `/health` → `SMARTMEETING_DEV_BACKEND_URL`（默认 `http://127.0.0.1:8000`）
+
+如本地后端跑在 8888，可在启动前设置：
+
+```bash
+set SMARTMEETING_DEV_BACKEND_URL=http://127.0.0.1:8888
+```
 
 ## 常用命令
 
