@@ -624,7 +624,7 @@ def test_participant_management_requires_organizer_or_admin(client) -> None:
         headers=other_headers,
     )
     assert forbidden_create_resp.status_code == 403
-    assert forbidden_create_resp.json()["detail"] == "Not authorized to manage participants for this meeting"
+    assert forbidden_create_resp.json()["detail"] == "无权管理此会议的参与人员"
 
     organizer_create_resp = client.post(
         "/api/v1/participants",
@@ -641,7 +641,7 @@ def test_participant_management_requires_organizer_or_admin(client) -> None:
 
     forbidden_list_resp = client.get(f"/api/v1/participants?meeting_id={meeting_id}", headers=other_headers)
     assert forbidden_list_resp.status_code == 403
-    assert forbidden_list_resp.json()["detail"] == "Not authorized to manage participants for this meeting"
+    assert forbidden_list_resp.json()["detail"] == "无权管理此会议的参与人员"
 
     admin_list_resp = client.get(f"/api/v1/participants?meeting_id={meeting_id}", headers=admin_headers)
     assert admin_list_resp.status_code == 200
@@ -653,7 +653,7 @@ def test_participant_management_requires_organizer_or_admin(client) -> None:
         headers=other_headers,
     )
     assert forbidden_update_resp.status_code == 403
-    assert forbidden_update_resp.json()["detail"] == "Not authorized to manage participants for this meeting"
+    assert forbidden_update_resp.json()["detail"] == "无权管理此会议的参与人员"
 
     admin_update_resp = client.patch(
         f"/api/v1/participants/{participant_id}",
@@ -665,7 +665,7 @@ def test_participant_management_requires_organizer_or_admin(client) -> None:
 
     forbidden_delete_resp = client.delete(f"/api/v1/participants/{participant_id}", headers=other_headers)
     assert forbidden_delete_resp.status_code == 403
-    assert forbidden_delete_resp.json()["detail"] == "Not authorized to manage participants for this meeting"
+    assert forbidden_delete_resp.json()["detail"] == "无权管理此会议的参与人员"
 
     admin_delete_resp = client.delete(f"/api/v1/participants/{participant_id}", headers=admin_headers)
     assert admin_delete_resp.status_code == 204
@@ -770,7 +770,7 @@ def test_task_management_requires_assignee_reporter_organizer_or_admin(client) -
         headers=outsider_headers,
     )
     assert forbidden_create_resp.status_code == 403
-    assert forbidden_create_resp.json()["detail"] == "Not authorized to manage tasks for this meeting"
+    assert forbidden_create_resp.json()["detail"] == "无权管理此会议的任务"
 
     organizer_task_resp = client.post(
         "/api/v1/tasks",
@@ -791,7 +791,7 @@ def test_task_management_requires_assignee_reporter_organizer_or_admin(client) -
         headers=outsider_headers,
     )
     assert forbidden_update_resp.status_code == 403
-    assert forbidden_update_resp.json()["detail"] == "Not authorized to manage this task"
+    assert forbidden_update_resp.json()["detail"] == "无权管理此任务"
 
     assignee_update_resp = client.patch(
         f"/api/v1/tasks/{task_id}",
@@ -809,7 +809,7 @@ def test_task_management_requires_assignee_reporter_organizer_or_admin(client) -
 
     outsider_delete_resp = client.delete(f"/api/v1/tasks/{task_id}", headers=outsider_headers)
     assert outsider_delete_resp.status_code == 403
-    assert outsider_delete_resp.json()["detail"] == "Not authorized to manage this task"
+    assert outsider_delete_resp.json()["detail"] == "无权管理此任务"
 
     admin_delete_resp = client.delete(f"/api/v1/tasks/{task_id}", headers=admin_headers)
     assert admin_delete_resp.status_code == 204
@@ -875,7 +875,7 @@ def test_meeting_management_requires_organizer_or_admin(client) -> None:
         headers=outsider_headers,
     )
     assert forbidden_create_resp.status_code == 403
-    assert forbidden_create_resp.json()["detail"] == "Not authorized to manage this meeting"
+    assert forbidden_create_resp.json()["detail"] == "无权管理此会议"
 
     organizer_create_resp = client.post(
         "/api/v1/meetings",
@@ -895,7 +895,7 @@ def test_meeting_management_requires_organizer_or_admin(client) -> None:
         headers=outsider_headers,
     )
     assert forbidden_update_resp.status_code == 403
-    assert forbidden_update_resp.json()["detail"] == "Not authorized to manage this meeting"
+    assert forbidden_update_resp.json()["detail"] == "无权管理此会议"
 
     organizer_update_resp = client.patch(
         f"/api/v1/meetings/{meeting_id}",
@@ -922,7 +922,7 @@ def test_meeting_management_requires_organizer_or_admin(client) -> None:
         headers=outsider_headers,
     )
     assert forbidden_postprocess_resp.status_code == 403
-    assert forbidden_postprocess_resp.json()["detail"] == "Not authorized to manage this meeting"
+    assert forbidden_postprocess_resp.json()["detail"] == "无权管理此会议"
 
     organizer_postprocess_resp = client.post(
         f"/api/v1/meetings/{meeting_id}/postprocess",
@@ -936,7 +936,7 @@ def test_meeting_management_requires_organizer_or_admin(client) -> None:
         headers=outsider_headers,
     )
     assert forbidden_export_resp.status_code == 403
-    assert forbidden_export_resp.json()["detail"] == "Not authorized to manage this meeting"
+    assert forbidden_export_resp.json()["detail"] == "无权管理此会议"
 
     admin_export_resp = client.post(
         f"/api/v1/meetings/{meeting_id}/export",
@@ -951,7 +951,7 @@ def test_meeting_management_requires_organizer_or_admin(client) -> None:
         headers=outsider_headers,
     )
     assert forbidden_audio_resp.status_code == 403
-    assert forbidden_audio_resp.json()["detail"] == "Not authorized to manage this meeting"
+    assert forbidden_audio_resp.json()["detail"] == "无权管理此会议"
 
     admin_audio_resp = client.post(
         f"/api/v1/meetings/{meeting_id}/audio",
@@ -962,7 +962,7 @@ def test_meeting_management_requires_organizer_or_admin(client) -> None:
 
     forbidden_delete_resp = client.delete(f"/api/v1/meetings/{meeting_id}", headers=outsider_headers)
     assert forbidden_delete_resp.status_code == 403
-    assert forbidden_delete_resp.json()["detail"] == "Not authorized to manage this meeting"
+    assert forbidden_delete_resp.json()["detail"] == "无权管理此会议"
 
     admin_delete_resp = client.delete(f"/api/v1/meetings/{meeting_id}", headers=admin_headers)
     assert admin_delete_resp.status_code == 204
@@ -1078,7 +1078,7 @@ def test_transcript_management_requires_organizer_or_admin(client) -> None:
         headers=outsider_headers,
     )
     assert forbidden_create_resp.status_code == 403
-    assert forbidden_create_resp.json()["detail"] == "Not authorized to manage transcripts for this meeting"
+    assert forbidden_create_resp.json()["detail"] == "无权管理此会议的转写内容"
 
     organizer_create_resp = client.post(
         "/api/v1/transcripts",
@@ -1096,7 +1096,7 @@ def test_transcript_management_requires_organizer_or_admin(client) -> None:
 
     forbidden_list_resp = client.get(f"/api/v1/transcripts?meeting_id={meeting_id}", headers=outsider_headers)
     assert forbidden_list_resp.status_code == 403
-    assert forbidden_list_resp.json()["detail"] == "Not authorized to manage transcripts for this meeting"
+    assert forbidden_list_resp.json()["detail"] == "无权管理此会议的转写内容"
 
     admin_list_resp = client.get(f"/api/v1/transcripts?meeting_id={meeting_id}", headers=admin_headers)
     assert admin_list_resp.status_code == 200
@@ -1104,7 +1104,7 @@ def test_transcript_management_requires_organizer_or_admin(client) -> None:
 
     forbidden_get_resp = client.get(f"/api/v1/transcripts/{transcript_id}", headers=outsider_headers)
     assert forbidden_get_resp.status_code == 403
-    assert forbidden_get_resp.json()["detail"] == "Not authorized to manage transcripts for this meeting"
+    assert forbidden_get_resp.json()["detail"] == "无权管理此会议的转写内容"
 
     forbidden_update_resp = client.patch(
         f"/api/v1/transcripts/{transcript_id}",
@@ -1112,7 +1112,7 @@ def test_transcript_management_requires_organizer_or_admin(client) -> None:
         headers=outsider_headers,
     )
     assert forbidden_update_resp.status_code == 403
-    assert forbidden_update_resp.json()["detail"] == "Not authorized to manage transcripts for this meeting"
+    assert forbidden_update_resp.json()["detail"] == "无权管理此会议的转写内容"
 
     admin_update_resp = client.patch(
         f"/api/v1/transcripts/{transcript_id}",
@@ -1123,7 +1123,7 @@ def test_transcript_management_requires_organizer_or_admin(client) -> None:
 
     forbidden_delete_resp = client.delete(f"/api/v1/transcripts/{transcript_id}", headers=outsider_headers)
     assert forbidden_delete_resp.status_code == 403
-    assert forbidden_delete_resp.json()["detail"] == "Not authorized to manage transcripts for this meeting"
+    assert forbidden_delete_resp.json()["detail"] == "无权管理此会议的转写内容"
 
     admin_delete_resp = client.delete(f"/api/v1/transcripts/{transcript_id}", headers=admin_headers)
     assert admin_delete_resp.status_code == 204

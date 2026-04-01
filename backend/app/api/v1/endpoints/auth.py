@@ -46,9 +46,14 @@ def login(
         user = authenticate_user(db, payload.username, payload.password)
         if user is None:
             logger.warning("Login failed for user: %s - invalid credentials", payload.username)
+            from app.models.user import User
+            db_user = db.query(User).filter(User.username == payload.username).first()
+            user_id = db_user.id if db_user else 0
+            create_audit_log(db, actor_user_id=user_id if db_user else None, entity_type="users", entity_id=user_id, action="LOGIN_FAILED")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
         token = create_user_access_token(user)
         logger.info("Login successful for user: %s", payload.username)
+        create_audit_log(db, actor_user_id=user.id, entity_type="users", entity_id=user.id, action="LOGIN_SUCCESS")
         return TokenOut(access_token=token)
     except HTTPException:
         raise
