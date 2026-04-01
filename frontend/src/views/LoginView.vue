@@ -165,16 +165,18 @@ async function register() {
 
 <style scoped>
 :root {
-  --primary: #6366F1;
+  --primary: #4F46E5;
   --primary-light: #818CF8;
-  --primary-dark: #4F46E5;
+  --primary-dark: #3730A3;
   --accent: #059669;
-  --bg: #F5F3FF;
-  --card: #FFFFFF;
-  --muted: #EBEFF9;
-  --border: #E0E7FF;
-  --text: #1E1B4B;
-  --text-muted: #64748B;
+  --bg: #0F172A;
+  --bg-light: #1E293B;
+  --card: #1E293B;
+  --card-hover: #334155;
+  --muted: #334155;
+  --border: #475569;
+  --text: #F8FAFC;
+  --text-muted: #94A3B8;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -194,31 +196,10 @@ async function register() {
   position: absolute;
   inset: 0;
   background: 
-    radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 80% 70%, rgba(129, 140, 248, 0.08) 0%, transparent 50%);
+    radial-gradient(ellipse at 20% 20%, rgba(79, 70, 229, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(56, 189, 248, 0.05) 0%, transparent 70%);
   pointer-events: none;
-}
-
-.login-bg-pattern::before {
-  content: '';
-  position: absolute;
-  width: 600px;
-  height: 600px;
-  border: 1px solid rgba(99, 102, 241, 0.1);
-  border-radius: 50%;
-  top: -200px;
-  right: -100px;
-}
-
-.login-bg-pattern::after {
-  content: '';
-  position: absolute;
-  width: 400px;
-  height: 400px;
-  border: 1px solid rgba(129, 140, 248, 0.1);
-  border-radius: 50%;
-  bottom: -150px;
-  left: -100px;
 }
 
 .login-container {
@@ -248,7 +229,7 @@ async function register() {
   margin: 0;
   font-size: 32px;
   font-weight: 700;
-  color: var(--text);
+  color: #fff;
   letter-spacing: -0.5px;
 }
 
@@ -262,7 +243,7 @@ async function register() {
   width: 100%;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
-  box-shadow: 0 4px 24px rgba(99, 102, 241, 0.08);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   background: var(--card);
 }
 

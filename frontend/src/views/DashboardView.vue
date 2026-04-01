@@ -205,11 +205,13 @@ onMounted(async () => {
 :root {
   --primary: #6366F1;
   --primary-light: #818CF8;
-  --bg: #F5F3FF;
-  --card: #FFFFFF;
-  --border: #E0E7FF;
-  --text: #1E1B4B;
-  --text-muted: #64748B;
+  --bg: #0F172A;
+  --bg-light: #1E293B;
+  --card: #1E293B;
+  --card-hover: #334155;
+  --border: #334155;
+  --text: #F8FAFC;
+  --text-muted: #94A3B8;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -222,7 +224,7 @@ onMounted(async () => {
 }
 
 .hero-header {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #6366F1 100%);
   border-radius: var(--radius-lg);
   padding: 32px;
 }
@@ -287,6 +289,7 @@ onMounted(async () => {
 .stat-card {
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
+  background: var(--card);
   display: flex;
   align-items: center;
   gap: 16px;

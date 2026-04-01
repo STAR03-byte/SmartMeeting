@@ -64,17 +64,16 @@ function handleLogout() {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 220px 1fr;
-  background: radial-gradient(circle at 15% 10%, #fff9ef, #f3f8ff 55%, #f8fbff 100%);
+  background: #0F172A;
 }
 
 .side-rail {
-  border-right: 1px solid #dce5ef;
+  border-right: 1px solid #1E293B;
   padding: 22px 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: rgba(255, 255, 255, 0.76);
-  backdrop-filter: blur(8px);
+  background: #1E293B;
 }
 
 .brand-block {
@@ -85,11 +84,11 @@ function handleLogout() {
 
 .brand-block strong {
   font-size: 22px;
-  color: #14324f;
+  color: #fff;
 }
 
 .brand-block span {
-  color: #4c6680;
+  color: #6366F1;
   font-size: 13px;
 }
 
@@ -98,7 +97,7 @@ function handleLogout() {
   align-items: center;
   gap: 10px;
   padding: 10px;
-  background: #f0f6ff;
+  background: #334155;
   border-radius: 10px;
 }
 
@@ -110,12 +109,12 @@ function handleLogout() {
 .user-name {
   font-weight: 600;
   font-size: 14px;
-  color: #14324f;
+  color: #F8FAFC;
 }
 
 .user-role {
   font-size: 12px;
-  color: #6a8299;
+  color: #94A3B8;
 }
 
 nav {
@@ -125,28 +124,35 @@ nav {
 }
 
 nav a {
-  color: #204668;
+  color: #94A3B8;
   text-decoration: none;
-  padding: 8px 12px;
+  padding: 10px 14px;
   border-radius: 10px;
   display: block;
+  transition: all 0.2s;
+}
+
+nav a:hover {
+  background: #334155;
+  color: #F8FAFC;
 }
 
 nav a.router-link-active {
-  background: #e8f4ff;
-  color: #0c4a84;
+  background: #6366F1;
+  color: #fff;
   font-weight: 500;
 }
 
 .side-footer {
   margin-top: auto;
   padding-top: 16px;
-  border-top: 1px solid #e4ecf5;
+  border-top: 1px solid #334155;
 }
 
 .main-stage {
   padding: 22px;
   overflow-y: auto;
+  background: #0F172A;
 }
 
 @media (max-width: 900px) {
@@ -156,7 +162,7 @@ nav a.router-link-active {
 
   .side-rail {
     border-right: 0;
-    border-bottom: 1px solid #dce5ef;
+    border-bottom: 1px solid #334155;
     flex-direction: row;
     flex-wrap: wrap;
     gap: 12px;

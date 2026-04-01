@@ -314,11 +314,13 @@ onMounted(async () => {
 :root {
   --primary: #6366F1;
   --primary-light: #818CF8;
-  --bg: #F5F3FF;
-  --card: #FFFFFF;
-  --border: #E0E7FF;
-  --text: #1E1B4B;
-  --text-muted: #64748B;
+  --bg: #0F172A;
+  --bg-light: #1E293B;
+  --card: #1E293B;
+  --card-hover: #334155;
+  --border: #334155;
+  --text: #F8FAFC;
+  --text-muted: #94A3B8;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -328,6 +330,9 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-height: 100vh;
+  background: var(--bg);
+  padding: 20px;
 }
 
 .page-header {
