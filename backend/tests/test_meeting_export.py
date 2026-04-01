@@ -84,3 +84,48 @@ def test_meeting_export_returns_text_payload(auth_client) -> None:
     assert body["filename"].endswith(".txt")
     assert body["content"].startswith("title=")
     assert "summary=" in body["content"]
+
+
+def test_meeting_export_rejects_unsupported_format(auth_client) -> None:
+    user_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "export_pdf_owner",
+            "email": "export_pdf_owner@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Export PDF Owner",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "导出格式校验会议",
+            "description": "测试不支持导出格式",
+            "organizer_id": organizer_id,
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    auth_client.post(
+        "/api/v1/transcripts",
+        json={
+            "meeting_id": meeting_id,
+            "speaker_user_id": organizer_id,
+            "speaker_name": "PM",
+            "segment_index": 1,
+            "content": "请确认导出仅支持 txt。",
+        },
+    )
+
+    postprocess_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/postprocess")
+    assert postprocess_resp.status_code == 200
+
+    response = auth_client.post(f"/api/v1/meetings/{meeting_id}/export", json={"format": "pdf"})
+
+    assert response.status_code == 422
+    assert response.json()["error_code"] == "REQUEST_VALIDATION_ERROR"

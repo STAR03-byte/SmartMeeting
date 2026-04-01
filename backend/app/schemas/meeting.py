@@ -93,7 +93,7 @@ class MeetingPostprocessOut(BaseModel):
 class MeetingExportRequest(BaseModel):
     """会议导出请求。"""
 
-    format: str = Field(default="txt", pattern="^(txt|pdf|docx)$")
+    format: str = Field(default="txt", pattern="^txt$")
 
 
 class MeetingExportOut(BaseModel):
