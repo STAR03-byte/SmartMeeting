@@ -101,6 +101,9 @@ class Settings(BaseSettings):
         if self.db_user.strip().lower() in weak_users or self.db_password in weak_passwords:
             raise ValueError("DB credentials are too weak for production")
 
+        if self.llm_provider.strip().lower() == "openai" and not self.llm_api_key.strip():
+            raise ValueError("LLM_API_KEY is required for OpenAI provider in production")
+
 
 settings = Settings()
 settings.validate_security()
