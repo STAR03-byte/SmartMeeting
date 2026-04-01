@@ -1,19 +1,23 @@
 <template>
   <section class="login-page">
-    <div class="login-bg-pattern"></div>
+    <div class="login-bg">
+      <div class="login-bg-gradient"></div>
+      <div class="login-bg-grid"></div>
+    </div>
+    
     <div class="login-container">
       <div class="login-brand">
         <div class="brand-icon">
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-            <rect width="48" height="48" rx="12" fill="url(#brandGrad)"/>
-            <path d="M14 32c0-7.732 6.268-14 14-14s14 6.268 14 14" stroke="white" stroke-width="3" stroke-linecap="round"/>
-            <circle cx="24" cy="24" r="4" stroke="white" stroke-width="2"/>
+          <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
             <defs>
-              <linearGradient id="brandGrad" x1="0" y1="0" x2="48" y2="48">
-                <stop stop-color="#6366F1"/>
-                <stop offset="1" stop-color="#818CF8"/>
+              <linearGradient id="brandGrad" x1="0" y1="0" x2="56" y2="56">
+                <stop offset="0%" stop-color="#4F46E5"/>
+                <stop offset="100%" stop-color="#7C3AED"/>
               </linearGradient>
             </defs>
+            <rect width="56" height="56" rx="16" fill="url(#brandGrad)"/>
+            <path d="M16 38c0-9.941 8.059-18 18-18s18 8.059 18 18" stroke="white" stroke-width="3.5" stroke-linecap="round" opacity="0.9"/>
+            <circle cx="28" cy="28" r="5" fill="white"/>
           </svg>
         </div>
         <h1>SmartMeeting</h1>
@@ -34,7 +38,7 @@
             </el-form>
 
             <div class="login-footer">
-              <span>测试账号: logintest / plain-password</span>
+              <span>测试: logintest / plain-password</span>
             </div>
           </el-tab-pane>
 
@@ -164,49 +168,46 @@ async function register() {
 </script>
 
 <style scoped>
-:root {
-  --primary: #4F46E5;
-  --primary-light: #818CF8;
-  --primary-dark: #3730A3;
-  --accent: #059669;
-  --bg: #0F172A;
-  --bg-light: #1E293B;
-  --card: #1E293B;
-  --card-hover: #334155;
-  --muted: #334155;
-  --border: #475569;
-  --text: #F8FAFC;
-  --text-muted: #94A3B8;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-}
-
 .login-page {
   min-height: 100vh;
   display: grid;
   place-items: center;
   padding: 24px;
-  background: var(--bg);
+  background: #F8FAFC;
   position: relative;
   overflow: hidden;
 }
 
-.login-bg-pattern {
+.login-bg {
   position: absolute;
   inset: 0;
-  background: 
-    radial-gradient(ellipse at 20% 20%, rgba(79, 70, 229, 0.15) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(56, 189, 248, 0.05) 0%, transparent 70%);
   pointer-events: none;
+}
+
+.login-bg-gradient {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: 
+    radial-gradient(ellipse at 30% 20%, rgba(79, 70, 229, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(124, 58, 237, 0.08) 0%, transparent 50%);
+}
+
+.login-bg-grid {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    linear-gradient(rgba(79, 70, 229, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79, 70, 229, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 .login-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 32px;
+  gap: 36px;
   width: min(400px, 100%);
   position: relative;
   z-index: 1;
@@ -217,42 +218,43 @@ async function register() {
 }
 
 .brand-icon {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .brand-icon svg {
   display: block;
   margin: 0 auto;
+  filter: drop-shadow(0 8px 20px rgba(79, 70, 229, 0.3));
 }
 
 .login-brand h1 {
   margin: 0;
-  font-size: 32px;
-  font-weight: 700;
-  color: #fff;
+  font-size: 36px;
+  font-weight: 800;
+  color: #0F172A;
   letter-spacing: -0.5px;
 }
 
 .login-brand p {
   margin: 8px 0 0;
-  color: var(--text-muted);
+  color: #64748B;
   font-size: 15px;
 }
 
 .login-card {
   width: 100%;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  background: var(--card);
+  border-radius: 16px;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  background: #FFFFFF;
 }
 
 .login-card :deep(.el-card__body) {
-  padding: 28px 32px;
+  padding: 32px 36px;
 }
 
 .login-card :deep(.el-tabs__header) {
-  margin-bottom: 24px;
+  margin-bottom: 28px;
 }
 
 .login-card :deep(.el-tabs__nav-wrap::after) {
@@ -260,64 +262,66 @@ async function register() {
 }
 
 .login-card :deep(.el-tabs__item) {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
-  color: var(--text-muted);
-  padding: 0 16px;
+  color: #64748B;
+  padding: 0 20px;
 }
 
 .login-card :deep(.el-tabs__item.is-active) {
-  color: var(--primary);
+  color: #4F46E5;
 }
 
 .login-card :deep(.el-tabs__active-bar) {
   height: 3px;
-  background: var(--primary);
+  background: linear-gradient(90deg, #4F46E5, #7C3AED);
   border-radius: 2px;
 }
 
 .login-form-item :deep(.el-form-item__label) {
-  font-weight: 500;
-  color: var(--text);
+  font-weight: 600;
+  color: #0F172A;
   font-size: 14px;
   margin-bottom: 8px;
 }
 
 .login-form-item :deep(.el-input__wrapper) {
-  border-radius: var(--radius-sm);
-  box-shadow: 0 0 0 1px var(--border) inset;
-  padding: 4px 12px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #E2E8F0 inset;
+  padding: 4px 14px;
 }
 
 .login-form-item :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1px var(--primary-light) inset;
+  box-shadow: 0 0 0 1px #818CF8 inset;
 }
 
 .login-form-item :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) inset;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15) inset;
 }
 
 .login-btn {
   width: 100%;
-  height: 44px;
+  height: 48px;
   font-size: 15px;
   font-weight: 600;
-  border-radius: var(--radius-sm);
-  background: var(--primary);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
   border: none;
-  margin-top: 8px;
+  margin-top: 12px;
+  transition: all 0.3s;
 }
 
 .login-btn:hover {
-  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
 }
 
 .login-footer {
   margin-top: 20px;
   text-align: center;
   font-size: 13px;
-  color: var(--text-muted);
+  color: #64748B;
   padding-top: 16px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid #E2E8F0;
 }
 </style>

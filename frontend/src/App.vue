@@ -63,17 +63,17 @@ function handleLogout() {
 .app-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 220px 1fr;
-  background: #0F172A;
+  grid-template-columns: 240px 1fr;
+  background: #F8FAFC;
 }
 
 .side-rail {
-  border-right: 1px solid #1E293B;
-  padding: 22px 16px;
+  border-right: 1px solid #E2E8F0;
+  padding: 24px 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  background: #1E293B;
+  gap: 20px;
+  background: #FFFFFF;
 }
 
 .brand-block {
@@ -84,21 +84,23 @@ function handleLogout() {
 
 .brand-block strong {
   font-size: 22px;
-  color: #fff;
+  font-weight: 800;
+  color: #0F172A;
 }
 
 .brand-block span {
-  color: #6366F1;
+  color: #4F46E5;
   font-size: 13px;
+  font-weight: 500;
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px;
-  background: #334155;
-  border-radius: 10px;
+  gap: 12px;
+  padding: 12px;
+  background: #F1F5F9;
+  border-radius: 12px;
 }
 
 .user-meta {
@@ -109,12 +111,12 @@ function handleLogout() {
 .user-name {
   font-weight: 600;
   font-size: 14px;
-  color: #F8FAFC;
+  color: #0F172A;
 }
 
 .user-role {
   font-size: 12px;
-  color: #94A3B8;
+  color: #64748B;
 }
 
 nav {
@@ -124,35 +126,36 @@ nav {
 }
 
 nav a {
-  color: #94A3B8;
+  color: #64748B;
   text-decoration: none;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border-radius: 10px;
   display: block;
+  font-weight: 500;
   transition: all 0.2s;
 }
 
 nav a:hover {
-  background: #334155;
-  color: #F8FAFC;
+  background: #F1F5F9;
+  color: #0F172A;
 }
 
 nav a.router-link-active {
-  background: #6366F1;
+  background: #4F46E5;
   color: #fff;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .side-footer {
   margin-top: auto;
-  padding-top: 16px;
-  border-top: 1px solid #334155;
+  padding-top: 20px;
+  border-top: 1px solid #E2E8F0;
 }
 
 .main-stage {
-  padding: 22px;
+  padding: 24px;
   overflow-y: auto;
-  background: #0F172A;
+  background: #F8FAFC;
 }
 
 @media (max-width: 900px) {
@@ -162,7 +165,7 @@ nav a.router-link-active {
 
   .side-rail {
     border-right: 0;
-    border-bottom: 1px solid #334155;
+    border-bottom: 1px solid #E2E8F0;
     flex-direction: row;
     flex-wrap: wrap;
     gap: 12px;

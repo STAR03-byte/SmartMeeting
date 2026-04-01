@@ -203,15 +203,14 @@ onMounted(async () => {
 
 <style scoped>
 :root {
-  --primary: #6366F1;
+  --primary: #4F46E5;
   --primary-light: #818CF8;
-  --bg: #0F172A;
-  --bg-light: #1E293B;
-  --card: #1E293B;
-  --card-hover: #334155;
-  --border: #334155;
-  --text: #F8FAFC;
-  --text-muted: #94A3B8;
+  --secondary: #7C3AED;
+  --bg: #F8FAFC;
+  --surface: #FFFFFF;
+  --border: #E2E8F0;
+  --text: #0F172A;
+  --text-muted: #64748B;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -289,7 +288,7 @@ onMounted(async () => {
 .stat-card {
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
-  background: var(--card);
+  background: var(--surface);
   display: flex;
   align-items: center;
   gap: 16px;
