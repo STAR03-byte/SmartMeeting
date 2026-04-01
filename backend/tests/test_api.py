@@ -1390,11 +1390,73 @@ def test_get_shared_meeting_returns_read_only_payload(auth_client) -> None:
     assert body["tasks"][0]["meeting_id"] == meeting_id
 
 
-def test_get_shared_meeting_invalid_token_returns_404(auth_client) -> None:
-    response = auth_client.get("/api/v1/shared/meetings/not-a-real-token")
+def test_get_shared_meeting_invalid_token_returns_404(client) -> None:
+    response = client.get("/api/v1/shared/meetings/not-a-real-token")
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Shared meeting not found"
+
+
+def test_get_shared_meeting_public_access_without_auth(client) -> None:
+    owner_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "public_share_owner",
+            "email": "public_share_owner@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Public Share Owner",
+            "role": "member",
+        },
+    )
+    assert owner_resp.status_code == 201
+    owner_id = owner_resp.json()["id"]
+
+    login_resp = client.post(
+        "/api/v1/auth/login",
+        data={"username": "public_share_owner", "password": "plain-password"},
+    )
+    assert login_resp.status_code == 200
+    owner_headers = {"Authorization": f"Bearer {login_resp.json()['access_token']}"}
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "公开分享会议",
+            "description": "验证分享链接匿名访问",
+            "organizer_id": owner_id,
+        },
+        headers=owner_headers,
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    transcript_resp = client.post(
+        "/api/v1/transcripts",
+        json={
+            "meeting_id": meeting_id,
+            "speaker_user_id": owner_id,
+            "speaker_name": "Owner",
+            "segment_index": 1,
+            "content": "请确认公开分享可匿名访问。",
+        },
+        headers=owner_headers,
+    )
+    assert transcript_resp.status_code == 201
+
+    postprocess_resp = client.post(f"/api/v1/meetings/{meeting_id}/postprocess", headers=owner_headers)
+    assert postprocess_resp.status_code == 200
+
+    share_resp = client.post(f"/api/v1/meetings/{meeting_id}/share", headers=owner_headers)
+    assert share_resp.status_code == 200
+    share_token = share_resp.json()["share_token"]
+
+    public_resp = client.get(f"/api/v1/shared/meetings/{share_token}")
+    assert public_resp.status_code == 200
+    body = public_resp.json()
+    assert body["meeting"]["id"] == meeting_id
+    assert body["meeting"]["summary"]
+    assert isinstance(body["transcripts"], list)
+    assert isinstance(body["tasks"], list)
 
 
 def test_meeting_share_requires_organizer(client) -> None:

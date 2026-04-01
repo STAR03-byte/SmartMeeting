@@ -5,9 +5,8 @@ from app.core.database import get_db
 from app.models.meeting import Meeting
 from app.schemas.meeting import SharedMeetingOut
 from app.services.meeting_service import build_shared_meeting_out
-from .auth import get_current_user
 
-router = APIRouter(prefix="/shared/meetings", tags=["shared-meetings"], dependencies=[Depends(get_current_user)])
+router = APIRouter(prefix="/shared/meetings", tags=["shared-meetings"])
 
 
 @router.get("/{share_token}", response_model=SharedMeetingOut)

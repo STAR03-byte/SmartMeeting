@@ -122,7 +122,7 @@ Query 参数：
   - `meeting`
   - `transcripts`
   - `tasks`
-- 访问要求: 已登录；未登录或登录态失效返回 `401`
+- 访问要求: 公开访问（无需登录）
 - 无效 `share_token` 返回 `404 Shared meeting not found`
 
 ## 3. 用户接口
