@@ -3,6 +3,7 @@ import { defineStore } from "pinia";
 import { getApiErrorMessage } from "../api/client";
 import { fetchCurrentUser, login, type LoginResponse } from "../api/auth";
 import type { UserItem } from "../api/types";
+import { notifyApiError } from "../utils/notify";
 
 interface AuthState {
   token: string | null;
@@ -38,6 +39,7 @@ export const useAuthStore = defineStore("auth", {
         await this.loadCurrentUser();
       } catch (error) {
         this.error = getApiErrorMessage(error);
+        notifyApiError(error, { prefix: "登录失败" });
         throw error;
       } finally {
         this.loading = false;
@@ -54,6 +56,7 @@ export const useAuthStore = defineStore("auth", {
         this.currentUser = await fetchCurrentUser<UserItem>();
       } catch (error) {
         this.error = getApiErrorMessage(error);
+        notifyApiError(error, { prefix: "加载当前用户失败" });
         this.currentUser = null;
         throw error;
       }

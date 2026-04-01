@@ -113,7 +113,6 @@
 import { onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 
-import { getApiErrorMessage } from "../api/client";
 import AppErrorAlert from "../components/AppErrorAlert.vue";
 import { notifyApiError } from "../utils/notify";
 import {
@@ -174,7 +173,7 @@ async function refreshTasks() {
     tasks.value = result.items;
     totalCount.value = result.total;
   } catch (err) {
-    error.value = getApiErrorMessage(err);
+    error.value = notifyApiError(err, { prefix: "加载任务失败" });
   } finally {
     loading.value = false;
   }

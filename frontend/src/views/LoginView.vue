@@ -34,9 +34,9 @@
 import { reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import { getApiErrorMessage } from "../api/client";
 import AppErrorAlert from "../components/AppErrorAlert.vue";
 import { useAuthStore } from "../stores/authStore";
+import { notifyApiError } from "../utils/notify";
 import { resolveSafeRedirect } from "../utils/redirect";
 
 const authStore = useAuthStore();
@@ -57,7 +57,7 @@ async function submit() {
     await authStore.signIn(form.username, form.password);
     await router.push(resolveSafeRedirect(route.query.redirect));
   } catch (err) {
-    error.value = getApiErrorMessage(err);
+    error.value = notifyApiError(err, { prefix: "登录失败" });
   } finally {
     loading.value = false;
   }

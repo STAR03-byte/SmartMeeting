@@ -27,7 +27,8 @@ describe("notifyApiError", () => {
     const { ElMessage } = await import("element-plus");
     const { notifyApiError } = await import("./notify");
 
-    notifyApiError(new Error("boom"), { prefix: "操作失败" });
+    const fullMessage = notifyApiError(new Error("boom"), { prefix: "操作失败" });
     expect(ElMessage.error).toHaveBeenCalledWith("操作失败: normalized message");
+    expect(fullMessage).toBe("操作失败: normalized message");
   });
 });
