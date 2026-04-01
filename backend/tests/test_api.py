@@ -827,6 +827,128 @@ def test_meeting_management_requires_organizer_or_admin(client) -> None:
     assert admin_delete_resp.status_code == 204
 
 
+def test_transcript_management_requires_organizer_or_admin(client) -> None:
+    organizer_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "transcript_auth_owner",
+            "email": "transcript_auth_owner@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Transcript Auth Owner",
+            "role": "member",
+        },
+    )
+    assert organizer_resp.status_code == 201
+    organizer_id = organizer_resp.json()["id"]
+
+    outsider_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "transcript_auth_outsider",
+            "email": "transcript_auth_outsider@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Transcript Auth Outsider",
+            "role": "member",
+        },
+    )
+    assert outsider_resp.status_code == 201
+
+    admin_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "transcript_auth_admin",
+            "email": "transcript_auth_admin@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Transcript Auth Admin",
+            "role": "admin",
+        },
+    )
+    assert admin_resp.status_code == 201
+
+    def login_headers(username: str) -> dict[str, str]:
+        login_resp = client.post("/api/v1/auth/login", data={"username": username, "password": "plain-password"})
+        assert login_resp.status_code == 200
+        return {"Authorization": f"Bearer {login_resp.json()['access_token']}"}
+
+    organizer_headers = login_headers("transcript_auth_owner")
+    outsider_headers = login_headers("transcript_auth_outsider")
+    admin_headers = login_headers("transcript_auth_admin")
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "转写权限会议",
+            "description": "仅组织者或管理员可管理转写",
+            "organizer_id": organizer_id,
+        },
+        headers=organizer_headers,
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    forbidden_create_resp = client.post(
+        "/api/v1/transcripts",
+        json={
+            "meeting_id": meeting_id,
+            "speaker_user_id": organizer_id,
+            "speaker_name": "Owner",
+            "segment_index": 1,
+            "content": "越权创建转写",
+        },
+        headers=outsider_headers,
+    )
+    assert forbidden_create_resp.status_code == 403
+    assert forbidden_create_resp.json()["detail"] == "Not authorized to manage transcripts for this meeting"
+
+    organizer_create_resp = client.post(
+        "/api/v1/transcripts",
+        json={
+            "meeting_id": meeting_id,
+            "speaker_user_id": organizer_id,
+            "speaker_name": "Owner",
+            "segment_index": 1,
+            "content": "组织者创建转写",
+        },
+        headers=organizer_headers,
+    )
+    assert organizer_create_resp.status_code == 201
+    transcript_id = organizer_create_resp.json()["id"]
+
+    forbidden_list_resp = client.get(f"/api/v1/transcripts?meeting_id={meeting_id}", headers=outsider_headers)
+    assert forbidden_list_resp.status_code == 403
+    assert forbidden_list_resp.json()["detail"] == "Not authorized to manage transcripts for this meeting"
+
+    admin_list_resp = client.get(f"/api/v1/transcripts?meeting_id={meeting_id}", headers=admin_headers)
+    assert admin_list_resp.status_code == 200
+    assert len(admin_list_resp.json()) == 1
+
+    forbidden_get_resp = client.get(f"/api/v1/transcripts/{transcript_id}", headers=outsider_headers)
+    assert forbidden_get_resp.status_code == 403
+    assert forbidden_get_resp.json()["detail"] == "Not authorized to manage transcripts for this meeting"
+
+    forbidden_update_resp = client.patch(
+        f"/api/v1/transcripts/{transcript_id}",
+        json={"content": "越权修改转写"},
+        headers=outsider_headers,
+    )
+    assert forbidden_update_resp.status_code == 403
+    assert forbidden_update_resp.json()["detail"] == "Not authorized to manage transcripts for this meeting"
+
+    admin_update_resp = client.patch(
+        f"/api/v1/transcripts/{transcript_id}",
+        json={"content": "管理员修改转写"},
+        headers=admin_headers,
+    )
+    assert admin_update_resp.status_code == 200
+
+    forbidden_delete_resp = client.delete(f"/api/v1/transcripts/{transcript_id}", headers=outsider_headers)
+    assert forbidden_delete_resp.status_code == 403
+    assert forbidden_delete_resp.json()["detail"] == "Not authorized to manage transcripts for this meeting"
+
+    admin_delete_resp = client.delete(f"/api/v1/transcripts/{transcript_id}", headers=admin_headers)
+    assert admin_delete_resp.status_code == 204
+
+
 def test_create_meeting_rejects_nonexistent_organizer(auth_client) -> None:
     create_resp = auth_client.post(
         "/api/v1/meetings",
