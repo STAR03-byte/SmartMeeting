@@ -677,6 +677,156 @@ def test_task_management_requires_assignee_reporter_organizer_or_admin(client) -
     assert organizer_delete_resp.status_code == 404
 
 
+def test_meeting_management_requires_organizer_or_admin(client) -> None:
+    organizer_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "meeting_auth_owner",
+            "email": "meeting_auth_owner@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Meeting Auth Owner",
+            "role": "member",
+        },
+    )
+    assert organizer_resp.status_code == 201
+    organizer_id = organizer_resp.json()["id"]
+
+    outsider_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "meeting_auth_outsider",
+            "email": "meeting_auth_outsider@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Meeting Auth Outsider",
+            "role": "member",
+        },
+    )
+    assert outsider_resp.status_code == 201
+
+    admin_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "meeting_auth_admin",
+            "email": "meeting_auth_admin@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Meeting Auth Admin",
+            "role": "admin",
+        },
+    )
+    assert admin_resp.status_code == 201
+
+    def login_headers(username: str) -> dict[str, str]:
+        login_resp = client.post("/api/v1/auth/login", data={"username": username, "password": "plain-password"})
+        assert login_resp.status_code == 200
+        return {"Authorization": f"Bearer {login_resp.json()['access_token']}"}
+
+    organizer_headers = login_headers("meeting_auth_owner")
+    outsider_headers = login_headers("meeting_auth_outsider")
+    admin_headers = login_headers("meeting_auth_admin")
+
+    forbidden_create_resp = client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "越权创建会议",
+            "description": "非组织者本人不可创建",
+            "organizer_id": organizer_id,
+        },
+        headers=outsider_headers,
+    )
+    assert forbidden_create_resp.status_code == 403
+    assert forbidden_create_resp.json()["detail"] == "Not authorized to manage this meeting"
+
+    organizer_create_resp = client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "会议权限验证",
+            "description": "仅组织者或管理员可管理",
+            "organizer_id": organizer_id,
+        },
+        headers=organizer_headers,
+    )
+    assert organizer_create_resp.status_code == 201
+    meeting_id = organizer_create_resp.json()["id"]
+
+    forbidden_update_resp = client.patch(
+        f"/api/v1/meetings/{meeting_id}",
+        json={"status": "ongoing"},
+        headers=outsider_headers,
+    )
+    assert forbidden_update_resp.status_code == 403
+    assert forbidden_update_resp.json()["detail"] == "Not authorized to manage this meeting"
+
+    organizer_update_resp = client.patch(
+        f"/api/v1/meetings/{meeting_id}",
+        json={"status": "ongoing"},
+        headers=organizer_headers,
+    )
+    assert organizer_update_resp.status_code == 200
+
+    transcript_resp = client.post(
+        "/api/v1/transcripts",
+        json={
+            "meeting_id": meeting_id,
+            "speaker_user_id": organizer_id,
+            "speaker_name": "Owner",
+            "segment_index": 1,
+            "content": "请大家确认会议管理权限。",
+        },
+        headers=organizer_headers,
+    )
+    assert transcript_resp.status_code == 201
+
+    forbidden_postprocess_resp = client.post(
+        f"/api/v1/meetings/{meeting_id}/postprocess",
+        headers=outsider_headers,
+    )
+    assert forbidden_postprocess_resp.status_code == 403
+    assert forbidden_postprocess_resp.json()["detail"] == "Not authorized to manage this meeting"
+
+    organizer_postprocess_resp = client.post(
+        f"/api/v1/meetings/{meeting_id}/postprocess",
+        headers=organizer_headers,
+    )
+    assert organizer_postprocess_resp.status_code == 200
+
+    forbidden_export_resp = client.post(
+        f"/api/v1/meetings/{meeting_id}/export",
+        json={"format": "txt"},
+        headers=outsider_headers,
+    )
+    assert forbidden_export_resp.status_code == 403
+    assert forbidden_export_resp.json()["detail"] == "Not authorized to manage this meeting"
+
+    admin_export_resp = client.post(
+        f"/api/v1/meetings/{meeting_id}/export",
+        json={"format": "txt"},
+        headers=admin_headers,
+    )
+    assert admin_export_resp.status_code == 200
+
+    forbidden_audio_resp = client.post(
+        f"/api/v1/meetings/{meeting_id}/audio",
+        files={"file": ("demo.wav", b"RIFF....WAVEfmt", "audio/wav")},
+        headers=outsider_headers,
+    )
+    assert forbidden_audio_resp.status_code == 403
+    assert forbidden_audio_resp.json()["detail"] == "Not authorized to manage this meeting"
+
+    admin_audio_resp = client.post(
+        f"/api/v1/meetings/{meeting_id}/audio",
+        files={"file": ("demo.wav", b"RIFF....WAVEfmt", "audio/wav")},
+        headers=admin_headers,
+    )
+    assert admin_audio_resp.status_code == 201
+
+    forbidden_delete_resp = client.delete(f"/api/v1/meetings/{meeting_id}", headers=outsider_headers)
+    assert forbidden_delete_resp.status_code == 403
+    assert forbidden_delete_resp.json()["detail"] == "Not authorized to manage this meeting"
+
+    admin_delete_resp = client.delete(f"/api/v1/meetings/{meeting_id}", headers=admin_headers)
+    assert admin_delete_resp.status_code == 204
+
+
 def test_create_meeting_rejects_nonexistent_organizer(auth_client) -> None:
     create_resp = auth_client.post(
         "/api/v1/meetings",

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, Upload
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.schemas.auth import CurrentUserOut
 from app.schemas.meeting_audio import MeetingAudioOut
 from app.models.meeting_transcript import MeetingTranscript
 from app.schemas.meeting import (
@@ -38,14 +39,24 @@ from .auth import get_current_user
 router = APIRouter(prefix="/meetings", tags=["meetings"], dependencies=[Depends(get_current_user)])
 
 
+def _assert_meeting_permission(meeting, current_user: CurrentUserOut) -> None:
+    if current_user.role == "admin":
+        return
+    if meeting.organizer_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to manage this meeting")
+
+
 @router.post("", response_model=MeetingOut, status_code=status.HTTP_201_CREATED)
 def create_meeting_api(
     payload: MeetingCreate,
     db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> MeetingOut:
     organizer = get_user(db, payload.organizer_id)
     if not organizer:
         raise HTTPException(status_code=404, detail="Organizer not found")
+    if current_user.role != "admin" and current_user.id != payload.organizer_id:
+        raise HTTPException(status_code=403, detail="Not authorized to manage this meeting")
 
     if (
         payload.scheduled_start_at is not None
@@ -118,12 +129,14 @@ def update_meeting_api(
     meeting_id: int,
     payload: MeetingUpdate,
     db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> MeetingOut:
     """更新会议。"""
 
     meeting = get_meeting(db, meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+    _assert_meeting_permission(meeting, current_user)
 
     scheduled_start_at = payload.scheduled_start_at
     scheduled_end_at = payload.scheduled_end_at
@@ -161,12 +174,17 @@ def update_meeting_api(
 
 
 @router.delete("/{meeting_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_meeting_api(meeting_id: int, db: Annotated[Session, Depends(get_db)]) -> None:
+def delete_meeting_api(
+    meeting_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
+) -> None:
     """删除会议。"""
 
     meeting = get_meeting(db, meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+    _assert_meeting_permission(meeting, current_user)
     delete_meeting(db, meeting)
 
 
@@ -174,6 +192,7 @@ def delete_meeting_api(meeting_id: int, db: Annotated[Session, Depends(get_db)])
 async def postprocess_meeting_api(
     meeting_id: int,
     db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
     force_regenerate: Annotated[bool, Query()] = False,
 ) -> MeetingPostprocessOut:
     """对会议转写进行后处理并生成摘要与任务。"""
@@ -181,6 +200,7 @@ async def postprocess_meeting_api(
     meeting = get_meeting(db, meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+    _assert_meeting_permission(meeting, current_user)
 
     transcripts = (
         db.query(MeetingTranscript)
@@ -213,12 +233,14 @@ def upload_meeting_audio_api(
     meeting_id: int,
     file: Annotated[UploadFile, File()],
     db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> MeetingAudioOut:
     """上传会议音频文件。"""
 
     meeting = get_meeting(db, meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+    _assert_meeting_permission(meeting, current_user)
 
     return save_meeting_audio(db, meeting_id, file)
 
@@ -231,12 +253,14 @@ def upload_meeting_audio_api(
 async def transcribe_meeting_audio_api(
     meeting_id: int,
     db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> MeetingTranscriptOut:
     """对最新上传音频执行 Whisper 语音识别。"""
 
     meeting = get_meeting(db, meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+    _assert_meeting_permission(meeting, current_user)
 
     transcripts = await transcribe_latest_audio(db, meeting_id)
     if not transcripts:
@@ -249,12 +273,14 @@ def export_meeting_api(
     meeting_id: int,
     payload: MeetingExportRequest,
     db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> MeetingExportOut:
     """导出会议纪要。"""
 
     meeting = get_meeting(db, meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+    _assert_meeting_permission(meeting, current_user)
     if not meeting.summary:
         raise HTTPException(status_code=400, detail="No summary available for export")
 
