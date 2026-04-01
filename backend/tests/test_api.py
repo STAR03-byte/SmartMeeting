@@ -53,6 +53,97 @@ def test_user_crud_flow(auth_client) -> None:
     assert len(list_resp.json()) == 1
 
 
+def test_user_management_requires_admin_role(client) -> None:
+    member_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "user_auth_member",
+            "email": "user_auth_member@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "User Auth Member",
+            "role": "member",
+        },
+    )
+    assert member_resp.status_code == 201
+
+    admin_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "user_auth_admin",
+            "email": "user_auth_admin@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "User Auth Admin",
+            "role": "admin",
+        },
+    )
+    assert admin_resp.status_code == 201
+    admin_id = admin_resp.json()["id"]
+
+    target_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "user_auth_target",
+            "email": "user_auth_target@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "User Auth Target",
+            "role": "member",
+        },
+    )
+    assert target_resp.status_code == 201
+    target_id = target_resp.json()["id"]
+
+    def login_headers(username: str) -> dict[str, str]:
+        login_resp = client.post("/api/v1/auth/login", data={"username": username, "password": "plain-password"})
+        assert login_resp.status_code == 200
+        return {"Authorization": f"Bearer {login_resp.json()['access_token']}"}
+
+    member_headers = login_headers("user_auth_member")
+    admin_headers = login_headers("user_auth_admin")
+
+    forbidden_list_resp = client.get("/api/v1/users", headers=member_headers)
+    assert forbidden_list_resp.status_code == 403
+    assert forbidden_list_resp.json()["detail"] == "Admin role required"
+
+    admin_list_resp = client.get("/api/v1/users", headers=admin_headers)
+    assert admin_list_resp.status_code == 200
+    assert len(admin_list_resp.json()) >= 3
+
+    forbidden_get_resp = client.get(f"/api/v1/users/{target_id}", headers=member_headers)
+    assert forbidden_get_resp.status_code == 403
+    assert forbidden_get_resp.json()["detail"] == "Admin role required"
+
+    admin_get_resp = client.get(f"/api/v1/users/{target_id}", headers=admin_headers)
+    assert admin_get_resp.status_code == 200
+    assert admin_get_resp.json()["id"] == target_id
+
+    forbidden_patch_resp = client.patch(
+        f"/api/v1/users/{target_id}",
+        json={"full_name": "Blocked"},
+        headers=member_headers,
+    )
+    assert forbidden_patch_resp.status_code == 403
+    assert forbidden_patch_resp.json()["detail"] == "Admin role required"
+
+    admin_patch_resp = client.patch(
+        f"/api/v1/users/{target_id}",
+        json={"full_name": "Updated By Admin"},
+        headers=admin_headers,
+    )
+    assert admin_patch_resp.status_code == 200
+    assert admin_patch_resp.json()["full_name"] == "Updated By Admin"
+
+    forbidden_delete_resp = client.delete(f"/api/v1/users/{target_id}", headers=member_headers)
+    assert forbidden_delete_resp.status_code == 403
+    assert forbidden_delete_resp.json()["detail"] == "Admin role required"
+
+    admin_delete_resp = client.delete(f"/api/v1/users/{target_id}", headers=admin_headers)
+    assert admin_delete_resp.status_code == 204
+
+    admin_self_delete_resp = client.delete(f"/api/v1/users/{admin_id}", headers=admin_headers)
+    assert admin_self_delete_resp.status_code == 400
+    assert admin_self_delete_resp.json()["detail"] == "Admin cannot delete self"
+
+
 def test_meeting_crud_flow(auth_client) -> None:
     """会议创建和更新流程可用。"""
 
