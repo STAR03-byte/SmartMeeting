@@ -56,7 +56,7 @@ def main() -> int:
         steps.append(
             (
                 "frontend-tests",
-                ["npm", "--prefix", "frontend", "exec", "--", "vitest", "run", "frontend/src"],
+                ["npm", "--prefix", "frontend", "exec", "--", "vitest", "--root", "frontend", "run", "src"],
             )
         )
         steps.append(("frontend-typecheck", ["npm", "--prefix", "frontend", "run", "typecheck"]))
