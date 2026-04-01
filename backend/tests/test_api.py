@@ -2,6 +2,7 @@
 
 from app.core.security import get_password_hash
 from app.services.llm_service import LLMServiceError
+from app.core.security import get_password_hash
 
 
 def test_health_check(auth_client) -> None:
@@ -1419,6 +1420,85 @@ def test_meeting_share_requires_summary(auth_client) -> None:
     share_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/share")
     assert share_resp.status_code == 400
     assert share_resp.json()["detail"] == "No summary available for share"
+
+
+def test_meeting_share_requires_organizer(client) -> None:
+    organizer_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "share_real_owner",
+            "email": "share_real_owner@example.com",
+            "password_hash": get_password_hash("share-real-owner-password"),
+            "full_name": "Share Real Owner",
+            "role": "member",
+        },
+    )
+    assert organizer_resp.status_code == 201
+    organizer_id = organizer_resp.json()["id"]
+
+    viewer_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "share_other_user",
+            "email": "share_other_user@example.com",
+            "password_hash": get_password_hash("share-other-user-password"),
+            "full_name": "Share Other User",
+            "role": "member",
+        },
+    )
+    assert viewer_resp.status_code == 201
+
+    organizer_login_resp = client.post(
+        "/api/v1/auth/login",
+        data={"username": "share_real_owner", "password": "share-real-owner-password"},
+    )
+    assert organizer_login_resp.status_code == 200
+    organizer_token = organizer_login_resp.json()["access_token"]
+
+    viewer_login_resp = client.post(
+        "/api/v1/auth/login",
+        data={"username": "share_other_user", "password": "share-other-user-password"},
+    )
+    assert viewer_login_resp.status_code == 200
+    viewer_token = viewer_login_resp.json()["access_token"]
+
+    meeting_resp = client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "权限校验分享会议",
+            "description": "仅组织者可生成分享",
+            "organizer_id": organizer_id,
+        },
+        headers={"Authorization": f"Bearer {organizer_token}"},
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    transcript_resp = client.post(
+        "/api/v1/transcripts",
+        json={
+            "meeting_id": meeting_id,
+            "speaker_user_id": organizer_id,
+            "speaker_name": "Owner",
+            "segment_index": 1,
+            "content": "请张三本周完成文档。",
+        },
+        headers={"Authorization": f"Bearer {organizer_token}"},
+    )
+    assert transcript_resp.status_code == 201
+
+    postprocess_resp = client.post(
+        f"/api/v1/meetings/{meeting_id}/postprocess",
+        headers={"Authorization": f"Bearer {organizer_token}"},
+    )
+    assert postprocess_resp.status_code == 200
+
+    forbidden_resp = client.post(
+        f"/api/v1/meetings/{meeting_id}/share",
+        headers={"Authorization": f"Bearer {viewer_token}"},
+    )
+    assert forbidden_resp.status_code == 403
+    assert forbidden_resp.json()["detail"] == "Only organizer can create share link"
 
 
 def test_get_shared_meeting_returns_read_only_payload(auth_client) -> None:
