@@ -52,6 +52,10 @@ export async function getMeetingTranscripts(meetingId: number): Promise<Transcri
   return resp.data;
 }
 
+export async function deleteTranscript(transcriptId: number): Promise<void> {
+  await apiClient.delete(`/api/v1/transcripts/${transcriptId}`);
+}
+
 export async function getTasksByAssignee(assigneeId: number): Promise<TaskListResult> {
   const resp = await apiClient.get<TaskListResult>("/api/v1/tasks", {
     params: { assignee_id: assigneeId },

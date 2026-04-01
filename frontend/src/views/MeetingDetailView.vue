@@ -100,7 +100,7 @@
             </el-button>
             <el-button type="success" @click="runPostprocess">生成纪要与任务</el-button>
             <el-button @click="downloadSummary" :disabled="!store.currentMeeting.summary">导出纪要</el-button>
-            <el-button @click="copySummary" :disabled="!store.currentMeeting.summary">复制摘要</el-button>
+            <el-button @click="copySummary" :disabled="summaryDisplayText === '暂无会议摘要'">复制摘要</el-button>
           </div>
 
           <div class="recording-status" :class="recordingState">
@@ -110,9 +110,9 @@
           <div class="summary-container" ref="summaryBlockRef">
             <div
               class="summary-block"
-              :class="{ empty: !store.currentMeeting.summary, 'is-clamped': showExpandBtn && !isExpanded }"
+              :class="{ empty: summaryDisplayText === '暂无会议摘要', 'is-clamped': showExpandBtn && !isExpanded }"
             >
-              {{ store.currentMeeting.summary || "暂无会议摘要" }}
+              {{ summaryDisplayText }}
             </div>
             <transition name="expand-btn">
               <div class="expand-action" v-if="showExpandBtn">
@@ -164,6 +164,11 @@
                 <div class="transcript-meta">
                   <strong>#{{ item.segment_index }}</strong>
                   <span>{{ item.speaker_name || item.source }}</span>
+                  <el-popconfirm title="确认删除该转写片段？" @confirm="removeTranscript(item.id)">
+                    <template #reference>
+                      <el-button size="small" type="danger" text>删除</el-button>
+                    </template>
+                  </el-popconfirm>
                 </div>
                 <p>{{ item.content }}</p>
               </li>
@@ -455,13 +460,40 @@ let cachedSummaryText = "";
 let cachedPrepared: any = null;
 let cachedWidth = -1;
 
+function formatSummaryForDisplay(raw: string | null | undefined): string {
+  if (!raw) {
+    return "暂无会议摘要";
+  }
+
+  let cleaned = raw;
+  cleaned = cleaned.replace(/^[\s\u00A0·•]+/gm, "");
+  cleaned = cleaned.replace(/^\s*#{1,6}\s*/gm, "");
+  cleaned = cleaned.replace(/^\s*[-*+]\s+/gm, "• ");
+  cleaned = cleaned.replace(/\*{3,}/g, "");
+  cleaned = cleaned.replace(/\*\*(.*?)\*\*/g, "$1");
+  cleaned = cleaned.replace(/\*(.*?)\*/g, "$1");
+  cleaned = cleaned.replace(/\n{3,}/g, "\n\n");
+  cleaned = cleaned
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .join("\n")
+    .trim();
+  return cleaned || "暂无会议摘要";
+}
+
+const summaryDisplayText = computed(() => formatSummaryForDisplay(store.currentMeeting?.summary));
+
 watch(() => store.currentMeeting?.summary, () => {
   measureSummary();
 });
 
 function measureSummary() {
-  const summaryText = store.currentMeeting?.summary;
-  if (!summaryText || summaryWidth.value <= 0) {
+  if (summaryWidth.value <= 0) {
+    showExpandBtn.value = false;
+    return;
+  }
+  const summaryText = summaryDisplayText.value;
+  if (!summaryText || summaryText === "暂无会议摘要") {
     showExpandBtn.value = false;
     return;
   }
@@ -633,6 +665,15 @@ async function onFilePicked(file: { raw?: File }) {
     ElMessage.success("音频上传并转写完成");
   } catch (err) {
     notifyApiError(err);
+  }
+}
+
+async function removeTranscript(transcriptId: number) {
+  try {
+    await store.removeTranscript(meetingId, transcriptId);
+    ElMessage.success("转写片段已删除");
+  } catch (err) {
+    notifyApiError(err, { prefix: "删除转写失败" });
   }
 }
 
@@ -836,7 +877,7 @@ async function handleStatusChange(taskId: number, newStatus: TaskStatusValue) {
 }
 
 async function copySummary() {
-  const summary = store.currentMeeting?.summary;
+  const summary = summaryDisplayText.value;
   if (!summary) return;
   try {
     await navigator.clipboard.writeText(summary);

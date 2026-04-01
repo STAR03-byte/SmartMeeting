@@ -38,3 +38,21 @@ export async function updateTaskStatus(taskId: number, status: TaskStatus): Prom
   const resp = await apiClient.patch<TaskItem>(`/api/v1/tasks/${taskId}`, { status });
   return resp.data;
 }
+
+export interface TaskUpdatePayload {
+  transcript_id?: number | null;
+  title?: string;
+  description?: string | null;
+  assignee_id?: number | null;
+  reporter_id?: number | null;
+  priority?: TaskPriority;
+  status?: TaskStatus;
+  progress_note?: string | null;
+  due_at?: string | null;
+  completed_at?: string | null;
+}
+
+export async function updateTask(taskId: number, payload: TaskUpdatePayload): Promise<TaskItem> {
+  const resp = await apiClient.patch<TaskItem>(`/api/v1/tasks/${taskId}`, payload);
+  return resp.data;
+}

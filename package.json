@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "scripts": {
     "bootstrap": "python scripts/dev/bootstrap.py",
+    "dev": "python scripts/dev/dev.py",
     "dev:backend": "python -m uvicorn backend.main:app --reload",
     "dev:frontend": "npm --prefix frontend run dev",
     "smoke": "python scripts/dev/smoke.py",

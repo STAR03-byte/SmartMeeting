@@ -17,6 +17,17 @@ Default account: configured in the seed data
 
 ### Local Development
 
+**One command (Recommended):**
+```bash
+npm run dev
+```
+
+This command will:
+
+- install/update backend + frontend dependencies automatically
+- start backend on `http://127.0.0.1:8000`
+- start frontend on `http://127.0.0.1:5173`
+
 **Backend:**
 ```bash
 python -m pip install -r backend/requirements.txt
@@ -26,7 +37,8 @@ python -m uvicorn backend.main:app --reload
 **Frontend:**
 ```bash
 npm --prefix frontend install --cache "D:\SmartMeeting\.npm-cache"
-set SMARTMEETING_DEV_BACKEND_URL=http://127.0.0.1:8888  # optional when backend is not on 8000
+# 默认代理后端地址为 http://127.0.0.1:8000
+# 如需覆盖：set SMARTMEETING_DEV_BACKEND_URL=http://127.0.0.1:8000
 npm --prefix frontend run dev
 ```
 
@@ -39,6 +51,7 @@ npm run bootstrap
 Unified commands:
 
 ```bash
+npm run dev
 npm run dev:backend
 npm run dev:frontend
 npm run ci

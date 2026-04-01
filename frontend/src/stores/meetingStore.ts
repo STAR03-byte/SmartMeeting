@@ -7,6 +7,7 @@ import {
   getMeetings,
   getMeetingTranscripts,
   getTasksByMeeting,
+  deleteTranscript,
   exportMeetingSummary,
   transcribeMeetingAudio,
   triggerPostprocess,
@@ -115,6 +116,17 @@ export const useMeetingStore = defineStore("meeting", {
         const transcript = await transcribeMeetingAudio(meetingId);
         this.transcripts.push(transcript);
         return transcript;
+      } catch (error) {
+        this.error = getApiErrorMessage(error);
+        throw error;
+      }
+    },
+    async removeTranscript(meetingId: number, transcriptId: number) {
+      this.error = null;
+      try {
+        await deleteTranscript(transcriptId);
+        this.transcripts = this.transcripts.filter((item) => item.id !== transcriptId);
+        await this.fetchMeetingDetail(meetingId);
       } catch (error) {
         this.error = getApiErrorMessage(error);
         throw error;

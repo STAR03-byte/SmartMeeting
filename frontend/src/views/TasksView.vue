@@ -3,7 +3,7 @@
     <header class="hero-header">
       <div>
         <h1>任务中心</h1>
-        <p>查看会议行动项，并快速推进任务状态。</p>
+        <p>集中查看全部会议行动项，并支持手动调整负责人与优先级。</p>
       </div>
       <el-button @click="refreshTasks">刷新</el-button>
     </header>
@@ -47,6 +47,11 @@
 
         <el-button type="primary" @click="applyFiltersAndRefresh">应用筛选</el-button>
       </div>
+      <div class="category-hint">
+        <el-tag size="small" effect="plain" type="warning">AI行动项：由转写自动识别</el-tag>
+        <el-tag size="small" effect="plain" type="info">手动任务：会议中人工创建</el-tag>
+        <el-tag size="small" effect="plain" type="danger">逾期：已超过截止时间</el-tag>
+      </div>
     </el-card>
 
     <el-card class="base-card" v-loading="loading">
@@ -67,6 +72,24 @@
         <el-table-column prop="priority" label="优先级" width="100">
           <template #default="{ row }">
             <el-tag size="small" :type="priorityTag(row.priority)">{{ priorityLabel(row.priority) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="任务分类" width="240">
+          <template #default="{ row }">
+            <div class="category-tags">
+              <el-tag size="small" :type="row.transcript_id ? 'warning' : 'info'">
+                {{ row.transcript_id ? "AI行动项" : "手动任务" }}
+              </el-tag>
+              <el-tag v-if="row.is_overdue" size="small" type="danger">逾期</el-tag>
+              <el-tag v-else-if="row.is_due_soon" size="small" type="warning">即将到期</el-tag>
+              <el-tag v-else-if="row.priority === 'high'" size="small" type="danger">高优先级</el-tag>
+              <el-tag v-if="!row.assignee_id" size="small" type="info">未分配</el-tag>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="负责人" width="160">
+          <template #default="{ row }">
+            {{ resolveAssigneeName(row.assignee_id) }}
           </template>
         </el-table-column>
         <el-table-column label="截止时间" width="160">
@@ -94,6 +117,11 @@
             </el-select>
           </template>
         </el-table-column>
+        <el-table-column label="操作" width="100">
+          <template #default="scope">
+            <el-button size="small" @click="openEditDialog(scope.row)">编辑</el-button>
+          </template>
+        </el-table-column>
       </el-table>
     </el-card>
 
@@ -106,6 +134,38 @@
       :current-page="currentPage"
       @current-change="handlePageChange"
     />
+
+    <el-dialog v-model="editDialogVisible" title="编辑任务" width="520px">
+      <el-form label-width="80px">
+        <el-form-item label="标题">
+          <el-input v-model="editForm.title" placeholder="请输入任务标题" />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="editForm.description" type="textarea" :rows="3" placeholder="可选" />
+        </el-form-item>
+        <el-form-item label="负责人">
+          <el-select v-model="editForm.assignee_id" clearable placeholder="请选择负责人" style="width: 100%">
+            <el-option
+              v-for="user in users"
+              :key="user.id"
+              :label="`${user.full_name}（${user.username}）`"
+              :value="user.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="优先级">
+          <el-select v-model="editForm.priority" style="width: 160px">
+            <el-option label="高" value="high" />
+            <el-option label="中" value="medium" />
+            <el-option label="低" value="low" />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="savingEdit" @click="saveTaskEdit">保存</el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
@@ -117,6 +177,7 @@ import AppErrorAlert from "../components/AppErrorAlert.vue";
 import { notifyApiError } from "../utils/notify";
 import {
   getTasks,
+  updateTask,
   updateTaskStatus,
   type TaskListParams,
   type TaskListResult,
@@ -124,10 +185,27 @@ import {
   type TaskPriority,
   type TaskStatus,
 } from "../api/tasks";
+import { getUsers, type UserItem } from "../api/users";
 
 const tasks = ref<TaskItem[]>([]);
+const users = ref<UserItem[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
+const editDialogVisible = ref(false);
+const editingTask = ref<TaskItem | null>(null);
+const savingEdit = ref(false);
+
+const editForm = reactive<{
+  title: string;
+  description: string;
+  assignee_id: number | null;
+  priority: TaskPriority;
+}>({
+  title: "",
+  description: "",
+  assignee_id: null,
+  priority: "medium",
+});
 
 const currentPage = ref(1);
 const pageSize = 20;
@@ -179,6 +257,14 @@ async function refreshTasks() {
   }
 }
 
+async function refreshUsers() {
+  try {
+    users.value = await getUsers();
+  } catch (err) {
+    notifyApiError(err, { prefix: "加载用户失败" });
+  }
+}
+
 function handlePageChange(page: number) {
   currentPage.value = page;
   refreshTasks();
@@ -203,7 +289,46 @@ async function changeStatus(taskId: number, status: TaskStatus) {
   }
 }
 
+function openEditDialog(task: TaskItem) {
+  editingTask.value = task;
+  editForm.title = task.title;
+  editForm.description = task.description ?? "";
+  editForm.assignee_id = task.assignee_id;
+  editForm.priority = task.priority;
+  editDialogVisible.value = true;
+}
+
+async function saveTaskEdit() {
+  if (!editingTask.value) return;
+  const trimmedTitle = editForm.title.trim();
+  if (!trimmedTitle) {
+    ElMessage.warning("任务标题不能为空");
+    return;
+  }
+
+  savingEdit.value = true;
+  try {
+    const updated = await updateTask(editingTask.value.id, {
+      title: trimmedTitle,
+      description: editForm.description.trim() || null,
+      assignee_id: editForm.assignee_id,
+      priority: editForm.priority,
+    });
+    const index = tasks.value.findIndex((item) => item.id === updated.id);
+    if (index >= 0) {
+      tasks.value[index] = updated;
+    }
+    ElMessage.success("任务已更新");
+    editDialogVisible.value = false;
+  } catch (err) {
+    notifyApiError(err, { prefix: "更新任务失败" });
+  } finally {
+    savingEdit.value = false;
+  }
+}
+
 onMounted(async () => {
+  await refreshUsers();
   await refreshTasks();
 });
 
@@ -220,6 +345,12 @@ function priorityTag(p: string): string {
 function formatDate(iso: string | null): string {
   if (!iso) return "-";
   return new Date(iso).toLocaleString("zh-CN");
+}
+
+function resolveAssigneeName(assigneeId: number | null): string {
+  if (!assigneeId) return "未分配";
+  const user = users.value.find((item) => item.id === assigneeId);
+  return user ? `${user.full_name}（${user.username}）` : `用户 #${assigneeId}`;
 }
 </script>
 
@@ -270,6 +401,19 @@ function formatDate(iso: string | null): string {
   flex-wrap: wrap;
   gap: 16px;
   align-items: center;
+}
+
+.category-hint {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.category-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .muted-text {

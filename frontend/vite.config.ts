@@ -4,7 +4,7 @@ import AutoImport from "unplugin-auto-import/vite";
 import Components from "unplugin-vue-components/vite";
 import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
 
-const devBackendUrl = process.env.SMARTMEETING_DEV_BACKEND_URL?.trim() || "http://127.0.0.1:8888";
+const devBackendUrl = process.env.SMARTMEETING_DEV_BACKEND_URL?.trim() || "http://127.0.0.1:8000";
 
 export default defineConfig({
   plugins: [

@@ -7,14 +7,8 @@
           <p>高效会议管理，智能任务追踪</p>
         </div>
         <div class="hero-actions">
-          <router-link to="/meetings">
-            <el-button type="primary" size="large">会议管理</el-button>
-          </router-link>
-          <router-link to="/tasks">
-            <el-button size="large">任务中心</el-button>
-          </router-link>
-          <router-link to="/users">
-            <el-button size="large">用户管理</el-button>
+          <router-link to="/meetings?create=1">
+            <el-button type="primary" size="large">新建会议</el-button>
           </router-link>
         </div>
       </div>
@@ -109,15 +103,6 @@
           </div>
         </template>
         <div class="action-grid">
-          <router-link to="/meetings?status=planned" class="action-item">
-            <div class="action-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="4" width="18" height="18" rx="2"/>
-                <path d="M16 2v4M8 2v4M3 10h18"/>
-              </svg>
-            </div>
-            <span>创建会议</span>
-          </router-link>
           <router-link to="/tasks" class="action-item">
             <div class="action-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

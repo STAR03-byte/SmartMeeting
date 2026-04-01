@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -8,7 +10,17 @@ from pathlib import Path
 
 def run_command(command: list[str]) -> None:
     print(f"[bootstrap] Running: {' '.join(command)}")
-    subprocess.run(command, check=True)
+    subprocess.run(_resolve_command(command), check=True)
+
+
+def _resolve_command(command: list[str]) -> list[str]:
+    if not command:
+        return command
+    if command[0] == "npm" and os.name == "nt":
+        npm_cmd = shutil.which("npm.cmd") or shutil.which("npm")
+        if npm_cmd:
+            return [npm_cmd, *command[1:]]
+    return command
 
 
 def main() -> int:

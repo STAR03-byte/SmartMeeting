@@ -7,6 +7,16 @@
 
 ## 2. 安装与启动
 
+推荐使用一条命令启动（仓库根目录执行）：
+
+```bash
+npm run dev
+```
+
+该命令会自动安装/更新依赖，并同时启动后端与前端。
+
+如需手动分开启动：
+
 ```bash
 npm --prefix frontend install --cache "D:\SmartMeeting\.npm-cache"
 npm --prefix frontend run dev

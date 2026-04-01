@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime
 from secrets import token_urlsafe
+import re
 
 from sqlalchemy.orm import Session
 
@@ -23,6 +24,49 @@ from app.services.llm_service import (
 )
 from app.services.user_service import get_user
 from app.services.task_service import serialize_task_out
+
+
+def normalize_summary_text(summary: str) -> str:
+    normalized = summary
+    normalized = normalized.replace("\r\n", "\n")
+    normalized = normalized.replace("\r", "\n")
+
+    lines = [line.rstrip() for line in normalized.split("\n")]
+    cleaned_lines: list[str] = []
+    for raw_line in lines:
+        stripped = raw_line.lstrip(" \u00A0·•")
+        while stripped.startswith("#"):
+            stripped = stripped[1:].lstrip()
+        if stripped.startswith("- ") or stripped.startswith("* ") or stripped.startswith("+ "):
+            stripped = f"• {stripped[2:].strip()}"
+        if stripped.startswith("***") and stripped.endswith("***") and len(stripped) > 6:
+            stripped = stripped[3:-3].strip()
+        if stripped.startswith("**") and stripped.endswith("**") and len(stripped) > 4:
+            stripped = stripped[2:-2].strip()
+        if stripped.startswith("*") and stripped.endswith("*") and len(stripped) > 2:
+            stripped = stripped[1:-1].strip()
+        previous = None
+        while previous != stripped:
+            previous = stripped
+            stripped = re.sub(r"\*\*(.+?)\*\*", r"\1", stripped)
+            stripped = re.sub(r"\*(.+?)\*", r"\1", stripped)
+        if re.fullmatch(r"\*+", stripped):
+            stripped = ""
+        stripped = stripped.replace("***", "")
+        stripped = stripped.replace("**", "")
+        stripped = stripped.replace("*", "")
+        cleaned_lines.append(stripped)
+
+    compacted: list[str] = []
+    previous_blank = False
+    for line in cleaned_lines:
+        is_blank = line.strip() == ""
+        if is_blank and previous_blank:
+            continue
+        compacted.append(line)
+        previous_blank = is_blank
+
+    return "\n".join(compacted).strip()
 
 
 def create_meeting(db: Session, payload: MeetingCreate) -> Meeting:
@@ -207,7 +251,7 @@ async def build_meeting_summary_with_llm(
     try:
         summary = await llm_generate_meeting_summary(lines, meeting.title)
         if summary.strip():
-            return summary.strip(), "llm-summary-v1"
+            return normalize_summary_text(summary), "llm-summary-v1"
     except LLMServiceError:
         pass
     return build_meeting_summary(transcripts), "rule-v1"

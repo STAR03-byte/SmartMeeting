@@ -19,6 +19,7 @@ from app.services.meeting_service import (
     build_meeting_summary_with_llm,
     generate_tasks_from_transcripts,
     generate_tasks_from_transcripts_with_llm,
+    normalize_summary_text,
 )
 
 class _MetadataOwner(Protocol):
@@ -129,6 +130,13 @@ def test_build_meeting_summary_with_llm_returns_llm_summary_on_success() -> None
 
     assert summary == "LLM 生成的摘要"
     assert version == "llm-summary-v1"
+
+
+def test_normalize_summary_text_strips_markdown_noise() -> None:
+    raw = "# 会议纪要\n\n**会议主题**：产品评审\n- *第一项*\n***\n"
+    normalized = normalize_summary_text(raw)
+
+    assert normalized == "会议纪要\n\n会议主题：产品评审\n• 第一项"
 
 
 def test_generate_tasks_from_transcripts_extracts_multiple_actions() -> None:

@@ -57,7 +57,6 @@
         </el-table-column>
         <el-table-column label="操作" width="120" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="$router.push(`/meetings/${row.id}`)">详情</el-button>
             <el-popconfirm title="确认删除此会议？" @confirm="handleDelete(row.id)">
               <template #reference>
                 <el-button size="small" type="danger" plain>删除</el-button>
@@ -137,10 +136,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { onMounted, reactive, ref, watch } from "vue";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { Plus } from "@element-plus/icons-vue";
+import { useRoute, useRouter } from "vue-router";
 
 import { useMeetingStore } from "../stores/meetingStore";
 import AppErrorAlert from "../components/AppErrorAlert.vue";
@@ -150,6 +150,8 @@ import { getUsers, type UserItem } from "../api/users";
 import { createMeetingParticipant } from "../api/participants";
 
 const store = useMeetingStore();
+const route = useRoute();
+const router = useRouter();
 
 const filterStatus = ref<MeetingStatus | "">("");
 const filterKeyword = ref("");
@@ -176,6 +178,19 @@ const createRules: FormRules = {
   title: [{ required: true, message: "请输入会议标题", trigger: "blur" }],
   organizer_id: [{ required: true, message: "请选择组织者", trigger: "change" }],
 };
+
+watch(
+  () => route.query.create,
+  (value) => {
+    if (value === "1") {
+      showCreateDialog.value = true;
+      const nextQuery = { ...route.query };
+      delete nextQuery.create;
+      router.replace({ query: nextQuery });
+    }
+  },
+  { immediate: true }
+);
 
 async function loadMeetings() {
   totalCount.value = 0;
