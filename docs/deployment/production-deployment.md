@@ -48,9 +48,31 @@ SmartMeeting 的生产部署以 Docker Compose 为主，默认包含：MySQL、B
 - `WHISPER_DEVICE=cpu`（GPU 时可改为 `cuda`）
 - `WHISPER_LANGUAGE=zh`
 
-## 4. Docker Compose
+## 4. 生产部署资产位置
 
-默认 `docker-compose.yml` 已为 backend 注入上述环境变量；如使用本地 Ollama，请确保宿主机上的 Ollama 可从容器访问。
+- 生产环境变量模板：`.env.prod.example`
+- 生产 Compose 编排：`infrastructure/compose/docker-compose.prod.yml`
+- 生产 Nginx 配置：`infrastructure/nginx/nginx.prod.conf`
+- K8s 模板：
+  - `infrastructure/k8s/configmap.yml`
+  - `infrastructure/k8s/deployment.yml`
+  - `infrastructure/k8s/service.yml`
+
+如使用本地 Ollama，请确保宿主机上的 Ollama 可从容器访问。
+
+## 5. Docker Compose（生产）
+
+1. 复制环境变量模板并填写生产值：
+
+```bash
+cp .env.prod.example .env.prod
+```
+
+2. 解析配置并确认无误：
+
+```bash
+docker compose --env-file .env.prod -f infrastructure/compose/docker-compose.prod.yml config
+```
 
 ### CPU 模式
 
@@ -62,13 +84,13 @@ SmartMeeting 的生产部署以 Docker Compose 为主，默认包含：MySQL、B
 2. 确保容器内 CUDA 运行时可用。
 3. 将 `WHISPER_DEVICE` 设置为 `cuda`。
 
-## 5. 启动
+## 6. 启动
 
 ```bash
-docker compose up --build -d
+docker compose --env-file .env.prod -f infrastructure/compose/docker-compose.prod.yml up --build -d
 ```
 
-## 6. 验证
+## 7. 验证
 
 - 后端健康检查返回 `200`
 - 登录可用

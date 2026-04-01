@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartmeeting-backend
+spec:
+  selector:
+    app: smartmeeting-backend
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartmeeting-frontend
+spec:
+  selector:
+    app: smartmeeting-frontend
+  ports:
+    - protocol: TCP
+      port: 5173
+      targetPort: 5173
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smartmeeting-nginx
+spec:
+  type: LoadBalancer
+  selector:
+    app: smartmeeting-nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
