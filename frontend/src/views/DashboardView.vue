@@ -1,94 +1,151 @@
 <template>
   <section class="dashboard-page">
     <header class="hero-header">
-      <div>
-        <h1>SmartMeeting Control Deck</h1>
-        <p>{{ greeting }}</p>
-      </div>
-      <div class="hero-actions">
-        <router-link to="/meetings">
-          <el-button type="primary">会议管理</el-button>
-        </router-link>
-        <router-link to="/tasks">
-          <el-button>任务中心</el-button>
-        </router-link>
-        <router-link to="/users">
-          <el-button>用户管理</el-button>
-        </router-link>
+      <div class="hero-content">
+        <div class="hero-text">
+          <h1>{{ greeting }}</h1>
+          <p>高效会议管理，智能任务追踪</p>
+        </div>
+        <div class="hero-actions">
+          <router-link to="/meetings">
+            <el-button type="primary" size="large">会议管理</el-button>
+          </router-link>
+          <router-link to="/tasks">
+            <el-button size="large">任务中心</el-button>
+          </router-link>
+          <router-link to="/users">
+            <el-button size="large">用户管理</el-button>
+          </router-link>
+        </div>
       </div>
     </header>
 
-    <el-row :gutter="16" class="stats-row">
-      <el-col :xs="12" :sm="6">
-        <el-card class="stat-card">
-          <el-statistic title="会议总数" :value="totalMeetings" />
-        </el-card>
-      </el-col>
-      <el-col :xs="12" :sm="6">
-        <el-card class="stat-card">
-          <el-statistic title="进行中" :value="ongoingMeetings" />
-        </el-card>
-      </el-col>
-      <el-col :xs="12" :sm="6">
-        <el-card class="stat-card">
-          <el-statistic title="计划中" :value="plannedMeetings" />
-        </el-card>
-      </el-col>
-      <el-col :xs="12" :sm="6">
-        <el-card class="stat-card">
-          <el-statistic title="已结束" :value="doneMeetings" />
-        </el-card>
-      </el-col>
-    </el-row>
+    <section class="stats-grid">
+      <el-card class="stat-card">
+        <div class="stat-icon stat-icon--blue">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <path d="M16 2v4M8 2v4M3 10h18"/>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">会议总数</span>
+          <span class="stat-value">{{ totalMeetings }}</span>
+        </div>
+      </el-card>
 
-    <el-card class="base-card">
-      <template #header>
-        <div class="panel-header">
-          <span>近期会议</span>
-          <router-link to="/meetings">
-            <el-button text type="primary">查看全部</el-button>
+      <el-card class="stat-card">
+        <div class="stat-icon stat-icon--green">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">进行中</span>
+          <span class="stat-value">{{ ongoingMeetings }}</span>
+        </div>
+      </el-card>
+
+      <el-card class="stat-card">
+        <div class="stat-icon stat-icon--amber">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <path d="M16 2v4M8 2v4M3 10h18"/>
+            <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">计划中</span>
+          <span class="stat-value">{{ plannedMeetings }}</span>
+        </div>
+      </el-card>
+
+      <el-card class="stat-card">
+        <div class="stat-icon stat-icon--purple">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <path d="M22 4L12 14.01l-3-3"/>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">已结束</span>
+          <span class="stat-value">{{ doneMeetings }}</span>
+        </div>
+      </el-card>
+    </section>
+
+    <section class="dashboard-grid">
+      <el-card class="base-card recent-meetings">
+        <template #header>
+          <div class="panel-header">
+            <span>近期会议</span>
+            <router-link to="/meetings">
+              <el-button text type="primary" size="small">查看全部</el-button>
+            </router-link>
+          </div>
+        </template>
+
+        <el-skeleton v-if="store.loading" rows="3" animated />
+        <el-empty v-else-if="store.meetings.length === 0" description="暂无会议数据" />
+        <ul v-else class="meeting-list">
+          <li v-for="item in recentMeetings" :key="item.id" class="meeting-item">
+            <div class="meeting-info">
+              <span class="meeting-title">{{ item.title }}</span>
+              <el-tag :type="statusTagType(item.status)" size="small">{{ statusLabel(item.status) }}</el-tag>
+            </div>
+            <div class="meeting-meta">
+              <span>{{ formatDate(item.scheduled_start_at) }}</span>
+              <el-button size="small" @click="$router.push(`/meetings/${item.id}`)">查看</el-button>
+            </div>
+          </li>
+        </ul>
+      </el-card>
+
+      <el-card class="base-card quick-actions">
+        <template #header>
+          <div class="panel-header">
+            <span>快捷操作</span>
+          </div>
+        </template>
+        <div class="action-grid">
+          <router-link to="/meetings?status=planned" class="action-item">
+            <div class="action-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <path d="M16 2v4M8 2v4M3 10h18"/>
+              </svg>
+            </div>
+            <span>创建会议</span>
+          </router-link>
+          <router-link to="/tasks" class="action-item">
+            <div class="action-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 11l3 3L22 4"/>
+                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+              </svg>
+            </div>
+            <span>任务管理</span>
+          </router-link>
+          <router-link to="/users" class="action-item">
+            <div class="action-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+              </svg>
+            </div>
+            <span>用户管理</span>
           </router-link>
         </div>
-      </template>
-
-      <el-skeleton v-if="store.loading" rows="3" animated />
-      <el-empty v-else-if="store.meetings.length === 0" description="暂无会议数据" />
-      <el-table v-else :data="recentMeetings" stripe>
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="title" label="标题" min-width="200">
-          <template #default="{ row }">
-            <router-link :to="`/meetings/${row.id}`" class="meeting-link">{{ row.title }}</router-link>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
-          <template #default="{ row }">
-            <el-tag :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="计划开始" width="170">
-          <template #default="{ row }">
-            {{ formatDate(row.scheduled_start_at) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="100">
-          <template #default="{ row }">
-            <el-button size="small" @click="$router.push(`/meetings/${row.id}`)">详情</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-
-    <el-skeleton v-if="store.loading" rows="4" animated />
-    <div v-else class="meeting-grid">
-      <MeetingCard v-for="item in store.meetings" :key="item.id" :meeting="item" />
-    </div>
+      </el-card>
+    </section>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
 
-import MeetingCard from "../components/MeetingCard.vue";
 import { useAuthStore } from "../stores/authStore";
 import { useMeetingStore } from "../stores/meetingStore";
 import type { MeetingStatus } from "../api/types";
@@ -100,7 +157,7 @@ const greeting = computed(() => {
   const hour = new Date().getHours();
   const timeGreeting = hour < 12 ? "早上好" : hour < 18 ? "下午好" : "晚上好";
   const name = authStore.currentUser?.full_name || "";
-  return name ? `${timeGreeting}，${name}！欢迎使用 SmartMeeting` : `${timeGreeting}！欢迎使用 SmartMeeting`;
+  return name ? `${timeGreeting}，${name}` : `${timeGreeting}！`;
 });
 
 const totalMeetings = computed(() => store.meetingsTotal || store.meetings.length);
@@ -145,120 +202,167 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+:root {
+  --primary: #6366F1;
+  --primary-light: #818CF8;
+  --bg: #F5F3FF;
+  --card: #FFFFFF;
+  --border: #E0E7FF;
+  --text: #1E1B4B;
+  --text-muted: #64748B;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+}
+
 .dashboard-page {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  padding: 8px;
 }
 
 .hero-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
-  border-radius: 24px;
-  padding: 32px 36px;
-  box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
-  position: relative;
-  overflow: hidden;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+  border-radius: var(--radius-lg);
+  padding: 32px;
 }
 
-.hero-header::before {
-  content: '';
-  position: absolute;
-  width: 300px;
-  height: 300px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
-  top: -100px;
-  right: -50px;
+.hero-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
 }
 
-.hero-header h1 {
+.hero-text h1 {
   margin: 0;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
   color: #fff;
-  letter-spacing: 0.5px;
 }
 
-.hero-header p {
-  margin: 12px 0 0;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 16px;
+.hero-text p {
+  margin: 8px 0 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 15px;
 }
 
 .hero-actions {
   display: flex;
   gap: 12px;
-  margin-top: 20px;
 }
 
 .hero-actions :deep(.el-button) {
-  border-radius: 10px;
-  font-weight: 500;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #fff;
 }
 
 .hero-actions :deep(.el-button--primary) {
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #fff;
+  background: #fff;
+  color: var(--primary);
+  border-color: #fff;
 }
 
-.hero-actions :deep(.el-button--primary:hover) {
-  background: rgba(255, 255, 255, 0.3);
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
 }
 
-.hero-actions :deep(.el-button) {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
+@media (max-width: 1024px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-.stats-row {
-  margin-top: 0;
-}
-
-.stats-row :deep(.el-col) {
-  padding: 0 12px;
+@media (max-width: 640px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .stat-card {
-  border-radius: 16px;
-  border: none;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
 }
 
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
 }
 
-.stat-card :deep(.el-statistic__head) {
-  font-size: 14px;
-  color: #909399;
-  font-weight: 500;
+.stat-icon--blue {
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--primary);
 }
 
-.stat-card :deep(.el-statistic__content) {
+.stat-icon--green {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22C55E;
+}
+
+.stat-icon--amber {
+  background: rgba(245, 158, 11, 0.1);
+  color: #F59E0B;
+}
+
+.stat-icon--purple {
+  background: rgba(139, 92, 246, 0.1);
+  color: #8B5CF6;
+}
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.stat-value {
   font-size: 28px;
   font-weight: 700;
-  color: #303133;
+  color: var(--text);
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .base-card {
-  border-radius: 16px;
-  border: none;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
 }
 
 .base-card :deep(.el-card__header) {
-  padding: 20px 24px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
 }
 
 .base-card :deep(.el-card__body) {
-  padding: 20px 24px;
+  padding: 16px 20px;
 }
 
 .panel-header {
@@ -266,36 +370,88 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   font-weight: 600;
-  color: #303133;
+  color: var(--text);
 }
 
-.meeting-link {
-  color: #667eea;
-  text-decoration: none;
+.meeting-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.meeting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+}
+
+.meeting-item:hover {
+  background: var(--border);
+}
+
+.meeting-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.meeting-title {
   font-weight: 500;
-  transition: color 0.3s;
+  color: var(--text);
 }
 
-.meeting-link:hover {
-  color: #764ba2;
+.meeting-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.action-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.action-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
   text-decoration: none;
+  color: var(--text);
+  transition: all 0.2s;
 }
 
-.meeting-grid {
+.action-item:hover {
+  background: var(--primary);
+  color: #fff;
+}
+
+.action-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: var(--card);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
+  place-items: center;
 }
 
-.meeting-grid :deep(.el-card) {
-  border-radius: 16px;
-  border: none;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-  transition: all 0.3s;
+.action-item:hover .action-icon {
+  background: rgba(255, 255, 255, 0.2);
 }
 
-.meeting-grid :deep(.el-card:hover) {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+.action-item span {
+  font-weight: 500;
 }
 </style>

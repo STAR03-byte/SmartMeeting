@@ -1,7 +1,21 @@
 <template>
   <section class="login-page">
+    <div class="login-bg-pattern"></div>
     <div class="login-container">
       <div class="login-brand">
+        <div class="brand-icon">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <rect width="48" height="48" rx="12" fill="url(#brandGrad)"/>
+            <path d="M14 32c0-7.732 6.268-14 14-14s14 6.268 14 14" stroke="white" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="24" cy="24" r="4" stroke="white" stroke-width="2"/>
+            <defs>
+              <linearGradient id="brandGrad" x1="0" y1="0" x2="48" y2="48">
+                <stop stop-color="#6366F1"/>
+                <stop offset="1" stop-color="#818CF8"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
         <h1>SmartMeeting</h1>
         <p>AI 驱动的智能会议系统</p>
       </div>
@@ -9,53 +23,45 @@
       <el-card class="login-card">
         <el-tabs v-model="activeTab" class="login-tabs">
           <el-tab-pane label="登录" name="login">
-            <p class="login-hint">使用你的会议账号进入系统</p>
-
-            <AppErrorAlert :error="error" :closable="false" />
-
             <el-form label-position="top" @submit.prevent>
-              <el-form-item label="用户名">
-                <el-input v-model="form.username" placeholder="请输入用户名" prefix-icon="User" size="large" />
+              <el-form-item label="用户名" class="login-form-item">
+                <el-input v-model="form.username" placeholder="请输入用户名" size="large" />
               </el-form-item>
-              <el-form-item label="密码">
-                <el-input v-model="form.password" type="password" show-password placeholder="请输入密码" prefix-icon="Lock" size="large" />
+              <el-form-item label="密码" class="login-form-item">
+                <el-input v-model="form.password" type="password" placeholder="请输入密码" size="large" show-password />
               </el-form-item>
-              <el-button type="primary" :loading="loading" @click="submit" size="large" style="width: 100%">登录</el-button>
+              <el-button type="primary" :loading="loading" @click="submit" size="large" class="login-btn">登录</el-button>
             </el-form>
 
             <div class="login-footer">
-              <span>账号: logintest / plain-password</span>
+              <span>测试账号: logintest / plain-password</span>
             </div>
           </el-tab-pane>
 
           <el-tab-pane label="注册" name="register">
-            <p class="login-hint">创建新账号开始使用智能会议系统</p>
-
-            <AppErrorAlert :error="registerError" :closable="false" />
-
             <el-form label-position="top" @submit.prevent>
-              <el-form-item label="用户名">
-                <el-input v-model="registerForm.username" placeholder="请输入用户名（至少3位）" prefix-icon="User" size="large" />
+              <el-form-item label="用户名" class="login-form-item">
+                <el-input v-model="registerForm.username" placeholder="至少3位" size="large" />
               </el-form-item>
-              <el-form-item label="邮箱">
-                <el-input v-model="registerForm.email" placeholder="请输入邮箱地址" prefix-icon="Message" size="large" />
+              <el-form-item label="邮箱" class="login-form-item">
+                <el-input v-model="registerForm.email" placeholder="请输入邮箱" size="large" />
               </el-form-item>
-              <el-form-item label="姓名">
-                <el-input v-model="registerForm.full_name" placeholder="请输入姓名" prefix-icon="User" size="large" />
+              <el-form-item label="姓名" class="login-form-item">
+                <el-input v-model="registerForm.full_name" placeholder="请输入姓名" size="large" />
               </el-form-item>
-              <el-form-item label="密码">
-                <el-input v-model="registerForm.password_hash" type="password" show-password placeholder="请输入密码（至少8位）" prefix-icon="Lock" size="large" />
+              <el-form-item label="密码" class="login-form-item">
+                <el-input v-model="registerForm.password_hash" type="password" placeholder="至少8位" size="large" show-password />
               </el-form-item>
-              <el-form-item label="确认密码">
-                <el-input v-model="registerConfirmPassword" type="password" show-password placeholder="请再次输入密码" prefix-icon="Lock" size="large" />
+              <el-form-item label="确认密码" class="login-form-item">
+                <el-input v-model="registerConfirmPassword" type="password" placeholder="再次输入密码" size="large" show-password />
               </el-form-item>
-              <el-form-item label="角色">
+              <el-form-item label="角色" class="login-form-item">
                 <el-select v-model="registerForm.role" size="large" style="width: 100%">
                   <el-option label="成员" value="member" />
                   <el-option label="管理员" value="admin" />
                 </el-select>
               </el-form-item>
-              <el-button type="primary" :loading="registerLoading" @click="register" size="large" style="width: 100%">注册</el-button>
+              <el-button type="primary" :loading="registerLoading" @click="register" size="large" class="login-btn">注册</el-button>
             </el-form>
           </el-tab-pane>
         </el-tabs>
@@ -101,6 +107,14 @@ const registerForm = reactive({
 const registerConfirmPassword = ref("");
 
 async function submit() {
+  if (!form.username) {
+    ElMessage.warning("请输入用户名");
+    return;
+  }
+  if (!form.password) {
+    ElMessage.warning("请输入密码");
+    return;
+  }
   loading.value = true;
   error.value = null;
   try {
@@ -141,12 +155,6 @@ async function register() {
     await registerUser(registerForm);
     ElMessage.success("注册成功，请登录");
     activeTab.value = "login";
-    form.username = registerForm.username;
-    registerForm.username = "";
-    registerForm.email = "";
-    registerForm.full_name = "";
-    registerForm.password_hash = "";
-    registerConfirmPassword.value = "";
   } catch (err) {
     registerError.value = notifyApiError(err, { prefix: "注册失败" });
   } finally {
@@ -156,43 +164,61 @@ async function register() {
 </script>
 
 <style scoped>
+:root {
+  --primary: #6366F1;
+  --primary-light: #818CF8;
+  --primary-dark: #4F46E5;
+  --accent: #059669;
+  --bg: #F5F3FF;
+  --card: #FFFFFF;
+  --muted: #EBEFF9;
+  --border: #E0E7FF;
+  --text: #1E1B4B;
+  --text-muted: #64748B;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+}
+
 .login-page {
   min-height: 100vh;
   display: grid;
   place-items: center;
   padding: 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg);
   position: relative;
   overflow: hidden;
 }
 
-.login-page::before {
+.login-bg-pattern {
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(129, 140, 248, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.login-bg-pattern::before {
   content: '';
   position: absolute;
   width: 600px;
   height: 600px;
-  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.1);
   border-radius: 50%;
   top: -200px;
-  right: -200px;
-  animation: float 6s ease-in-out infinite;
+  right: -100px;
 }
 
-.login-page::after {
+.login-bg-pattern::after {
   content: '';
   position: absolute;
   width: 400px;
   height: 400px;
-  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(129, 140, 248, 0.1);
   border-radius: 50%;
   bottom: -150px;
-  left: -150px;
-  animation: float 8s ease-in-out infinite reverse;
-}
-
-@keyframes float {
-  0%, 100% { transform: translate(0, 0); }
-  50% { transform: translate(30px, 30px); }
+  left: -100px;
 }
 
 .login-container {
@@ -200,7 +226,7 @@ async function register() {
   flex-direction: column;
   align-items: center;
   gap: 32px;
-  width: min(440px, 100%);
+  width: min(400px, 100%);
   position: relative;
   z-index: 1;
 }
@@ -209,33 +235,39 @@ async function register() {
   text-align: center;
 }
 
+.brand-icon {
+  margin-bottom: 16px;
+}
+
+.brand-icon svg {
+  display: block;
+  margin: 0 auto;
+}
+
 .login-brand h1 {
   margin: 0;
-  font-size: 42px;
+  font-size: 32px;
   font-weight: 700;
-  color: #fff;
-  letter-spacing: 2px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  color: var(--text);
+  letter-spacing: -0.5px;
 }
 
 .login-brand p {
-  margin: 12px 0 0;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 18px;
-  font-weight: 300;
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 15px;
 }
 
 .login-card {
   width: 100%;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 24px rgba(99, 102, 241, 0.08);
+  background: var(--card);
 }
 
 .login-card :deep(.el-card__body) {
-  padding: 32px 40px;
+  padding: 28px 32px;
 }
 
 .login-card :deep(.el-tabs__header) {
@@ -247,77 +279,64 @@ async function register() {
 }
 
 .login-card :deep(.el-tabs__item) {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
-  color: #606266;
-  transition: all 0.3s;
+  color: var(--text-muted);
+  padding: 0 16px;
 }
 
 .login-card :deep(.el-tabs__item.is-active) {
-  color: #667eea;
-  font-size: 18px;
+  color: var(--primary);
 }
 
 .login-card :deep(.el-tabs__active-bar) {
   height: 3px;
-  background: linear-gradient(90deg, #667eea, #764ba2);
+  background: var(--primary);
   border-radius: 2px;
-}
-
-.login-hint {
-  margin: 0 0 24px;
-  color: #909399;
-  font-size: 14px;
-  text-align: center;
 }
 
 .login-form-item :deep(.el-form-item__label) {
   font-weight: 500;
-  color: #303133;
+  color: var(--text);
+  font-size: 14px;
+  margin-bottom: 8px;
 }
 
 .login-form-item :deep(.el-input__wrapper) {
-  border-radius: 10px;
-  box-shadow: 0 0 0 1px #dcdfe6 inset;
-  transition: all 0.3s;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 1px var(--border) inset;
+  padding: 4px 12px;
 }
 
 .login-form-item :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 0 0 1px #667eea inset;
+  box-shadow: 0 0 0 1px var(--primary-light) inset;
 }
 
 .login-form-item :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px #667eea inset;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) inset;
 }
 
-.login-card :deep(.el-button--primary) {
-  height: 48px;
-  font-size: 16px;
+.login-btn {
+  width: 100%;
+  height: 44px;
+  font-size: 15px;
   font-weight: 600;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: var(--radius-sm);
+  background: var(--primary);
   border: none;
-  transition: all 0.3s;
   margin-top: 8px;
 }
 
-.login-card :deep(.el-button--primary:hover) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+.login-btn:hover {
+  background: var(--primary-dark);
 }
 
 .login-footer {
   margin-top: 20px;
   text-align: center;
   font-size: 13px;
-  color: #909399;
+  color: var(--text-muted);
   padding-top: 16px;
-  border-top: 1px solid #ebeef5;
-}
-
-.login-footer span {
-  background: #f5f7fa;
-  padding: 6px 16px;
-  border-radius: 20px;
+  border-top: 1px solid var(--border);
 }
 </style>
