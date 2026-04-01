@@ -182,3 +182,25 @@ def test_build_shared_meeting_out_returns_read_only_payload() -> None:
         assert shared.tasks[0].title == "共享任务"
     finally:
         db.close()
+
+
+def test_build_shared_meeting_out_raises_when_organizer_not_found() -> None:
+    db = make_session()
+    try:
+        # Create meeting with non-existent organizer_id
+        meeting = Meeting(
+            title="孤立会议",
+            description="组织者已被删除",
+            organizer_id=9999,
+            summary="会议摘要",
+            share_token="token-orphan",
+            shared_at=datetime.now(UTC),
+        )
+        db.add(meeting)
+        db.commit()
+        db.refresh(meeting)
+
+        with pytest.raises(ValueError, match="Organizer not found"):
+            build_shared_meeting_out(db, meeting)
+    finally:
+        db.close()
