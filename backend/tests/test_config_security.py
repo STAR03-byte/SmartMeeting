@@ -20,3 +20,15 @@ def test_development_allows_default_jwt_secret() -> None:
     )
 
     settings.validate_security()
+
+
+def test_production_rejects_weak_database_credentials() -> None:
+    settings = Settings(
+        app_env="production",
+        jwt_secret_key="strong-secret-value",
+        db_user="root",
+        db_password="root",
+    )
+
+    with pytest.raises(ValueError, match="DB credentials are too weak for production"):
+        settings.validate_security()

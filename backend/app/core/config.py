@@ -90,8 +90,16 @@ class Settings(BaseSettings):
 
     def validate_security(self) -> None:
         env = self.app_env.strip().lower()
-        if env in {"prod", "production"} and self.jwt_secret_key == "change-me-in-production":
+        if env not in {"prod", "production"}:
+            return
+
+        if self.jwt_secret_key == "change-me-in-production":
             raise ValueError("JWT_SECRET_KEY must be set to a strong secret in production")
+
+        weak_users = {"root", "admin", "smartmeeting"}
+        weak_passwords = {"root", "admin", "smartmeeting", "123456", "password"}
+        if self.db_user.strip().lower() in weak_users or self.db_password in weak_passwords:
+            raise ValueError("DB credentials are too weak for production")
 
 
 settings = Settings()
