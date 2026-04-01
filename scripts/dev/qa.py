@@ -53,6 +53,7 @@ def main() -> int:
         )
 
     if not args.skip_frontend:
+        steps.append(("frontend-tests", ["npm", "--prefix", "frontend", "exec", "--", "vitest", "run"]))
         steps.append(("frontend-typecheck", ["npm", "--prefix", "frontend", "run", "typecheck"]))
         steps.append(("frontend-build", ["npm", "--prefix", "frontend", "run", "build"]))
 
