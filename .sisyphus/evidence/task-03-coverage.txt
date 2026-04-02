@@ -1,0 +1,5 @@
+Backend: python -m pytest backend/tests -v --cov=app --cov-fail-under=80
+Result: 110 passed, coverage 85.38%
+
+Frontend: npm --prefix frontend run test:coverage
+Result: 37 passed, coverage 85.71% on src/api/

@@ -162,6 +162,87 @@ describe("meetings api module", () => {
     expect(result.items[0].meeting_id).toBe(3);
   });
 
+  it("fetches tasks by assignee", async () => {
+    const getSpy = vi.spyOn(apiClient, "get").mockResolvedValueOnce({
+      data: { items: [], total: 0 },
+    } as never);
+
+    const mod = await import("./meetings");
+    await mod.getTasksByAssignee(8);
+
+    expect(getSpy).toHaveBeenCalledWith("/api/v1/tasks", {
+      params: { assignee_id: 8 },
+    });
+  });
+
+  it("triggers postprocess for a meeting", async () => {
+    const postSpy = vi.spyOn(apiClient, "post").mockResolvedValueOnce({
+      data: {
+        meeting_id: 3,
+        summary: "总结",
+        tasks: [],
+      },
+    } as never);
+
+    const mod = await import("./meetings");
+    const result = await mod.triggerPostprocess(3);
+
+    expect(postSpy).toHaveBeenCalledWith("/api/v1/meetings/3/postprocess");
+    expect(result.summary).toBe("总结");
+  });
+
+  it("uploads meeting audio with multipart headers", async () => {
+    const postSpy = vi.spyOn(apiClient, "post").mockResolvedValueOnce({
+      data: {
+        id: 4,
+        meeting_id: 3,
+        filename: "recording.wav",
+        storage_path: "backend/storage/audio/3/recording.wav",
+        content_type: "audio/wav",
+        size_bytes: 1024,
+        uploaded_at: "2026-03-25T00:00:00Z",
+      },
+    } as never);
+
+    const mod = await import("./meetings");
+    const file = new File(["audio"], "recording.wav", { type: "audio/wav" });
+    const result = await mod.uploadMeetingAudio(3, file);
+
+    expect(postSpy).toHaveBeenCalledWith(
+      "/api/v1/meetings/3/audio",
+      expect.any(FormData),
+      expect.objectContaining({
+        headers: { "Content-Type": "multipart/form-data" },
+      }),
+    );
+    expect(result.filename).toBe("recording.wav");
+  });
+
+  it("transcribes meeting audio", async () => {
+    const postSpy = vi.spyOn(apiClient, "post").mockResolvedValueOnce({
+      data: {
+        id: 11,
+        meeting_id: 3,
+        speaker_user_id: null,
+        speaker_name: "Whisper",
+        segment_index: 1,
+        start_time_sec: 0,
+        end_time_sec: 2,
+        language_code: "zh-CN",
+        source: "whisper",
+        content: "开始转写",
+        created_at: "2026-03-25T00:00:00Z",
+        updated_at: "2026-03-25T00:00:00Z",
+      },
+    } as never);
+
+    const mod = await import("./meetings");
+    const result = await mod.transcribeMeetingAudio(3);
+
+    expect(postSpy).toHaveBeenCalledWith("/api/v1/meetings/3/audio/transcribe");
+    expect(result.content).toBe("开始转写");
+  });
+
   it("fetches transcripts by meeting query", async () => {
     const getSpy = vi.spyOn(apiClient, "get").mockResolvedValueOnce({
       data: [
