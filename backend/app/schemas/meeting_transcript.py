@@ -12,6 +12,7 @@ class MeetingTranscriptCreate(BaseModel):
 
     meeting_id: int
     speaker_user_id: int | None = None
+    speaker_id: int | None = None
     speaker_name: str | None = Field(default=None, max_length=100)
     segment_index: int = Field(..., ge=1)
     start_time_sec: float | None = None
@@ -25,6 +26,7 @@ class MeetingTranscriptUpdate(BaseModel):
     """更新转写请求。"""
 
     speaker_user_id: int | None = None
+    speaker_id: int | None = None
     speaker_name: str | None = Field(default=None, max_length=100)
     start_time_sec: float | None = None
     end_time_sec: float | None = None
@@ -39,6 +41,7 @@ class MeetingTranscriptOut(BaseModel):
     id: int
     meeting_id: int
     speaker_user_id: int | None
+    speaker_id: int | None
     speaker_name: str | None
     segment_index: int
     start_time_sec: float | None

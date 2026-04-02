@@ -39,8 +39,23 @@ def update_transcript(
     """更新转写。"""
 
     data: dict[str, object] = payload.model_dump(exclude_unset=True)
+    
+    # If updating speaker_name and a speaker_id exists, update all segments with the same speaker_id
+    if "speaker_name" in data and transcript.speaker_id is not None:
+        db.query(MeetingTranscript).filter(
+            MeetingTranscript.meeting_id == transcript.meeting_id,
+            MeetingTranscript.speaker_id == transcript.speaker_id
+        ).update({"speaker_name": data["speaker_name"]}, synchronize_session=False)
+        db.commit()
+        db.refresh(transcript)
+
     for key, value in data.items():
-        setattr(transcript, key, value)
+        if key != "speaker_name":
+            setattr(transcript, key, value)
+    
+    if "speaker_name" in data and transcript.speaker_id is None:
+        setattr(transcript, "speaker_name", data["speaker_name"])
+
     db.add(transcript)
     db.commit()
     db.refresh(transcript)

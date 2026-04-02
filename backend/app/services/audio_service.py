@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.services.meeting_participant_service import list_participants
 from app.services.meeting_service import get_meeting
 from app.services.whisper_service import WhisperServiceError, transcribe_audio_file
+from app.services.speaker_diarization_service import diarize_audio, SpeakerSegment
 
 
 def _assign_speaker_labels(
@@ -177,5 +178,36 @@ async def transcribe_latest_audio(db: Session, meeting_id: int) -> list[MeetingT
     db.commit()
     for transcript in created_segments:
         db.refresh(transcript)
+
+    # Diarization Logic
+    if settings.enable_speaker_diarization:
+        diarization_segments = diarize_audio(latest_audio.storage_path)
+        if diarization_segments:
+            for transcript in created_segments:
+                t_mid = (transcript.start_time_sec or 0) + ((transcript.end_time_sec or 0) - (transcript.start_time_sec or 0)) / 2
+                best_match = None
+                for d_seg in diarization_segments:
+                    if d_seg.start <= t_mid <= d_seg.end:
+                        best_match = d_seg
+                        break
+                
+                if best_match is None:
+                    # find closest
+                    closest = None
+                    min_dist = float('inf')
+                    for d_seg in diarization_segments:
+                        dist = min(abs(t_mid - d_seg.start), abs(t_mid - d_seg.end))
+                        if dist < min_dist:
+                            min_dist = dist
+                            closest = d_seg
+                    best_match = closest
+
+                if best_match:
+                    transcript.speaker_id = best_match.speaker_id
+                    transcript.speaker_name = best_match.speaker
+            db.commit()
+            for transcript in created_segments:
+                db.refresh(transcript)
+
     participants = _fetch_meeting_participants(db, meeting_id)
     return _assign_speaker_labels(created_segments, participants)

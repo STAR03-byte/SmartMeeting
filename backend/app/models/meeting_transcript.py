@@ -20,6 +20,7 @@ class MeetingTranscript(Base):
         nullable=True,
         index=True,
     )
+    speaker_id: Mapped[int | None] = mapped_column(nullable=True)
     speaker_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     segment_index: Mapped[int] = mapped_column(nullable=False)
     start_time_sec: Mapped[float | None] = mapped_column(Numeric(10, 3), nullable=True)
