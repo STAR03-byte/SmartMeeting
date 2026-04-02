@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     auth_login_rate_limit: str = "5/minute"
 
     # Whisper Settings
+    use_faster_whisper: bool = True
+    faster_whisper_compute_type: str = "int8_float16"  # int8_float16 or int8
     whisper_model: str = "small"  # tiny | base | small | medium | large
     whisper_device: str = "cpu"  # cpu | cuda | auto
     whisper_language: str = "zh"  # Chinese
