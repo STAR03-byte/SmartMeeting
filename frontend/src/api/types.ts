@@ -14,6 +14,13 @@ export interface UserItem {
   updated_at: string;
 }
 
+export interface HotwordItem {
+  id: number;
+  user_id: number;
+  word: string;
+  created_at: string;
+}
+
 export interface Meeting {
   id: number;
   title: string;
@@ -164,4 +171,68 @@ export interface MeetingParticipantOut {
   left_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * 说话人信息
+ * 用于说话人分离功能，标识每个说话人的基本信息
+ */
+export interface Speaker {
+  id: string;
+  name: string;
+  color: string;
+  segment_count: number;
+  total_duration_sec: number;
+}
+
+/**
+ * 说话人分离片段
+ * 包含说话人标识、时间范围和文本内容
+ */
+export interface DiarizationSegment {
+  speaker_id: string;
+  speaker_name: string;
+  start_time_sec: number;
+  end_time_sec: number;
+  content: string;
+}
+
+/**
+ * 说话人重命名请求
+ */
+export interface SpeakerRenamePayload {
+  speaker_id: string;
+  new_name: string;
+}
+export interface AgendaItem {
+  topic: string;
+  speaker: string | null;
+  key_points: string[];
+}
+
+export interface Resolution {
+  decision: string;
+  proposer: string | null;
+  context: string | null;
+}
+
+export interface TodoItem {
+  title: string;
+  description: string | null;
+  assignee: string | null;
+  due_date: string | null;
+  priority: "high" | "medium" | "low";
+}
+
+export interface StructuredSummary {
+  agenda: AgendaItem[];
+  resolutions: Resolution[];
+  todos: TodoItem[];
+  raw_summary: string | null;
+}
+
+export interface MeetingStructuredSummaryResult {
+  meeting_id: number;
+  structured_summary: StructuredSummary;
+  has_structured_data: boolean;
 }

@@ -1,4 +1,4 @@
-import { defineStore } from "pinia";
+﻿import { defineStore } from "pinia";
 import {
   createTask,
   createMeeting,
@@ -23,6 +23,7 @@ import {
 } from "../api/meetings";
 import { updateTaskStatus, type TaskStatus } from "../api/tasks";
 import { getApiErrorMessage } from "../api/client";
+import type { Speaker, DiarizationSegment } from "../api/types";
 
 interface MeetingState {
   meetings: Meeting[];
@@ -30,6 +31,8 @@ interface MeetingState {
   currentMeeting: MeetingDetail | null;
   transcripts: Transcript[];
   tasks: TaskItem[];
+  speakers: Speaker[];
+  diarizationSegments: DiarizationSegment[];
   loading: boolean;
   error: string | null;
 }
@@ -41,6 +44,8 @@ export const useMeetingStore = defineStore("meeting", {
     currentMeeting: null,
     transcripts: [],
     tasks: [],
+    speakers: [],
+    diarizationSegments: [],
     loading: false,
     error: null,
   }),
@@ -179,6 +184,27 @@ export const useMeetingStore = defineStore("meeting", {
         this.error = getApiErrorMessage(error);
         throw error;
       }
+    },
+    setSpeakers(speakers: Speaker[]) {
+      this.speakers = speakers;
+    },
+    setDiarizationSegments(segments: DiarizationSegment[]) {
+      this.diarizationSegments = segments;
+    },
+    updateSpeakerName(speakerId: string, newName: string) {
+      const speaker = this.speakers.find((s) => s.id === speakerId);
+      if (speaker) {
+        speaker.name = newName;
+      }
+      this.diarizationSegments.forEach((segment) => {
+        if (segment.speaker_id === speakerId) {
+          segment.speaker_name = newName;
+        }
+      });
+    },
+    clearDiarizationData() {
+      this.speakers = [];
+      this.diarizationSegments = [];
     },
   },
 });
