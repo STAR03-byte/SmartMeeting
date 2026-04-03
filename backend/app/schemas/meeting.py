@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from pydantic.config import ConfigDict
 
 from app.schemas.meeting_transcript import MeetingTranscriptOut
+from app.schemas.structured_summary import StructuredSummary
 from app.schemas.task import TaskOut
 from app.schemas.user import UserOut
 
@@ -88,6 +89,14 @@ class MeetingPostprocessOut(BaseModel):
     meeting_id: int
     summary: str
     tasks: list[TaskOut]
+
+
+
+
+class MeetingStructuredSummaryOut(BaseModel):
+    meeting_id: int
+    structured_summary: StructuredSummary
+    has_structured_data: bool = Field(..., description='是否有有效的结构化数据')
 
 
 class MeetingExportRequest(BaseModel):

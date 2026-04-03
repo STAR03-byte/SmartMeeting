@@ -271,7 +271,7 @@ async def transcribe_meeting_audio_api(
         raise HTTPException(status_code=404, detail="Meeting not found")
     _assert_meeting_permission(meeting, current_user)
 
-    transcripts = await transcribe_latest_audio(db, meeting_id)
+    transcripts = await transcribe_latest_audio(db, meeting_id, current_user.id)
     if not transcripts:
         raise HTTPException(status_code=400, detail="No audio found for meeting")
     return MeetingTranscriptOut.model_validate(transcripts[0])

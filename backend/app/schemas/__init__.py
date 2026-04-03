@@ -19,6 +19,7 @@ from app.schemas.meeting_transcript import (
     MeetingTranscriptOut,
     MeetingTranscriptUpdate,
 )
+from app.schemas.hotword import HotwordCreate, HotwordOut
 from app.schemas.task import TaskCreate, TaskOut, TaskUpdate
 from app.schemas.user import UserCreate, UserOut, UserUpdate
 
@@ -36,6 +37,8 @@ __all__ = [
     "MeetingTranscriptCreate",
     "MeetingTranscriptUpdate",
     "MeetingTranscriptOut",
+    "HotwordCreate",
+    "HotwordOut",
     "TaskCreate",
     "TaskUpdate",
     "TaskOut",

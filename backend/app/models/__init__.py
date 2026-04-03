@@ -4,6 +4,7 @@ from app.models.meeting import Meeting
 from app.models.meeting_audio import MeetingAudio
 from app.models.meeting_participant import MeetingParticipant
 from app.models.meeting_transcript import MeetingTranscript
+from app.models.hotword import Hotword
 from app.models.audit_log import AuditLog
 from app.models.task import Task
 from app.models.user import User
@@ -13,6 +14,7 @@ __all__ = [
     "Meeting",
     "MeetingAudio",
     "MeetingTranscript",
+    "Hotword",
     "Task",
     "MeetingParticipant",
     "AuditLog",

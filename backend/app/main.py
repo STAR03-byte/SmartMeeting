@@ -14,14 +14,15 @@ from sqlalchemy.exc import OperationalError
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import Base, engine
+from app.core.errors import AppError, ErrorCode
 from app.core.limiter import limiter
 from app.services.llm_service import LLMServiceError
 from app.services.whisper_service import WhisperServiceError
 
-# 确保模型元数据注册完成
 from app import models  # noqa: F401
 
 logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -42,59 +43,127 @@ app.add_middleware(SlowAPIMiddleware)
 app.include_router(api_router, prefix="/api/v1")
 
 
+@app.exception_handler(AppError)
+async def handle_app_error(_: Request, exc: AppError) -> JSONResponse:
+    """处理应用自定义错误。"""
+    status_code = _error_code_to_status_code(exc.error_code)
+    logger.error(
+        "Application error: %s (code: %s)",
+        exc.message,
+        exc.error_code.value,
+        extra={"details": exc.details, "suggestion": exc.suggestion},
+    )
+    return JSONResponse(
+        status_code=status_code,
+        content=exc.to_dict(),
+    )
+
+
 @app.exception_handler(LLMServiceError)
 @app.exception_handler(WhisperServiceError)
 async def handle_ai_service_error(_: Request, exc: Exception) -> JSONResponse:
+    """处理 AI 服务错误。"""
     logger.exception("AI service error", exc_info=exc)
     return JSONResponse(
         status_code=503,
         content={
-            "detail": "AI service unavailable",
-            "error_code": "AI_SERVICE_UNAVAILABLE",
+            "detail": "AI 服务暂时不可用，请稍后重试",
+            "error_code": ErrorCode.AI_SERVICE_UNAVAILABLE.value,
+            "suggestion": "系统将自动使用备用方案处理您的请求，或请稍后重试",
         },
     )
 
 
 @app.exception_handler(RequestValidationError)
-async def handle_validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
+async def handle_validation_error(
+    _: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """处理请求验证错误。"""
+    errors = exc.errors()
+    user_message = "请求参数校验失败"
+    if errors and len(errors) > 0:
+        first_error = errors[0]
+        if "msg" in first_error:
+            user_message = f"参数校验失败: {first_error['msg']}"
+        elif "loc" in first_error:
+            field = ".".join(str(x) for x in first_error["loc"])
+            user_message = f"参数 {field} 校验失败"
+
     return JSONResponse(
         status_code=422,
         content={
-            "detail": exc.errors(),
-            "error_code": "REQUEST_VALIDATION_ERROR",
+            "detail": user_message,
+            "error_code": ErrorCode.REQUEST_VALIDATION_ERROR.value,
+            "errors": errors,
         },
     )
 
 
-def _default_error_code_for_status(status_code: int) -> str:
+def _error_code_to_status_code(error_code: ErrorCode) -> int:
+    """将错误码映射为 HTTP 状态码。"""
+    status_map = {
+        ErrorCode.BAD_REQUEST: 400,
+        ErrorCode.UNAUTHORIZED: 401,
+        ErrorCode.FORBIDDEN: 403,
+        ErrorCode.NOT_FOUND: 404,
+        ErrorCode.CONFLICT: 409,
+        ErrorCode.REQUEST_VALIDATION_ERROR: 422,
+        ErrorCode.TOO_MANY_REQUESTS: 429,
+        ErrorCode.GPU_OUT_OF_MEMORY: 507,
+        ErrorCode.GPU_NOT_AVAILABLE: 503,
+        ErrorCode.GPU_PROCESSING_FAILED: 500,
+        ErrorCode.MODEL_LOADING_TIMEOUT: 504,
+        ErrorCode.MODEL_LOADING_FAILED: 500,
+        ErrorCode.MODEL_NOT_FOUND: 404,
+        ErrorCode.TRANSCRIPTION_FAILED: 500,
+        ErrorCode.TRANSCRIPTION_TIMEOUT: 504,
+        ErrorCode.AUDIO_PROCESSING_FAILED: 500,
+        ErrorCode.INVALID_AUDIO_FORMAT: 400,
+        ErrorCode.SPEAKER_DIARIZATION_FAILED: 500,
+        ErrorCode.SPEAKER_DIARIZATION_TIMEOUT: 504,
+        ErrorCode.AI_SERVICE_UNAVAILABLE: 503,
+        ErrorCode.LLM_TIMEOUT: 504,
+        ErrorCode.LLM_RATE_LIMITED: 429,
+        ErrorCode.NETWORK_TIMEOUT: 504,
+        ErrorCode.NETWORK_ERROR: 502,
+    }
+    return status_map.get(error_code, 500)
+
+
+def _default_error_code_for_status(status_code: int) -> ErrorCode:
+    """根据 HTTP 状态码返回默认错误码。"""
     if status_code == 400:
-        return "BAD_REQUEST"
+        return ErrorCode.BAD_REQUEST
     if status_code == 401:
-        return "UNAUTHORIZED"
+        return ErrorCode.UNAUTHORIZED
     if status_code == 403:
-        return "FORBIDDEN"
+        return ErrorCode.FORBIDDEN
     if status_code == 404:
-        return "NOT_FOUND"
+        return ErrorCode.NOT_FOUND
     if status_code == 409:
-        return "CONFLICT"
+        return ErrorCode.CONFLICT
     if status_code == 422:
-        return "REQUEST_VALIDATION_ERROR"
+        return ErrorCode.REQUEST_VALIDATION_ERROR
     if status_code == 429:
-        return "TOO_MANY_REQUESTS"
+        return ErrorCode.TOO_MANY_REQUESTS
     if 400 <= status_code < 500:
-        return "CLIENT_ERROR"
-    return "INTERNAL_SERVER_ERROR"
+        return ErrorCode.CLIENT_ERROR
+    return ErrorCode.INTERNAL_SERVER_ERROR
 
 
 @app.exception_handler(HTTPException)
 async def handle_http_exception(_: Request, exc: HTTPException) -> JSONResponse:
+    """处理 HTTP 异常。"""
     detail = exc.detail
+    error_code: ErrorCode | None = None
 
-    error_code: str | None = None
     if isinstance(detail, dict):
         maybe_error_code = detail.get("error_code")
-        if isinstance(maybe_error_code, str) and maybe_error_code:
-            error_code = maybe_error_code
+        if isinstance(maybe_error_code, str):
+            try:
+                error_code = ErrorCode(maybe_error_code)
+            except ValueError:
+                pass
         detail = detail.get("detail", detail)
 
     if error_code is None:
@@ -104,7 +173,7 @@ async def handle_http_exception(_: Request, exc: HTTPException) -> JSONResponse:
         status_code=exc.status_code,
         content={
             "detail": detail,
-            "error_code": error_code,
+            "error_code": error_code.value,
         },
         headers=exc.headers,
     )
@@ -112,23 +181,27 @@ async def handle_http_exception(_: Request, exc: HTTPException) -> JSONResponse:
 
 @app.exception_handler(RateLimitExceeded)
 async def handle_rate_limit(_: Request, exc: RateLimitExceeded) -> JSONResponse:
+    """处理速率限制错误。"""
     return JSONResponse(
         status_code=429,
         content={
-            "detail": str(exc.detail),
-            "error_code": "TOO_MANY_REQUESTS",
+            "detail": "请求过于频繁，请稍后重试",
+            "error_code": ErrorCode.TOO_MANY_REQUESTS.value,
+            "suggestion": "请等待片刻后再试，或联系管理员提高配额",
         },
     )
 
 
 @app.exception_handler(Exception)
 async def handle_unexpected_error(_: Request, exc: Exception) -> JSONResponse:
+    """处理未预期的错误。"""
     logger.exception("Unhandled server error", exc_info=exc)
     return JSONResponse(
         status_code=500,
         content={
-            "detail": "Internal server error",
-            "error_code": "INTERNAL_SERVER_ERROR",
+            "detail": "服务器内部错误，请稍后重试",
+            "error_code": ErrorCode.INTERNAL_SERVER_ERROR.value,
+            "suggestion": "如果问题持续，请联系管理员并提供错误详情",
         },
     )
 
