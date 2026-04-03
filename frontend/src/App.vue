@@ -1,34 +1,35 @@
 <template>
-  <div class="app-shell">
-    <aside class="side-rail">
-      <div class="brand-block">
-        <strong>SmartMeeting</strong>
-        <span>AI Meeting Ops</span>
+  <div class="min-h-100vh flex bg-page max-[900px]:flex-col">
+    <aside class="w-[260px] border-r-1 border-r-solid border-border-light py-8 px-6 flex flex-col gap-8 bg-bg shadow-[2px_0_8px_rgba(0,0,0,0.02)] z-10 max-[900px]:w-full max-[900px]:border-r-0 max-[900px]:border-b-1 max-[900px]:border-b-solid max-[900px]:p-5 max-[900px]:gap-5 max-[900px]:shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
+      <div class="flex flex-col gap-1 pl-2">
+        <strong class="text-[20px] font-700 text-text tracking-[-0.5px]">SmartMeeting</strong>
+        <span class="text-primary text-[12px] font-500 tracking-[0.5px] uppercase">AI Meeting Ops</span>
       </div>
 
-      <div v-if="authStore.token" class="user-info">
+      <div v-if="authStore.token" class="flex items-center gap-3 p-4 bg-primary-light-9 rounded-base border-1 border-solid border-primary-light-8 max-[900px]:hidden">
         <el-avatar :size="32">{{ userInitial }}</el-avatar>
-        <div class="user-meta">
-          <span class="user-name">{{ authStore.currentUser?.full_name || '已登录' }}</span>
-          <span class="user-role">{{ authStore.currentUser?.role === 'admin' ? '管理员' : '成员' }}</span>
+        <div class="flex flex-col overflow-hidden">
+          <span class="font-600 text-[14px] text-text whitespace-nowrap text-ellipsis overflow-hidden">{{ authStore.currentUser?.full_name || '已登录' }}</span>
+          <span class="text-[12px] text-text-secondary mt-[2px]">{{ authStore.currentUser?.role === 'admin' ? '管理员' : '成员' }}</span>
         </div>
       </div>
 
-      <nav v-if="authStore.token">
-        <RouterLink to="/">仪表盘</RouterLink>
-        <RouterLink to="/meetings">会议列表</RouterLink>
-        <RouterLink to="/tasks">任务中心</RouterLink>
-        <RouterLink to="/users">用户管理</RouterLink>
+      <nav v-if="authStore.token" class="flex flex-col gap-2 max-[900px]:flex-row max-[900px]:flex-wrap">
+        <RouterLink to="/" class="nav-link">仪表盘</RouterLink>
+        <RouterLink to="/meetings" class="nav-link">会议列表</RouterLink>
+        <RouterLink to="/tasks" class="nav-link">任务中心</RouterLink>
+        <RouterLink to="/hotwords" class="nav-link">热词设置</RouterLink>
+        <RouterLink to="/users" class="nav-link">用户管理</RouterLink>
       </nav>
 
-      <div class="side-footer">
+      <div class="mt-auto pt-6 border-t-1 border-t-solid border-border-lighter max-[900px]:mt-0 max-[900px]:border-t-0 max-[900px]:pt-0">
         <el-button v-if="authStore.token" text type="danger" @click="handleLogout">退出登录</el-button>
         <RouterLink v-else to="/login">
           <el-button type="primary" size="small">去登录</el-button>
         </RouterLink>
       </div>
     </aside>
-    <main class="main-stage">
+    <main class="flex-1 py-10 px-12 overflow-y-auto bg-page h-100vh max-[900px]:py-6 max-[900px]:px-5 max-[900px]:h-auto">
       <RouterView />
     </main>
   </div>
@@ -60,84 +61,7 @@ function handleLogout() {
 </script>
 
 <style scoped>
-.app-shell {
-  min-height: 100vh;
-  display: flex;
-  background: var(--el-bg-color-page);
-}
-
-.side-rail {
-  width: 260px;
-  border-right: 1px solid var(--el-border-color-light, #ebeef5);
-  padding: 32px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  background: var(--el-bg-color);
-  box-shadow: 2px 0 8px rgba(0,0,0,0.02);
-  z-index: 10;
-}
-
-.brand-block {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-left: 8px;
-}
-
-.brand-block strong {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--el-text-color-primary, #303133);
-  letter-spacing: -0.5px;
-}
-
-.brand-block span {
-  color: var(--el-color-primary);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  background: var(--el-color-primary-light-9);
-  border-radius: var(--el-border-radius-base);
-  border: 1px solid var(--el-color-primary-light-8, #d9e0f0);
-}
-
-.user-meta {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.user-name {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--el-text-color-primary, #303133);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-
-.user-role {
-  font-size: 12px;
-  color: var(--el-text-color-secondary, #909399);
-  margin-top: 2px;
-}
-
-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-nav a {
+.nav-link {
   color: var(--el-text-color-regular, #606266);
   text-decoration: none;
   padding: 12px 16px;
@@ -148,63 +72,14 @@ nav a {
   transition: all 0.2s ease;
 }
 
-nav a:hover {
+.nav-link:hover {
   background: var(--el-fill-color-light, #f5f7fa);
   color: var(--el-text-color-primary, #303133);
 }
 
-nav a.router-link-active {
+.nav-link.router-link-active {
   background: var(--el-color-primary-light-9);
   color: var(--el-color-primary);
   font-weight: 600;
-}
-
-.side-footer {
-  margin-top: auto;
-  padding-top: 24px;
-  border-top: 1px solid var(--el-border-color-lighter, #ebeef5);
-}
-
-.main-stage {
-  flex: 1;
-  padding: 40px 48px;
-  overflow-y: auto;
-  background: var(--el-bg-color-page);
-  height: 100vh;
-}
-
-@media (max-width: 900px) {
-  .app-shell {
-    flex-direction: column;
-  }
-
-  .side-rail {
-    width: 100%;
-    border-right: 0;
-    border-bottom: 1px solid var(--el-border-color-light, #ebeef5);
-    padding: 20px;
-    gap: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
-  }
-  
-  .user-info {
-    display: none; /* Hide on mobile to save space */
-  }
-
-  nav {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-
-  .side-footer {
-    margin-top: 0;
-    border-top: 0;
-    padding-top: 0;
-  }
-  
-  .main-stage {
-    padding: 24px 20px;
-    height: auto;
-  }
 }
 </style>

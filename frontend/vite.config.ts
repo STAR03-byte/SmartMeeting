@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
+import UnoCSS from "unocss/vite";
 import AutoImport from "unplugin-auto-import/vite";
 import Components from "unplugin-vue-components/vite";
 import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
@@ -9,6 +10,7 @@ const devBackendUrl = process.env.SMARTMEETING_DEV_BACKEND_URL?.trim() || "http:
 export default defineConfig({
   plugins: [
     vue(),
+    UnoCSS(),
     AutoImport({
       dts: "./auto-imports.d.ts",
       resolvers: [ElementPlusResolver()],
