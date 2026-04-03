@@ -219,3 +219,6 @@ node_modules/
 *.exe
 *.dll
 *.zip
+
+# Sisyphus AI agent working directory
+.sisyphus/
