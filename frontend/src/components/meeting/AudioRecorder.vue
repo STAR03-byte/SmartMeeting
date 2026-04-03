@@ -7,7 +7,7 @@
       :on-change="onFilePicked"
       :disabled="recordingState !== 'idle'"
     >
-      <el-button type="primary">上传音频并转写</el-button>
+      <el-button type="primary">{{ $t('transcript.uploadAndTranscribe') }}</el-button>
     </el-upload>
     <el-button
       type="primary"
@@ -15,19 +15,19 @@
       :disabled="recordingState === 'recording' || recordingState === 'paused'"
       @click="startRecording"
     >
-      开始录音
+      {{ $t('transcript.startRecord') }}
     </el-button>
     <el-button
       :disabled="recordingState !== 'recording'"
       @click="pauseRecording"
     >
-      暂停录音
+      {{ $t('transcript.pauseRecord') }}
     </el-button>
     <el-button
       :disabled="recordingState !== 'paused'"
       @click="resumeRecording"
     >
-      继续录音
+      {{ $t('transcript.resumeRecord') }}
     </el-button>
     <el-button
       type="danger"
@@ -35,11 +35,11 @@
       :disabled="recordingState !== 'recording' && recordingState !== 'paused'"
       @click="stopRecording"
     >
-      停止并转写
+      {{ $t('transcript.stopAndTranscribe') }}
     </el-button>
-    <el-button type="success" @click="runPostprocess">生成纪要与任务</el-button>
-    <el-button @click="downloadSummary" :disabled="!store.currentMeeting?.summary">导出纪要</el-button>
-    <el-button @click="copySummary" :disabled="summaryDisplayText === '暂无会议摘要'">复制摘要</el-button>
+    <el-button type="success" @click="runPostprocess">{{ $t('transcript.generateSummary') }}</el-button>
+    <el-button @click="downloadSummary" :disabled="!store.currentMeeting?.summary">{{ $t('transcript.exportSummary') }}</el-button>
+    <el-button @click="copySummary" :disabled="summaryDisplayText === $t('summary.emptySummary')">{{ $t('transcript.copySummary') }}</el-button>
   </div>
   <div class="recording-status" :class="recordingState">
     录音状态：{{ recordingStateLabel }}
@@ -47,6 +47,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { useMeetingStore } from "../../stores/meetingStore";
 import { useRecording } from "../../composables/useRecording";
 import { useTranscription } from "../../composables/useTranscription";

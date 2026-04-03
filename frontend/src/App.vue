@@ -9,22 +9,22 @@
       <div v-if="authStore.token" class="flex items-center gap-3 p-4 bg-primary-light-9 rounded-base border-1 border-solid border-primary-light-8 max-[900px]:hidden">
         <el-avatar :size="32">{{ userInitial }}</el-avatar>
         <div class="flex flex-col overflow-hidden">
-          <span class="font-600 text-[14px] text-text whitespace-nowrap text-ellipsis overflow-hidden">{{ authStore.currentUser?.full_name || '已登录' }}</span>
-          <span class="text-[12px] text-text-secondary mt-[2px]">{{ authStore.currentUser?.role === 'admin' ? '管理员' : '成员' }}</span>
+          <span class="font-600 text-[14px] text-text whitespace-nowrap text-ellipsis overflow-hidden">{{ authStore.currentUser?.full_name || $t('common.loggedIn') }}</span>
+          <span class="text-[12px] text-text-secondary mt-[2px]">{{ authStore.currentUser?.role === 'admin' ? $t('team.roleAdmin') : $t('team.roleMember') }}</span>
         </div>
       </div>
 
       <nav v-if="authStore.token" class="flex flex-col gap-2 max-[900px]:flex-row max-[900px]:flex-wrap">
-        <RouterLink to="/" class="nav-link">仪表盘</RouterLink>
-        <RouterLink to="/meetings" class="nav-link">会议列表</RouterLink>
-        <RouterLink to="/tasks" class="nav-link">任务中心</RouterLink>
-        <RouterLink to="/hotwords" class="nav-link">热词设置</RouterLink>
+        <RouterLink to="/" class="nav-link">{{ $t('app.navDashboard') }}</RouterLink>
+        <RouterLink to="/meetings" class="nav-link">{{ $t('app.navMeetings') }}</RouterLink>
+        <RouterLink to="/tasks" class="nav-link">{{ $t('app.navTasks') }}</RouterLink>
+        <RouterLink to="/hotwords" class="nav-link">{{ $t('app.navHotwords') }}</RouterLink>
       </nav>
 
       <div class="mt-auto pt-6 border-t-1 border-t-solid border-border-lighter max-[900px]:mt-0 max-[900px]:border-t-0 max-[900px]:pt-0">
-        <el-button v-if="authStore.token" text type="danger" @click="handleLogout">退出登录</el-button>
+        <el-button v-if="authStore.token" text type="danger" @click="handleLogout">{{ $t('common.logout') }}</el-button>
         <RouterLink v-else to="/login">
-          <el-button type="primary" size="small">去登录</el-button>
+          <el-button type="primary" size="small">{{ $t('common.goToLogin') }}</el-button>
         </RouterLink>
       </div>
     </aside>

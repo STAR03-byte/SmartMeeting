@@ -1,29 +1,29 @@
 <template>
   <section class="meeting-list-page">
     <header class="page-header">
-      <h1>会议管理</h1>
+      <h1>{{ $t('app.navMeetings') }}</h1>
       <el-button type="primary" @click="showCreateDialog = true">
         <el-icon><Plus /></el-icon>
-        新建会议
+        {{ $t('dashboard.newMeeting') }}
       </el-button>
     </header>
 
     <section class="filter-section">
       <el-form inline class="filter-bar" @submit.prevent="applyFilter">
-        <el-form-item label="状态">
-          <el-select v-model="filterStatus" clearable placeholder="全部" style="width: 140px">
-            <el-option label="计划中" value="planned" />
-            <el-option label="进行中" value="ongoing" />
-            <el-option label="已结束" value="done" />
-            <el-option label="已取消" value="cancelled" />
+        <el-form-item :label="$t('common.status')">
+          <el-select v-model="filterStatus" clearable :placeholder="$t('common.all')" style="width: 140px">
+            <el-option :label="$t('meeting.statusPlanned')" value="planned" />
+            <el-option :label="$t('task.statusInProgress')" value="ongoing" />
+            <el-option :label="$t('meeting.statusDone')" value="done" />
+            <el-option :label="$t('meeting.statusCancelled')" value="cancelled" />
           </el-select>
         </el-form-item>
-        <el-form-item label="关键词">
-          <el-input v-model="filterKeyword" placeholder="搜索标题/描述" clearable style="width: 200px" />
+        <el-form-item :label="$t('common.keyword')">
+          <el-input v-model="filterKeyword" :placeholder="$t('common.searchPlaceholder')" clearable style="width: 200px" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="applyFilter">筛选</el-button>
-          <el-button @click="resetFilter">重置</el-button>
+          <el-button type="primary" @click="applyFilter">{{ $t('common.filter') }}</el-button>
+          <el-button @click="resetFilter">{{ $t('common.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </section>
@@ -35,12 +35,12 @@
 
       <el-table v-else :data="store.meetings" stripe class="meetings-table">
         <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="title" label="标题" min-width="180">
+        <el-table-column prop="title" :label="$t('task.taskTitle')" min-width="180">
           <template #default="{ row }">
             <router-link :to="`/meetings/${row.id}`" class="meeting-link">{{ row.title }}</router-link>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="90">
+        <el-table-column prop="status" :label="$t('common.status')" width="90">
           <template #default="{ row }">
             <el-tag :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</el-tag>
           </template>
@@ -50,16 +50,16 @@
             {{ formatDate(row.scheduled_start_at) }}
           </template>
         </el-table-column>
-        <el-table-column prop="location" label="地点" width="120">
+        <el-table-column prop="location" :label="$t('meeting.location')" width="120">
           <template #default="{ row }">
             {{ row.location || "-" }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column :label="$t('common.operations')" width="120" fixed="right">
           <template #default="{ row }">
-            <el-popconfirm title="确认删除此会议？" @confirm="handleDelete(row.id)">
+            <el-popconfirm :title="$t('meeting.deleteConfirm')" @confirm="handleDelete(row.id)">
               <template #reference>
-                <el-button size="small" type="danger" plain>删除</el-button>
+                <el-button size="small" type="danger" plain>{{ $t('common.delete') }}</el-button>
               </template>
             </el-popconfirm>
           </template>
@@ -77,16 +77,16 @@
       />
     </section>
 
-    <el-dialog v-model="showCreateDialog" title="新建会议" width="520px" @closed="resetCreateForm">
+    <el-dialog v-model="showCreateDialog" :title="$t('dashboard.newMeeting')" width="520px" @closed="resetCreateForm">
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="80px">
-        <el-form-item label="标题" prop="title">
-          <el-input v-model="createForm.title" placeholder="请输入会议标题" />
+        <el-form-item :label="$t('task.taskTitle')" prop="title">
+          <el-input v-model="createForm.title" :placeholder="$t('meeting.titlePlaceholder')" />
         </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="createForm.description" type="textarea" :rows="3" placeholder="请输入会议描述（可选）" />
+        <el-form-item :label="$t('task.taskDescription')">
+          <el-input v-model="createForm.description" type="textarea" :rows="3" :placeholder="$t('meeting.descriptionPlaceholder')" />
         </el-form-item>
-        <el-form-item label="所属团队" prop="team_id">
-          <el-select v-model="createForm.team_id" placeholder="选择团队（可选）" clearable style="width: 100%">
+        <el-form-item :label="$t('meeting.team')" prop="team_id">
+          <el-select v-model="createForm.team_id" :placeholder="$t('team.selectTeamOptional')" clearable style="width: 100%">
             <el-option 
               v-for="team in teams" 
               :key="team.id" 
@@ -95,7 +95,7 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="组织者" prop="organizer_id">
+        <el-form-item :label="$t('meeting.organizer')" prop="organizer_id">
           <el-select
             v-model="createForm.organizer_id"
             filterable
@@ -111,21 +111,21 @@
           </el-select>
         </el-form-item>
         <el-form-item label="计划开始">
-          <el-date-picker v-model="createForm.scheduled_start_at" type="datetime" placeholder="选择开始时间" style="width: 100%" />
+          <el-date-picker v-model="createForm.scheduled_start_at" type="datetime" :placeholder="$t('meeting.selectStartTime')" style="width: 100%" />
         </el-form-item>
         <el-form-item label="计划结束">
-          <el-date-picker v-model="createForm.scheduled_end_at" type="datetime" placeholder="选择结束时间" style="width: 100%" />
+          <el-date-picker v-model="createForm.scheduled_end_at" type="datetime" :placeholder="$t('meeting.selectEndTime')" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="地点">
-          <el-input v-model="createForm.location" placeholder="会议地点（可选）" />
+        <el-form-item :label="$t('meeting.location')">
+          <el-input v-model="createForm.location" :placeholder="$t('meeting.locationOptional')" />
         </el-form-item>
-        <el-form-item label="参与者">
+        <el-form-item :label="$t('participant.title')">
           <el-select
             v-model="selectedParticipantIds"
             multiple
             filterable
             clearable
-            placeholder="选择参与人员（可选）"
+            :placeholder="$t('participant.selectParticipantOptional')"
             style="width: 100%"
           >
             <el-option
@@ -138,14 +138,16 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreateDialog = false">取消</el-button>
-        <el-button type="primary" :loading="creating" @click="handleCreate">创建</el-button>
+        <el-button @click="showCreateDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="creating" @click="handleCreate">{{ $t('common.create') }}</el-button>
       </template>
     </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { onMounted, reactive, ref, watch } from "vue";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
@@ -188,7 +190,7 @@ const createForm = reactive<MeetingCreatePayload>({
 });
 
 const createRules: FormRules = {
-  title: [{ required: true, message: "请输入会议标题", trigger: "blur" }],
+  title: [{ required: true, message: t('meeting.titlePlaceholder'), trigger: "blur" }],
   organizer_id: [{ required: true, message: "请选择组织者", trigger: "change" }],
 };
 
@@ -228,7 +230,7 @@ async function loadTeams() {
   try {
     teams.value = await getTeams();
   } catch (e) {
-    console.warn("获取团队列表失败", e);
+    console.warn(t('team.loadFailed'), e);
   }
 }
 
@@ -254,7 +256,7 @@ async function handleCreate() {
   if (!valid) return;
 
   if (users.value.length === 0) {
-    ElMessage.error("暂无可选组织者，请先创建用户");
+    ElMessage.error(t('meeting.noOrganizer'));
     return;
   }
 
@@ -284,12 +286,12 @@ async function handleCreate() {
       }
       ElMessage.success(`会议创建成功，已添加 ${selectedParticipantIds.value.length} 位参与者`);
     } else {
-      ElMessage.success("会议创建成功");
+      ElMessage.success(t('meeting.createSuccess'));
     }
 
     showCreateDialog.value = false;
   } catch (err) {
-    notifyApiError(err, { prefix: "创建失败" });
+    notifyApiError(err, { prefix: t('meeting.createFailed') });
   } finally {
     creating.value = false;
   }
@@ -298,9 +300,9 @@ async function handleCreate() {
 async function handleDelete(meetingId: number) {
   try {
     await store.removeMeeting(meetingId);
-    ElMessage.success("会议已删除");
+    ElMessage.success(t('meeting.deleteSuccess'));
   } catch (err) {
-    notifyApiError(err, { prefix: "删除失败" });
+    notifyApiError(err, { prefix: t('meeting.deleteFailed') });
   }
 }
 
@@ -318,10 +320,10 @@ function resetCreateForm() {
 
 function statusLabel(status: MeetingStatus): string {
   const map: Record<MeetingStatus, string> = {
-    planned: "计划中",
-    ongoing: "进行中",
-    done: "已结束",
-    cancelled: "已取消",
+    planned: t('meeting.statusPlanned'),
+    ongoing: t('task.statusInProgress'),
+    done: t('meeting.statusDone'),
+    cancelled: t('meeting.statusCancelled'),
   };
   return map[status] ?? status;
 }

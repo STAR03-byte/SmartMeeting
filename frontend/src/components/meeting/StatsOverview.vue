@@ -1,18 +1,20 @@
 <template>
   <el-row :gutter="12" class="stats-row">
     <el-col :span="8">
-      <el-statistic title="转写片段" :value="store.transcripts.length" />
+      <el-statistic :title="$t('stats.transcriptCount')" :value="store.transcripts.length" />
     </el-col>
     <el-col :span="8">
-      <el-statistic title="任务数" :value="store.tasks.length" />
+      <el-statistic :title="$t('stats.taskCount')" :value="store.tasks.length" />
     </el-col>
     <el-col :span="8">
-      <el-statistic title="已完成任务" :value="doneTaskCount" />
+      <el-statistic :title="$t('stats.doneTaskCount')" :value="doneTaskCount" />
     </el-col>
   </el-row>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { computed } from "vue";
 import { useMeetingStore } from "../../stores/meetingStore";
 

@@ -1,13 +1,16 @@
 """会议 REST API。"""
 
+from pathlib import Path as FilePath
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, UploadFile, status
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.auth import CurrentUserOut
 from app.schemas.meeting_audio import MeetingAudioOut
+from app.models.meeting_audio import MeetingAudio
 from app.models.meeting_transcript import MeetingTranscript
 from app.schemas.meeting import (
     MeetingCreate,
@@ -388,4 +391,114 @@ def export_meeting_api(
         format=payload.format,
         filename=filename,
         content=content,
+    )
+
+
+@router.get("/{meeting_id}/audios", response_model=list[MeetingAudioOut])
+def list_meeting_audios_api(
+    meeting_id: Annotated[int, Path(ge=1)],
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
+) -> list[MeetingAudioOut]:
+    """获取会议音频列表。"""
+
+    meeting = get_meeting(db, meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    # 权限检查：会议参与者才能访问
+    if current_user.role != "admin":
+        access_role = _check_meeting_access(meeting_id, current_user.id, db)
+        if not access_role:
+            raise HTTPException(status_code=403, detail="无权访问此会议")
+
+    audios = (
+        db.query(MeetingAudio)
+        .filter(MeetingAudio.meeting_id == meeting_id)
+        .order_by(MeetingAudio.uploaded_at.desc())
+        .all()
+    )
+    return [MeetingAudioOut.model_validate(audio) for audio in audios]
+
+
+@router.get("/{meeting_id}/audios/{audio_id}/download")
+def download_audio_api(
+    meeting_id: Annotated[int, Path(ge=1)],
+    audio_id: Annotated[int, Path(ge=1)],
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
+) -> FileResponse:
+    """下载会议音频文件。"""
+
+    meeting = get_meeting(db, meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    # 权限检查：会议参与者才能下载
+    if current_user.role != "admin":
+        access_role = _check_meeting_access(meeting_id, current_user.id, db)
+        if not access_role:
+            raise HTTPException(status_code=403, detail="无权下载此音频")
+
+    audio = (
+        db.query(MeetingAudio)
+        .filter(MeetingAudio.id == audio_id, MeetingAudio.meeting_id == meeting_id)
+        .first()
+    )
+    if not audio:
+        raise HTTPException(status_code=404, detail="Audio not found")
+
+    file_path = FilePath(audio.storage_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Audio file not found")
+
+    return FileResponse(
+        path=str(file_path),
+        media_type=audio.content_type,
+        filename=audio.filename,
+    )
+
+
+@router.get("/{meeting_id}/audios/{audio_id}/stream")
+def stream_audio_api(
+    meeting_id: Annotated[int, Path(ge=1)],
+    audio_id: Annotated[int, Path(ge=1)],
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
+) -> StreamingResponse:
+    """在线播放会议音频（流式响应）。"""
+
+    meeting = get_meeting(db, meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    # 权限检查：会议参与者才能播放
+    if current_user.role != "admin":
+        access_role = _check_meeting_access(meeting_id, current_user.id, db)
+        if not access_role:
+            raise HTTPException(status_code=403, detail="无权播放此音频")
+
+    audio = (
+        db.query(MeetingAudio)
+        .filter(MeetingAudio.id == audio_id, MeetingAudio.meeting_id == meeting_id)
+        .first()
+    )
+    if not audio:
+        raise HTTPException(status_code=404, detail="Audio not found")
+
+    file_path = FilePath(audio.storage_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Audio file not found")
+
+    def iterfile():
+        with open(file_path, "rb") as f:
+            yield from f
+
+    return StreamingResponse(
+        iterfile(),
+        media_type=audio.content_type,
+        headers={
+            "Accept-Ranges": "bytes",
+            "Content-Disposition": f'inline; filename="{audio.filename}"',
+        },
     )

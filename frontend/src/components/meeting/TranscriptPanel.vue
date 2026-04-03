@@ -24,40 +24,163 @@
       <el-card class="base-card">
         <template #header>
           <div class="panel-header">
-            <span>转写片段</span>
-            <el-button text @click="$emit('reload')">刷新</el-button>
+            <span>{{ $t('transcript.title') }}</span>
+            <el-button text @click="$emit('reload')">{{ $t('common.refresh') }}</el-button>
           </div>
         </template>
 
-        <el-empty v-if="store.transcripts.length === 0" description="暂无转写内容" />
-        <ul v-else class="plain-list">
-          <li v-for="item in store.transcripts" :key="item.id" class="transcript-row">
-            <div class="transcript-meta">
-              <strong>#{{ item.segment_index }}</strong>
-              <span>{{ item.speaker_name || item.source }}</span>
-              <el-popconfirm title="确认删除该转写片段？" @confirm="removeTranscript(item.id)">
-                <template #reference>
-                  <el-button size="small" type="danger" text>删除</el-button>
-                </template>
-              </el-popconfirm>
+        <el-empty v-if="store.transcripts.length === 0" :description="$t('transcript.empty')" />
+        
+        <el-timeline v-else class="grouped-timeline">
+          <el-timeline-item
+            v-for="(group, gIdx) in groupedTranscripts"
+            :key="gIdx"
+            :timestamp="formatTimeRange(group.start_time_sec, group.end_time_sec)"
+            placement="top"
+          >
+            <div class="speaker-header">
+              <el-tag size="small" type="info">{{ group.speaker_name }}</el-tag>
             </div>
-            <p>{{ item.content }}</p>
-          </li>
-        </ul>
+            
+            <div 
+              v-for="item in group.segments" 
+              :key="item.id" 
+              class="transcript-row"
+              :class="{ playing: isPlaying(item) }"
+            >
+              <div class="transcript-meta">
+                <strong>#{{ item.segment_index }}</strong>
+                <span v-if="item.start_time_sec !== null" class="time-range">
+                  [{{ formatTime(item.start_time_sec) }} - {{ formatTime(item.end_time_sec) }}]
+                </span>
+                <el-popconfirm :title="$t('transcript.deleteConfirm')" @confirm="removeTranscript(item.id)">
+                  <template #reference>
+                    <el-button size="small" type="danger" text>{{ $t('common.delete') }}</el-button>
+                  </template>
+                </el-popconfirm>
+              </div>
+              <div class="transcript-content">
+                <p>{{ getDisplayText(item) }}</p>
+                <el-button 
+                  v-if="shouldCollapse(item.content)" 
+                  type="primary" 
+                  link 
+                  size="small" 
+                  @click="toggleExpand(item.id)"
+                  class="toggle-btn"
+                >
+                  {{ isExpanded(item.id) ? $t('transcript.collapse') : $t('transcript.expand') }}
+                </el-button>
+              </div>
+            </div>
+          </el-timeline-item>
+        </el-timeline>
       </el-card>
     </template>
   </el-skeleton>
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from "vue";
 import { useMeetingStore } from "../../stores/meetingStore";
 import { useTranscription } from "../../composables/useTranscription";
+import { useI18n } from "vue-i18n";
+import type { Transcript } from "../../api/types";
 
-const props = defineProps<{ meetingId: number }>();
+const props = withDefaults(defineProps<{ 
+  meetingId: number;
+  currentTime?: number;
+}>(), {
+  currentTime: 0
+});
+
 defineEmits<{ (e: 'reload'): void }>();
 
 const store = useMeetingStore();
 const { removeTranscript } = useTranscription(props.meetingId);
+const { t } = useI18n();
+
+interface GroupedTranscript {
+  speaker_name: string;
+  start_time_sec: number | null;
+  end_time_sec: number | null;
+  segments: Transcript[];
+}
+
+const groupedTranscripts = computed(() => {
+  const groups: GroupedTranscript[] = [];
+  let currentGroup: GroupedTranscript | null = null;
+  
+  for (const transcript of store.transcripts) {
+    const speakerName = transcript.speaker_name || transcript.source || t('common.unknown');
+    if (!currentGroup || currentGroup.speaker_name !== speakerName) {
+      currentGroup = {
+        speaker_name: speakerName,
+        start_time_sec: transcript.start_time_sec,
+        end_time_sec: transcript.end_time_sec,
+        segments: [transcript]
+      };
+      groups.push(currentGroup);
+    } else {
+      currentGroup.segments.push(transcript);
+      if (transcript.end_time_sec !== null) {
+        currentGroup.end_time_sec = transcript.end_time_sec;
+      }
+    }
+  }
+  return groups;
+});
+
+function formatTime(seconds: number | null): string {
+  if (seconds === null || isNaN(seconds)) return '--:--';
+  const s = Math.floor(seconds);
+  const m = Math.floor(s / 60);
+  const h = Math.floor(m / 60);
+  const mStr = (m % 60).toString().padStart(2, '0');
+  const sStr = (s % 60).toString().padStart(2, '0');
+  if (h > 0) {
+    return `${h}:${mStr}:${sStr}`;
+  }
+  return `${mStr}:${sStr}`;
+}
+
+function formatTimeRange(start: number | null, end: number | null): string {
+  return `${formatTime(start)} - ${formatTime(end)}`;
+}
+
+const expandedSegments = ref<Set<number>>(new Set());
+
+function toggleExpand(id: number) {
+  const newSet = new Set(expandedSegments.value);
+  if (newSet.has(id)) {
+    newSet.delete(id);
+  } else {
+    newSet.add(id);
+  }
+  expandedSegments.value = newSet;
+}
+
+function isExpanded(id: number): boolean {
+  return expandedSegments.value.has(id);
+}
+
+function shouldCollapse(text: string) {
+  return text && text.length > 150;
+}
+
+function getDisplayText(item: Transcript) {
+  if (!shouldCollapse(item.content) || isExpanded(item.id)) {
+    return item.content;
+  }
+  return item.content.slice(0, 150) + '...';
+}
+
+function isPlaying(item: Transcript): boolean {
+  if (props.currentTime === undefined || props.currentTime === 0) return false;
+  const start = item.start_time_sec ?? 0;
+  const end = item.end_time_sec ?? Number.MAX_VALUE;
+  return props.currentTime >= start && props.currentTime <= end;
+}
 </script>
 
 <style scoped>
@@ -93,26 +216,33 @@ const { removeTranscript } = useTranscription(props.meetingId);
   font-size: 16px;
 }
 
-.plain-list {
-  margin: 0;
-  padding-left: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.grouped-timeline {
+  padding-left: 2px;
+  margin-top: 8px;
+}
+
+.speaker-header {
+  margin-bottom: 8px;
 }
 
 .transcript-row {
-  padding: 16px 20px;
+  padding: 12px 16px;
   background: var(--el-fill-color-lighter);
   border-radius: var(--el-border-radius-small);
   border: 1px solid transparent;
   transition: all 0.2s ease;
+  margin-bottom: 8px;
 }
 
 .transcript-row:hover {
   background: var(--el-color-primary-light-9);
   border-color: var(--el-color-primary-light-7);
+}
+
+.transcript-row.playing {
+  background: var(--el-color-primary-light-9);
+  border-left: 4px solid var(--el-color-primary);
+  border-radius: 4px;
 }
 
 .transcript-meta {
@@ -127,10 +257,21 @@ const { removeTranscript } = useTranscription(props.meetingId);
   color: var(--el-color-primary);
 }
 
-.transcript-row p {
-  margin: 12px 0 0;
+.time-range {
+  font-family: monospace;
+  color: var(--el-text-color-secondary);
+}
+
+.transcript-content p {
+  margin: 8px 0 4px;
   line-height: 1.7;
   color: var(--el-text-color-primary);
   font-size: 14px;
+  white-space: pre-wrap;
+}
+
+.toggle-btn {
+  margin-top: 4px;
+  font-size: 13px;
 }
 </style>

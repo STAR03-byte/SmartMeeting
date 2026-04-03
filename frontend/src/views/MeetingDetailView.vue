@@ -1,6 +1,6 @@
 <template>
   <section class="detail-page">
-    <el-page-header @back="goBack" content="会议工作台" />
+    <el-page-header @back="goBack" :content="$t('meeting.workbench')" />
 
     <AppErrorAlert :error="store.error" :closable="false" />
 
@@ -24,16 +24,16 @@
           <div class="header-row">
             <div>
               <h2>{{ store.currentMeeting.title }}</h2>
-              <p>{{ store.currentMeeting.description || "暂无描述" }}</p>
+              <p>{{ store.currentMeeting.description || $t('team.noDescription') }}</p>
               <p class="organizer-line">
                 组织者：{{ store.currentMeeting.organizer.full_name }} · 状态：{{ statusLabel(store.currentMeeting.status) }}
               </p>
             </div>
             <div class="summary-actions">
-              <el-button @click="reloadMeeting">刷新</el-button>
-              <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="copyShareLink">生成分享链接</el-button>
-              <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="distributeByEmail">邮件分发</el-button>
-              <el-button type="primary" @click="openTaskDialog">新建任务</el-button>
+              <el-button @click="reloadMeeting">{{ $t('common.refresh') }}</el-button>
+              <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="copyShareLink">{{ $t('meeting.generateShareLink') }}</el-button>
+              <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="distributeByEmail">{{ $t('meeting.emailDistribute') }}</el-button>
+              <el-button type="primary" @click="openTaskDialog">{{ $t('meeting.newTask') }}</el-button>
             </div>
           </div>
 
@@ -65,6 +65,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { onMounted, reactive, ref } from "vue";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
@@ -99,7 +101,7 @@ const participantManagerRef = ref<InstanceType<typeof ParticipantManager> | null
 
 onMounted(async () => {
   if (!Number.isFinite(meetingId)) {
-    ElMessage.error("会议ID无效");
+    ElMessage.error(t('meeting.invalidMeetingId'));
     router.push("/");
     return;
   }
@@ -118,7 +120,7 @@ async function copyShareLink() {
   try {
     const result = await createMeetingShareLink(meetingId);
     await copyShareLinkToClipboard(window.location.origin, result.share_path);
-    ElMessage.success(result.created_now ? "分享链接已生成并复制" : "分享链接已复制");
+    ElMessage.success(result.created_now ? t('meeting.shareLinkGenerated') : t('meeting.shareLinkCopied'));
   } catch (err) {
     notifyApiError(err);
   }
@@ -134,13 +136,13 @@ async function distributeByEmail() {
       .filter(Boolean)
       .slice(0, 2);
     const draft = buildEmailShareDraft({
-      title: store.currentMeeting?.title ?? "会议纪要",
+      title: store.currentMeeting?.title ?? t('meeting.meetingSummary'),
       summaryLines,
       shareLink: `${window.location.origin}${shareResult.share_path}`,
       recipientEmails: parts.map((p) => p.email ?? ""),
     });
     openEmailShareDraft(draft);
-    ElMessage.success("已打开邮件客户端");
+    ElMessage.success(t('meeting.emailClientOpened'));
   } catch (err) {
     notifyApiError(err);
   }
@@ -152,10 +154,10 @@ function goBack() {
 
 function statusLabel(status: string): string {
   const map: Record<string, string> = {
-    planned: "计划中",
-    ongoing: "进行中",
-    done: "已结束",
-    cancelled: "已取消",
+    planned: t('meeting.statusPlanned'),
+    ongoing: t('task.statusInProgress'),
+    done: t('meeting.statusDone'),
+    cancelled: t('meeting.statusCancelled'),
   };
   return map[status] ?? status;
 }

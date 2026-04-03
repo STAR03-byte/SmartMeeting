@@ -47,10 +47,10 @@
               <el-form-item label="用户名" class="login-form-item">
                 <el-input v-model="registerForm.username" placeholder="至少3位" size="large" />
               </el-form-item>
-              <el-form-item label="邮箱" class="login-form-item">
+              <el-form-item :label="$t('team.email')" class="login-form-item">
                 <el-input v-model="registerForm.email" placeholder="请输入邮箱" size="large" />
               </el-form-item>
-              <el-form-item label="姓名" class="login-form-item">
+              <el-form-item :label="$t('team.memberName')" class="login-form-item">
                 <el-input v-model="registerForm.full_name" placeholder="请输入姓名" size="large" />
               </el-form-item>
               <el-form-item label="密码" class="login-form-item">
@@ -59,10 +59,10 @@
               <el-form-item label="确认密码" class="login-form-item">
                 <el-input v-model="registerConfirmPassword" type="password" placeholder="再次输入密码" size="large" show-password />
               </el-form-item>
-              <el-form-item label="角色" class="login-form-item">
+              <el-form-item :label="$t('team.role')" class="login-form-item">
                 <el-select v-model="registerForm.role" size="large" style="width: 100%">
-                  <el-option label="成员" value="member" />
-                  <el-option label="管理员" value="admin" />
+                  <el-option :label="$t('team.roleMember')" value="member" />
+                  <el-option :label="$t('team.roleAdmin')" value="admin" />
                 </el-select>
               </el-form-item>
               <el-button type="primary" :loading="registerLoading" @click="register" size="large" class="login-btn">注册</el-button>
@@ -75,6 +75,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";

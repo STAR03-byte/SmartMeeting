@@ -1,17 +1,17 @@
 <template>
   <div class="team-create">
-    <h1>创建团队</h1>
+    <h1>{{ $t('team.createTeam') }}</h1>
     <el-card>
       <el-form :model="form" :rules="rules" ref="formRef" label-width="120px" @submit.prevent>
-        <el-form-item label="团队名称" prop="name">
-          <el-input v-model="form.name" placeholder="请输入团队名称" />
+        <el-form-item :label="$t('team.teamName')" prop="name">
+          <el-input v-model="form.name" :placeholder="$t('team.teamNameRequired')" />
         </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="form.description" type="textarea" placeholder="请输入团队描述（可选）" />
+        <el-form-item :label="$t('task.taskDescription')" prop="description">
+          <el-input v-model="form.description" type="textarea" :placeholder="$t('team.teamDescriptionPlaceholder')" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" :loading="loading" @click="submit">创建</el-button>
-          <el-button @click="cancel">取消</el-button>
+          <el-button type="primary" :loading="loading" @click="submit">{{ $t('common.create') }}</el-button>
+          <el-button @click="cancel">{{ $t('common.cancel') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -19,6 +19,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
@@ -37,8 +39,8 @@ const form = reactive({
 
 const rules = reactive<FormRules>({
   name: [
-    { required: true, message: '请输入团队名称', trigger: 'blur' },
-    { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' },
+    { required: true, message: t('team.teamNameRequired'), trigger: 'blur' },
+    { min: 2, max: 50, message: t('team.teamNameLength'), trigger: 'blur' },
   ],
 });
 
@@ -53,7 +55,7 @@ const submit = async () => {
           name: form.name,
           description: form.description || undefined,
         });
-        ElMessage.success('团队创建成功');
+        ElMessage.success(t('team.createSuccess'));
         router.push('/teams'); // Redirect to teams list or details
       } catch (error: any) {
         ElMessage.error(getApiErrorMessage(error));

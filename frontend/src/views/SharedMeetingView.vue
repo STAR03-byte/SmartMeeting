@@ -10,8 +10,8 @@
       <div class="state-title">{{ errorState.title }}</div>
       <div class="state-message">{{ errorState.message }}</div>
       <div class="error-actions">
-        <el-button v-if="errorState.showRetry" size="small" @click="reload">重试</el-button>
-        <el-button v-if="errorState.redirectToLogin" size="small" type="primary" @click="goLogin">去登录</el-button>
+        <el-button v-if="errorState.showRetry" size="small" @click="reload">{{ $t('error.retry') }}</el-button>
+        <el-button v-if="errorState.redirectToLogin" size="small" type="primary" @click="goLogin">{{ $t('common.goToLogin') }}</el-button>
         <el-button v-if="errorState.showHome" size="small" @click="goHome">返回首页</el-button>
       </div>
     </el-card>
@@ -21,7 +21,7 @@
         <div>
           <div class="eyebrow">只读分享内容</div>
           <h2 class="summary-title">{{ data.meeting.title }}</h2>
-          <p class="summary-desc">{{ data.meeting.description || "暂无描述" }}</p>
+          <p class="summary-desc">{{ data.meeting.description || $t('team.noDescription') }}</p>
           <div class="summary-meta">
             <el-tag size="small" :type="statusType(data.meeting.status)">{{ statusLabel(data.meeting.status) }}</el-tag>
             <span class="organizer-line">组织者：{{ data.meeting.organizer.full_name }}</span>
@@ -35,7 +35,7 @@
 
       <div class="summary-block">
         <div class="summary-block-label">会议摘要</div>
-        <div class="summary-block-text">{{ data.meeting.summary || "暂无会议摘要" }}</div>
+        <div class="summary-block-text">{{ data.meeting.summary || $t('summary.emptySummary') }}</div>
       </div>
     </el-card>
 
@@ -43,7 +43,7 @@
       <el-card class="base-card">
         <template #header>
           <div class="panel-header">
-            <span>转写片段</span>
+            <span>{{ $t('stats.transcriptCount') }}</span>
             <el-tag size="small" type="info">{{ transcriptCount }} 段</el-tag>
           </div>
         </template>
@@ -59,7 +59,7 @@
       <el-card class="base-card">
         <template #header>
           <div class="panel-header">
-            <span>任务列表</span>
+            <span>{{ $t('task.listTitle') }}</span>
             <el-tag size="small" type="info">{{ taskCount }} 条</el-tag>
           </div>
         </template>
@@ -76,6 +76,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
@@ -104,10 +106,10 @@ function goLogin() {
 
 function statusLabel(status: string): string {
   const map: Record<string, string> = {
-    planned: "计划中",
-    ongoing: "进行中",
-    done: "已结束",
-    cancelled: "已取消",
+    planned: t('meeting.statusPlanned'),
+    ongoing: t('task.statusInProgress'),
+    done: t('meeting.statusDone'),
+    cancelled: t('meeting.statusCancelled'),
   };
   return map[status] ?? status;
 }

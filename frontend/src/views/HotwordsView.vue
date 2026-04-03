@@ -2,8 +2,8 @@
   <section class="hotwords-page">
     <header class="hero-header">
       <div>
-        <h1>热词管理</h1>
-        <p>维护个人热词，提升 Whisper 转写准确率。</p>
+        <h1>{{ $t('hotword.title') }}</h1>
+        <p>{{ $t('hotword.description') }}</p>
       </div>
     </header>
 
@@ -11,25 +11,25 @@
 
     <div class="layout">
       <el-card class="base-card">
-        <template #header>新增热词</template>
+        <template #header>{{ $t('hotword.addHotword') }}</template>
         <el-form label-position="top" @submit.prevent>
-          <el-form-item label="热词">
-            <el-input v-model="word" placeholder="输入热词，例如项目名、人名" maxlength="100" />
+          <el-form-item :label="$t('hotword.hotword')">
+            <el-input v-model="word" :placeholder="$t('hotword.hotwordPlaceholder')" maxlength="100" />
           </el-form-item>
-          <el-button type="primary" :loading="submitting" @click="handleCreate">添加热词</el-button>
+          <el-button type="primary" :loading="submitting" @click="handleCreate">{{ $t('hotword.add') }}</el-button>
         </el-form>
       </el-card>
 
       <el-card class="base-card" v-loading="loading">
-        <template #header>热词列表</template>
+        <template #header>{{ $t('hotword.list') }}</template>
         <el-table :data="hotwords" stripe>
-          <el-table-column prop="word" label="热词" min-width="180" />
-          <el-table-column prop="created_at" label="创建时间" min-width="180" />
-          <el-table-column label="操作" width="120">
+          <el-table-column prop="word" :label="$t('hotword.hotword')" min-width="180" />
+          <el-table-column prop="created_at" :label="$t('team.createdAt')" min-width="180" />
+          <el-table-column :label="$t('common.operations')" width="120">
             <template #default="{ row }">
-              <el-popconfirm title="确认删除此热词？" @confirm="handleDelete(row.id)">
+              <el-popconfirm :title="$t('hotword.deleteConfirm')" @confirm="handleDelete(row.id)">
                 <template #reference>
-                  <el-button size="small" type="danger" plain>删除</el-button>
+                  <el-button size="small" type="danger" plain>{{ $t('common.delete') }}</el-button>
                 </template>
               </el-popconfirm>
             </template>
@@ -41,6 +41,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { onMounted, ref } from "vue";
 import { ElMessage } from "element-plus";
 
@@ -60,7 +62,7 @@ async function refreshHotwords() {
   try {
     hotwords.value = await getHotwords();
   } catch (err) {
-    error.value = notifyApiError(err, { prefix: "加载热词失败" });
+    error.value = notifyApiError(err, { prefix: t('hotword.loadFailed') });
   } finally {
     loading.value = false;
   }
@@ -69,14 +71,14 @@ async function refreshHotwords() {
 async function handleCreate() {
   const value = word.value.trim();
   if (!value) {
-    ElMessage.warning("请输入热词");
+    ElMessage.warning(t('hotword.inputRequired'));
     return;
   }
 
   submitting.value = true;
   try {
     await createHotword({ word: value });
-    ElMessage.success("热词已添加");
+    ElMessage.success(t('hotword.addSuccess'));
     word.value = "";
     await refreshHotwords();
   } catch (err) {
@@ -89,7 +91,7 @@ async function handleCreate() {
 async function handleDelete(hotwordId: number) {
   try {
     await deleteHotword(hotwordId);
-    ElMessage.success("已删除");
+    ElMessage.success(t('hotword.deleteSuccess'));
     await refreshHotwords();
   } catch (err) {
     notifyApiError(err);

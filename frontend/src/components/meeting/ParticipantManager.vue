@@ -14,8 +14,8 @@
       <el-card class="base-card">
         <template #header>
           <div class="panel-header">
-            <span>参与者</span>
-            <el-button text @click="refreshParticipants">刷新</el-button>
+            <span>{{ $t('participant.title') }}</span>
+            <el-button text @click="refreshParticipants">{{ $t('common.refresh') }}</el-button>
           </div>
         </template>
 
@@ -24,7 +24,7 @@
             v-model="participantForm.user_id"
             filterable
             clearable
-            placeholder="选择用户"
+            :placeholder="$t('participant.selectUser')"
             style="min-width: 220px"
           >
             <el-option
@@ -35,19 +35,19 @@
             />
           </el-select>
           <el-select v-model="participantForm.participant_role" style="width: 140px">
-            <el-option label="必须" value="required" />
-            <el-option label="可选" value="optional" />
-            <el-option label="旁听" value="observer" />
+            <el-option :label="$t('participant.roleRequired')" value="required" />
+            <el-option :label="$t('participant.roleOptional')" value="optional" />
+            <el-option :label="$t('participant.roleObserver')" value="observer" />
           </el-select>
-          <el-button type="primary" :loading="creatingParticipant" @click="addParticipant">添加</el-button>
+          <el-button type="primary" :loading="creatingParticipant" @click="addParticipant">{{ $t('common.add') }}</el-button>
         </div>
 
-        <el-empty v-if="participants.length === 0" description="暂无参与者" />
+        <el-empty v-if="participants.length === 0" :description="$t('participant.empty')" />
         <ul v-else class="plain-list">
           <li v-for="participant in participants" :key="participant.id" class="participant-row">
             <div class="participant-main">
               <strong>{{ resolveParticipantName(participant.user_id, participant.email) }}</strong>
-              <el-tag size="small" type="info">{{ participant.email || "无邮箱" }}</el-tag>
+              <el-tag size="small" type="info">{{ participant.email || $t('participant.noEmail') }}</el-tag>
               <el-tag size="small" :type="attendanceTag(participant.attendance_status)">
                 {{ attendanceLabel(participant.attendance_status) }}
               </el-tag>
@@ -59,13 +59,13 @@
                 style="width: 120px"
                 @change="(role: string) => changeParticipantRole(participant.id, role)"
               >
-                <el-option label="必须" value="required" />
-                <el-option label="可选" value="optional" />
-                <el-option label="旁听" value="observer" />
+                <el-option :label="$t('participant.roleRequired')" value="required" />
+                <el-option :label="$t('participant.roleOptional')" value="optional" />
+                <el-option :label="$t('participant.roleObserver')" value="observer" />
               </el-select>
-              <el-popconfirm title="确认移除该参与者？" @confirm="removeParticipant(participant.id)">
+              <el-popconfirm :title="$t('participant.removeConfirm')" @confirm="removeParticipant(participant.id)">
                 <template #reference>
-                  <el-button size="small" type="danger" plain>移除</el-button>
+                  <el-button size="small" type="danger" plain>{{ $t('team.remove') }}</el-button>
                 </template>
               </el-popconfirm>
             </div>
@@ -77,6 +77,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 import {
@@ -131,7 +133,7 @@ async function refreshUsers() {
 
 async function addParticipant() {
   if (!participantForm.user_id) {
-    ElMessage.warning("请先选择用户");
+    ElMessage.warning(t('participant.selectUserFirst'));
     return;
   }
   creatingParticipant.value = true;
@@ -143,7 +145,7 @@ async function addParticipant() {
     });
     participantForm.user_id = null;
     participantForm.participant_role = "required";
-    ElMessage.success("参与者已添加");
+    ElMessage.success(t('participant.addSuccess'));
     await refreshParticipants();
   } catch (err) {
     notifyApiError(err);
@@ -155,7 +157,7 @@ async function addParticipant() {
 async function changeParticipantRole(participantId: number, role: string) {
   try {
     await updateMeetingParticipant(participantId, { participant_role: role });
-    ElMessage.success("参与者角色已更新");
+    ElMessage.success(t('participant.roleUpdateSuccess'));
     await refreshParticipants();
   } catch (err) {
     notifyApiError(err);
@@ -165,7 +167,7 @@ async function changeParticipantRole(participantId: number, role: string) {
 async function removeParticipant(participantId: number) {
   try {
     await deleteMeetingParticipant(participantId);
-    ElMessage.success("参与者已移除");
+    ElMessage.success(t('participant.removeSuccess'));
     await refreshParticipants();
   } catch (err) {
     notifyApiError(err);
@@ -182,10 +184,10 @@ function resolveParticipantName(userId: number, email: string | null): string {
 
 function attendanceLabel(status: string): string {
   const map: Record<string, string> = {
-    invited: "待确认",
-    accepted: "已接受",
-    declined: "已拒绝",
-    attended: "已参加",
+    invited: t('participant.statusInvited'),
+    accepted: t('participant.statusAccepted'),
+    declined: t('participant.statusDeclined'),
+    attended: t('participant.statusAttended'),
   };
   return map[status] ?? status;
 }

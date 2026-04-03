@@ -1,0 +1,2784 @@
+[
+  {
+    "file": "frontend/src/views/TeamsView.vue",
+    "line_no": 4,
+    "line": "<h1>我的团队</h1>",
+    "matches": [
+      "我的团队"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamsView.vue",
+    "line_no": 7,
+    "line": "创建团队",
+    "matches": [
+      "创建团队"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamsView.vue",
+    "line_no": 13,
+    "line": "<el-table-column prop=\"name\" label=\"团队名称\" min-width=\"150\" />",
+    "matches": [
+      "团队名称"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamsView.vue",
+    "line_no": 14,
+    "line": "<el-table-column prop=\"description\" label=\"描述\" min-width=\"250\">",
+    "matches": [
+      "描述"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamsView.vue",
+    "line_no": 19,
+    "line": "<el-table-column prop=\"my_role\" label=\"我的角色\" width=\"120\">",
+    "matches": [
+      "我的角色"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamsView.vue",
+    "line_no": 26,
+    "line": "<el-table-column label=\"操作\" width=\"120\" fixed=\"right\">",
+    "matches": [
+      "操作"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamsView.vue",
+    "line_no": 28,
+    "line": "<el-button size=\"small\" @click=\"viewDetail(row)\">查看</el-button>",
+    "matches": [
+      "查看"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamsView.vue",
+    "line_no": 54,
+    "line": "notifyApiError(error, { prefix: '加载团队列表失败' });",
+    "matches": [
+      "加载团队列表失败"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamsView.vue",
+    "line_no": 69,
+    "line": "if (role === 'owner') return '所有者';",
+    "matches": [
+      "所有者"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamsView.vue",
+    "line_no": 70,
+    "line": "if (role === 'admin') return '管理员';",
+    "matches": [
+      "管理员"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamsView.vue",
+    "line_no": 71,
+    "line": "if (role === 'member') return '成员';",
+    "matches": [
+      "成员"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamsView.vue",
+    "line_no": 72,
+    "line": "return role || '未知';",
+    "matches": [
+      "未知"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 4,
+    "line": "<h2>团队详情</h2>",
+    "matches": [
+      "团队详情"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 5,
+    "line": "<el-button @click=\"$router.back()\">返回</el-button>",
+    "matches": [
+      "返回"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 20,
+    "line": "<span>基本信息</span>",
+    "matches": [
+      "基本信息"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 24,
+    "line": "<el-tag v-else-if=\"isOwner\" type=\"danger\">所有者</el-tag>",
+    "matches": [
+      "所有者"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 28,
+    "line": "<el-descriptions-item label=\"团队名称\">{{ team.name }}</el-descriptions-item>",
+    "matches": [
+      "团队名称"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 29,
+    "line": "<el-descriptions-item label=\"团队描述\">{{ team.description || '暂无描述' }}</el-descriptions-item>",
+    "matches": [
+      "团队描述",
+      "暂无描述"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 30,
+    "line": "<el-descriptions-item label=\"创建时间\">{{ formatDate(team.created_at) }}</el-descriptions-item>",
+    "matches": [
+      "创建时间"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 38,
+    "line": "<span>成员管理</span>",
+    "matches": [
+      "成员管理"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 45,
+    "line": "添加成员",
+    "matches": [
+      "添加成员"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 51,
+    "line": "<el-table-column prop=\"user.full_name\" label=\"姓名\" min-width=\"120\" />",
+    "matches": [
+      "姓名"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 52,
+    "line": "<el-table-column prop=\"user.email\" label=\"邮箱\" min-width=\"180\" />",
+    "matches": [
+      "邮箱"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 53,
+    "line": "<el-table-column label=\"角色\" width=\"150\">",
+    "matches": [
+      "角色"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 62,
+    "line": "<el-option label=\"管理员\" value=\"admin\" />",
+    "matches": [
+      "管理员"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 63,
+    "line": "<el-option label=\"成员\" value=\"member\" />",
+    "matches": [
+      "成员"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 70,
+    "line": "<el-table-column label=\"加入时间\" width=\"180\">",
+    "matches": [
+      "加入时间"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 75,
+    "line": "<el-table-column label=\"操作\" width=\"120\" fixed=\"right\">",
+    "matches": [
+      "操作"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 79,
+    "line": "title=\"确定要移除该成员吗？\"",
+    "matches": [
+      "确定要移除该成员吗"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 83,
+    "line": "<el-button type=\"danger\" link size=\"small\">移除</el-button>",
+    "matches": [
+      "移除"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 95,
+    "line": "title=\"添加成员\"",
+    "matches": [
+      "添加成员"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 101,
+    "line": "label=\"选择用户\"",
+    "matches": [
+      "选择用户"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 103,
+    "line": ":rules=\"[{ required: true, message: '请选择用户', trigger: 'change' }]\"",
+    "matches": [
+      "请选择用户"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 107,
+    "line": "placeholder=\"请选择要添加的用户\"",
+    "matches": [
+      "请选择要添加的用户"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 121,
+    "line": "label=\"角色\"",
+    "matches": [
+      "角色"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 123,
+    "line": ":rules=\"[{ required: true, message: '请选择角色', trigger: 'change' }]\"",
+    "matches": [
+      "请选择角色"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 126,
+    "line": "<el-option label=\"成员\" value=\"member\" />",
+    "matches": [
+      "成员"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 127,
+    "line": "<el-option label=\"管理员\" value=\"admin\" />",
+    "matches": [
+      "管理员"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 133,
+    "line": "<el-button @click=\"showAddMemberDialog = false\">取消</el-button>",
+    "matches": [
+      "取消"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 135,
+    "line": "确认添加",
+    "matches": [
+      "确认添加"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 207,
+    "line": "case 'owner': return '所有者';",
+    "matches": [
+      "所有者"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 208,
+    "line": "case 'admin': return '管理员';",
+    "matches": [
+      "管理员"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 209,
+    "line": "case 'member': return '成员';",
+    "matches": [
+      "成员"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 230,
+    "line": "error.value = getApiErrorMessage(err) || '加载团队信息失败';",
+    "matches": [
+      "加载团队信息失败"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 249,
+    "line": "ElMessage.error(getApiErrorMessage(err) || '加载成员列表失败');",
+    "matches": [
+      "加载成员列表失败"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 261,
+    "line": "ElMessage.error('加载用户列表失败');",
+    "matches": [
+      "加载用户列表失败"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 277,
+    "line": "ElMessage.success('添加成员成功');",
+    "matches": [
+      "添加成员成功"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 284,
+    "line": "ElMessage.error(getApiErrorMessage(err) || '添加成员失败');",
+    "matches": [
+      "添加成员失败"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 295,
+    "line": "ElMessage.success('成员已移除');",
+    "matches": [
+      "成员已移除"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 298,
+    "line": "ElMessage.error(getApiErrorMessage(err) || '移除成员失败');",
+    "matches": [
+      "移除成员失败"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 306,
+    "line": "ElMessage.success('角色更新成功');",
+    "matches": [
+      "角色更新成功"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamDetailView.vue",
+    "line_no": 309,
+    "line": "ElMessage.error(getApiErrorMessage(err) || '角色更新失败');",
+    "matches": [
+      "角色更新失败"
+    ]
+  },
+  {
+    "file": "frontend/src/components/MeetingCard.vue",
+    "line_no": 5,
+    "line": "<span class=\"meta-chip\">状态: {{ meeting.status }}</span>",
+    "matches": [
+      "状态"
+    ]
+  },
+  {
+    "file": "frontend/src/components/MeetingCard.vue",
+    "line_no": 8,
+    "line": "<p class=\"meeting-card-desc\">{{ meeting.description || \"暂无描述\" }}</p>",
+    "matches": [
+      "暂无描述"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamCreateView.vue",
+    "line_no": 3,
+    "line": "<h1>创建团队</h1>",
+    "matches": [
+      "创建团队"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamCreateView.vue",
+    "line_no": 6,
+    "line": "<el-form-item label=\"团队名称\" prop=\"name\">",
+    "matches": [
+      "团队名称"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamCreateView.vue",
+    "line_no": 7,
+    "line": "<el-input v-model=\"form.name\" placeholder=\"请输入团队名称\" />",
+    "matches": [
+      "请输入团队名称"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamCreateView.vue",
+    "line_no": 9,
+    "line": "<el-form-item label=\"描述\" prop=\"description\">",
+    "matches": [
+      "描述"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamCreateView.vue",
+    "line_no": 10,
+    "line": "<el-input v-model=\"form.description\" type=\"textarea\" placeholder=\"请输入团队描述（可选）\" />",
+    "matches": [
+      "请输入团队描述",
+      "可选"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamCreateView.vue",
+    "line_no": 13,
+    "line": "<el-button type=\"primary\" :loading=\"loading\" @click=\"submit\">创建</el-button>",
+    "matches": [
+      "创建"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamCreateView.vue",
+    "line_no": 14,
+    "line": "<el-button @click=\"cancel\">取消</el-button>",
+    "matches": [
+      "取消"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamCreateView.vue",
+    "line_no": 40,
+    "line": "{ required: true, message: '请输入团队名称', trigger: 'blur' },",
+    "matches": [
+      "请输入团队名称"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamCreateView.vue",
+    "line_no": 41,
+    "line": "{ min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' },",
+    "matches": [
+      "长度在",
+      "到",
+      "个字符"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TeamCreateView.vue",
+    "line_no": 56,
+    "line": "ElMessage.success('团队创建成功');",
+    "matches": [
+      "团队创建成功"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 5,
+    "line": "<h1>任务中心</h1>",
+    "matches": [
+      "任务中心"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 6,
+    "line": "<p>集中查看全部会议行动项，并支持手动调整负责人与优先级。</p>",
+    "matches": [
+      "集中查看全部会议行动项",
+      "并支持手动调整负责人与优先级"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 8,
+    "line": "<el-button @click=\"refreshTasks\">刷新</el-button>",
+    "matches": [
+      "刷新"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 15,
+    "line": "<el-select v-model=\"filters.status\" placeholder=\"状态\" clearable style=\"width: 140px\" @change=\"applyFiltersAndRefresh\">",
+    "matches": [
+      "状态"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 16,
+    "line": "<el-option label=\"待办\" value=\"todo\" />",
+    "matches": [
+      "待办"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 17,
+    "line": "<el-option label=\"进行中\" value=\"in_progress\" />",
+    "matches": [
+      "进行中"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 18,
+    "line": "<el-option label=\"已完成\" value=\"done\" />",
+    "matches": [
+      "已完成"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 23,
+    "line": "placeholder=\"优先级\"",
+    "matches": [
+      "优先级"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 28,
+    "line": "<el-option label=\"高\" value=\"high\" />",
+    "matches": [
+      "高"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 29,
+    "line": "<el-option label=\"中\" value=\"medium\" />",
+    "matches": [
+      "中"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 30,
+    "line": "<el-option label=\"低\" value=\"low\" />",
+    "matches": [
+      "低"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 35,
+    "line": "placeholder=\"搜索任务标题\"",
+    "matches": [
+      "搜索任务标题"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 42,
+    "line": "<el-select v-model=\"sortBy\" placeholder=\"排序\" style=\"width: 180px\" @change=\"handleSortChange\">",
+    "matches": [
+      "排序"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 43,
+    "line": "<el-option label=\"按创建时间（新→旧）\" value=\"id_desc\" />",
+    "matches": [
+      "按创建时间",
+      "新",
+      "旧"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 44,
+    "line": "<el-option label=\"按截止时间（近→远）\" value=\"due_at_asc\" />",
+    "matches": [
+      "按截止时间",
+      "近",
+      "远"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 45,
+    "line": "<el-option label=\"按截止时间（远→近）\" value=\"due_at_desc\" />",
+    "matches": [
+      "按截止时间",
+      "远",
+      "近"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 48,
+    "line": "<el-button type=\"primary\" @click=\"applyFiltersAndRefresh\">应用筛选</el-button>",
+    "matches": [
+      "应用筛选"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 51,
+    "line": "<el-tag size=\"small\" effect=\"plain\" type=\"warning\">AI行动项：由转写自动识别</el-tag>",
+    "matches": [
+      "行动项",
+      "由转写自动识别"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 52,
+    "line": "<el-tag size=\"small\" effect=\"plain\" type=\"info\">手动任务：会议中人工创建</el-tag>",
+    "matches": [
+      "手动任务",
+      "会议中人工创建"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 53,
+    "line": "<el-tag size=\"small\" effect=\"plain\" type=\"danger\">逾期：已超过截止时间</el-tag>",
+    "matches": [
+      "逾期",
+      "已超过截止时间"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 59,
+    "line": "<el-table-column prop=\"title\" label=\"任务\" min-width=\"240\">",
+    "matches": [
+      "任务"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 64,
+    "line": "<el-table-column label=\"所属会议\" min-width=\"180\">",
+    "matches": [
+      "所属会议"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 66,
+    "line": "<router-link v-if=\"row.meeting_id\" :to=\"`/meetings/${row.meeting_id}`\" class=\"meeting-link\" :title=\"`会议ID: ${row.meeting_id}`\">",
+    "matches": [
+      "会议"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 67,
+    "line": "{{ row.meeting_title || `会议 #${row.meeting_id}` }}",
+    "matches": [
+      "会议"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 72,
+    "line": "<el-table-column prop=\"priority\" label=\"优先级\" width=\"100\">",
+    "matches": [
+      "优先级"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 77,
+    "line": "<el-table-column label=\"任务分类\" width=\"240\">",
+    "matches": [
+      "任务分类"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 81,
+    "line": "{{ row.transcript_id ? \"AI行动项\" : \"手动任务\" }}",
+    "matches": [
+      "行动项",
+      "手动任务"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 83,
+    "line": "<el-tag v-if=\"row.is_overdue\" size=\"small\" type=\"danger\">逾期</el-tag>",
+    "matches": [
+      "逾期"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 84,
+    "line": "<el-tag v-else-if=\"row.is_due_soon\" size=\"small\" type=\"warning\">即将到期</el-tag>",
+    "matches": [
+      "即将到期"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 85,
+    "line": "<el-tag v-else-if=\"row.priority === 'high'\" size=\"small\" type=\"danger\">高优先级</el-tag>",
+    "matches": [
+      "高优先级"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 86,
+    "line": "<el-tag v-if=\"!row.assignee_id\" size=\"small\" type=\"info\">未分配</el-tag>",
+    "matches": [
+      "未分配"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 90,
+    "line": "<el-table-column label=\"负责人\" width=\"160\">",
+    "matches": [
+      "负责人"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 95,
+    "line": "<el-table-column label=\"截止时间\" width=\"160\">",
+    "matches": [
+      "截止时间"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 100,
+    "line": "<el-table-column label=\"提醒\" width=\"120\">",
+    "matches": [
+      "提醒"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 102,
+    "line": "<el-tag v-if=\"scope.row.is_overdue\" type=\"danger\">已逾期</el-tag>",
+    "matches": [
+      "已逾期"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 103,
+    "line": "<el-tag v-else-if=\"scope.row.is_due_soon\" type=\"warning\">即将到期</el-tag>",
+    "matches": [
+      "即将到期"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 107,
+    "line": "<el-table-column prop=\"status\" label=\"状态\" width=\"160\">",
+    "matches": [
+      "状态"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 114,
+    "line": "<el-option label=\"待办\" value=\"todo\" />",
+    "matches": [
+      "待办"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 115,
+    "line": "<el-option label=\"进行中\" value=\"in_progress\" />",
+    "matches": [
+      "进行中"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 116,
+    "line": "<el-option label=\"已完成\" value=\"done\" />",
+    "matches": [
+      "已完成"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 120,
+    "line": "<el-table-column label=\"操作\" width=\"100\">",
+    "matches": [
+      "操作"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 122,
+    "line": "<el-button size=\"small\" @click=\"openEditDialog(scope.row)\">编辑</el-button>",
+    "matches": [
+      "编辑"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 138,
+    "line": "<el-dialog v-model=\"editDialogVisible\" title=\"编辑任务\" width=\"520px\">",
+    "matches": [
+      "编辑任务"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 140,
+    "line": "<el-form-item label=\"标题\">",
+    "matches": [
+      "标题"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 141,
+    "line": "<el-input v-model=\"editForm.title\" placeholder=\"请输入任务标题\" />",
+    "matches": [
+      "请输入任务标题"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 143,
+    "line": "<el-form-item label=\"描述\">",
+    "matches": [
+      "描述"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 144,
+    "line": "<el-input v-model=\"editForm.description\" type=\"textarea\" :rows=\"3\" placeholder=\"可选\" />",
+    "matches": [
+      "可选"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 146,
+    "line": "<el-form-item label=\"负责人\">",
+    "matches": [
+      "负责人"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 147,
+    "line": "<el-select v-model=\"editForm.assignee_id\" clearable placeholder=\"请选择负责人\" style=\"width: 100%\">",
+    "matches": [
+      "请选择负责人"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 156,
+    "line": "<el-form-item label=\"优先级\">",
+    "matches": [
+      "优先级"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 158,
+    "line": "<el-option label=\"高\" value=\"high\" />",
+    "matches": [
+      "高"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 159,
+    "line": "<el-option label=\"中\" value=\"medium\" />",
+    "matches": [
+      "中"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 160,
+    "line": "<el-option label=\"低\" value=\"low\" />",
+    "matches": [
+      "低"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 165,
+    "line": "<el-button @click=\"editDialogVisible = false\">取消</el-button>",
+    "matches": [
+      "取消"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 166,
+    "line": "<el-button type=\"primary\" :loading=\"savingEdit\" @click=\"saveTaskEdit\">保存</el-button>",
+    "matches": [
+      "保存"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 254,
+    "line": "error.value = notifyApiError(err, { prefix: \"加载任务失败\" });",
+    "matches": [
+      "加载任务失败"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 264,
+    "line": "notifyApiError(err, { prefix: \"加载用户失败\" });",
+    "matches": [
+      "加载用户失败"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 285,
+    "line": "ElMessage.success(\"任务状态已更新\");",
+    "matches": [
+      "任务状态已更新"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 305,
+    "line": "ElMessage.warning(\"任务标题不能为空\");",
+    "matches": [
+      "任务标题不能为空"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 321,
+    "line": "ElMessage.success(\"任务已更新\");",
+    "matches": [
+      "任务已更新"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 324,
+    "line": "notifyApiError(err, { prefix: \"更新任务失败\" });",
+    "matches": [
+      "更新任务失败"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 336,
+    "line": "const map: Record<string, string> = { high: \"高\", medium: \"中\", low: \"低\" };",
+    "matches": [
+      "高",
+      "中",
+      "低"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 351,
+    "line": "if (!assigneeId) return \"未分配\";",
+    "matches": [
+      "未分配"
+    ]
+  },
+  {
+    "file": "frontend/src/views/TasksView.vue",
+    "line_no": 353,
+    "line": "return user ? `${user.full_name}（${user.username}）` : `用户 #${assigneeId}`;",
+    "matches": [
+      "用户"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 10,
+    "line": "重试",
+    "matches": [
+      "重试"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 13,
+    "line": "返回上一页",
+    "matches": [
+      "返回上一页"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 19,
+    "line": "<el-collapse-item title=\"错误详情\" name=\"details\">",
+    "matches": [
+      "错误详情"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 73,
+    "line": "if (!code) return \"页面出现错误\";",
+    "matches": [
+      "页面出现错误"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 76,
+    "line": "GPU_OUT_OF_MEMORY: \"GPU 显存不足\",",
+    "matches": [
+      "显存不足"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 77,
+    "line": "GPU_NOT_AVAILABLE: \"GPU 不可用\",",
+    "matches": [
+      "不可用"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 78,
+    "line": "GPU_PROCESSING_FAILED: \"GPU 处理失败\",",
+    "matches": [
+      "处理失败"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 79,
+    "line": "MODEL_LOADING_TIMEOUT: \"模型加载超时\",",
+    "matches": [
+      "模型加载超时"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 80,
+    "line": "MODEL_LOADING_FAILED: \"模型加载失败\",",
+    "matches": [
+      "模型加载失败"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 81,
+    "line": "TRANSCRIPTION_FAILED: \"音频转写失败\",",
+    "matches": [
+      "音频转写失败"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 82,
+    "line": "TRANSCRIPTION_TIMEOUT: \"转写处理超时\",",
+    "matches": [
+      "转写处理超时"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 83,
+    "line": "AUDIO_PROCESSING_FAILED: \"音频处理失败\",",
+    "matches": [
+      "音频处理失败"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 84,
+    "line": "INVALID_AUDIO_FORMAT: \"音频格式不支持\",",
+    "matches": [
+      "音频格式不支持"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 85,
+    "line": "SPEAKER_DIARIZATION_FAILED: \"说话人识别失败\",",
+    "matches": [
+      "说话人识别失败"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 86,
+    "line": "AI_SERVICE_UNAVAILABLE: \"AI 服务不可用\",",
+    "matches": [
+      "服务不可用"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 87,
+    "line": "NETWORK_TIMEOUT: \"网络连接超时\",",
+    "matches": [
+      "网络连接超时"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 88,
+    "line": "NETWORK_ERROR: \"网络连接失败\",",
+    "matches": [
+      "网络连接失败"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 91,
+    "line": "return titleMap[code] || \"页面出现错误\";",
+    "matches": [
+      "页面出现错误"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 95,
+    "line": "if (!errorInfo.value) return \"请稍后重试或联系管理员\";",
+    "matches": [
+      "请稍后重试或联系管理员"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 97,
+    "line": "let message = errorInfo.value.message || \"请稍后重试或联系管理员\";",
+    "matches": [
+      "请稍后重试或联系管理员"
+    ]
+  },
+  {
+    "file": "frontend/src/components/ErrorBoundary.vue",
+    "line_no": 100,
+    "line": "message += `\\n\\n建议：${errorInfo.value.suggestion}`;",
+    "matches": [
+      "建议"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 3,
+    "line": "<el-page-header @back=\"goHome\" content=\"分享纪要\" />",
+    "matches": [
+      "分享纪要"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 13,
+    "line": "<el-button v-if=\"errorState.showRetry\" size=\"small\" @click=\"reload\">重试</el-button>",
+    "matches": [
+      "重试"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 14,
+    "line": "<el-button v-if=\"errorState.redirectToLogin\" size=\"small\" type=\"primary\" @click=\"goLogin\">去登录</el-button>",
+    "matches": [
+      "去登录"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 15,
+    "line": "<el-button v-if=\"errorState.showHome\" size=\"small\" @click=\"goHome\">返回首页</el-button>",
+    "matches": [
+      "返回首页"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 22,
+    "line": "<div class=\"eyebrow\">只读分享内容</div>",
+    "matches": [
+      "只读分享内容"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 24,
+    "line": "<p class=\"summary-desc\">{{ data.meeting.description || \"暂无描述\" }}</p>",
+    "matches": [
+      "暂无描述"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 27,
+    "line": "<span class=\"organizer-line\">组织者：{{ data.meeting.organizer.full_name }}</span>",
+    "matches": [
+      "组织者"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 29,
+    "line": "<span>转写 {{ transcriptCount }} 段</span>",
+    "matches": [
+      "转写",
+      "段"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 31,
+    "line": "<span>任务 {{ taskCount }} 条</span>",
+    "matches": [
+      "任务",
+      "条"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 37,
+    "line": "<div class=\"summary-block-label\">会议摘要</div>",
+    "matches": [
+      "会议摘要"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 38,
+    "line": "<div class=\"summary-block-text\">{{ data.meeting.summary || \"暂无会议摘要\" }}</div>",
+    "matches": [
+      "暂无会议摘要"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 46,
+    "line": "<span>转写片段</span>",
+    "matches": [
+      "转写片段"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 47,
+    "line": "<el-tag size=\"small\" type=\"info\">{{ transcriptCount }} 段</el-tag>",
+    "matches": [
+      "段"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 50,
+    "line": "<el-empty v-if=\"!data || data.transcripts.length === 0\" description=\"暂无转写内容，会议录音或上传音频后会在这里显示。\" />",
+    "matches": [
+      "暂无转写内容",
+      "会议录音或上传音频后会在这里显示"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 62,
+    "line": "<span>任务列表</span>",
+    "matches": [
+      "任务列表"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 63,
+    "line": "<el-tag size=\"small\" type=\"info\">{{ taskCount }} 条</el-tag>",
+    "matches": [
+      "条"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 66,
+    "line": "<el-empty v-if=\"!data || data.tasks.length === 0\" description=\"暂无任务，纪要抽取后会自动显示在这里。\" />",
+    "matches": [
+      "暂无任务",
+      "纪要抽取后会自动显示在这里"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 107,
+    "line": "planned: \"计划中\",",
+    "matches": [
+      "计划中"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 108,
+    "line": "ongoing: \"进行中\",",
+    "matches": [
+      "进行中"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 109,
+    "line": "done: \"已结束\",",
+    "matches": [
+      "已结束"
+    ]
+  },
+  {
+    "file": "frontend/src/views/SharedMeetingView.vue",
+    "line_no": 110,
+    "line": "cancelled: \"已取消\",",
+    "matches": [
+      "已取消"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/StatsOverview.vue",
+    "line_no": 4,
+    "line": "<el-statistic title=\"转写片段\" :value=\"store.transcripts.length\" />",
+    "matches": [
+      "转写片段"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/StatsOverview.vue",
+    "line_no": 7,
+    "line": "<el-statistic title=\"任务数\" :value=\"store.tasks.length\" />",
+    "matches": [
+      "任务数"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/StatsOverview.vue",
+    "line_no": 10,
+    "line": "<el-statistic title=\"已完成任务\" :value=\"doneTaskCount\" />",
+    "matches": [
+      "已完成任务"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 4,
+    "line": "<h1>会议管理</h1>",
+    "matches": [
+      "会议管理"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 7,
+    "line": "新建会议",
+    "matches": [
+      "新建会议"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 13,
+    "line": "<el-form-item label=\"状态\">",
+    "matches": [
+      "状态"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 14,
+    "line": "<el-select v-model=\"filterStatus\" clearable placeholder=\"全部\" style=\"width: 140px\">",
+    "matches": [
+      "全部"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 15,
+    "line": "<el-option label=\"计划中\" value=\"planned\" />",
+    "matches": [
+      "计划中"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 16,
+    "line": "<el-option label=\"进行中\" value=\"ongoing\" />",
+    "matches": [
+      "进行中"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 17,
+    "line": "<el-option label=\"已结束\" value=\"done\" />",
+    "matches": [
+      "已结束"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 18,
+    "line": "<el-option label=\"已取消\" value=\"cancelled\" />",
+    "matches": [
+      "已取消"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 21,
+    "line": "<el-form-item label=\"关键词\">",
+    "matches": [
+      "关键词"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 22,
+    "line": "<el-input v-model=\"filterKeyword\" placeholder=\"搜索标题/描述\" clearable style=\"width: 200px\" />",
+    "matches": [
+      "搜索标题",
+      "描述"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 25,
+    "line": "<el-button type=\"primary\" @click=\"applyFilter\">筛选</el-button>",
+    "matches": [
+      "筛选"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 26,
+    "line": "<el-button @click=\"resetFilter\">重置</el-button>",
+    "matches": [
+      "重置"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 38,
+    "line": "<el-table-column prop=\"title\" label=\"标题\" min-width=\"180\">",
+    "matches": [
+      "标题"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 43,
+    "line": "<el-table-column prop=\"status\" label=\"状态\" width=\"90\">",
+    "matches": [
+      "状态"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 48,
+    "line": "<el-table-column prop=\"scheduled_start_at\" label=\"计划开始\" width=\"150\">",
+    "matches": [
+      "计划开始"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 53,
+    "line": "<el-table-column prop=\"location\" label=\"地点\" width=\"120\">",
+    "matches": [
+      "地点"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 58,
+    "line": "<el-table-column label=\"操作\" width=\"120\" fixed=\"right\">",
+    "matches": [
+      "操作"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 60,
+    "line": "<el-popconfirm title=\"确认删除此会议？\" @confirm=\"handleDelete(row.id)\">",
+    "matches": [
+      "确认删除此会议"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 62,
+    "line": "<el-button size=\"small\" type=\"danger\" plain>删除</el-button>",
+    "matches": [
+      "删除"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 80,
+    "line": "<el-dialog v-model=\"showCreateDialog\" title=\"新建会议\" width=\"520px\" @closed=\"resetCreateForm\">",
+    "matches": [
+      "新建会议"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 82,
+    "line": "<el-form-item label=\"标题\" prop=\"title\">",
+    "matches": [
+      "标题"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 83,
+    "line": "<el-input v-model=\"createForm.title\" placeholder=\"请输入会议标题\" />",
+    "matches": [
+      "请输入会议标题"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 85,
+    "line": "<el-form-item label=\"描述\">",
+    "matches": [
+      "描述"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 86,
+    "line": "<el-input v-model=\"createForm.description\" type=\"textarea\" :rows=\"3\" placeholder=\"请输入会议描述（可选）\" />",
+    "matches": [
+      "请输入会议描述",
+      "可选"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 88,
+    "line": "<el-form-item label=\"所属团队\" prop=\"team_id\">",
+    "matches": [
+      "所属团队"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 89,
+    "line": "<el-select v-model=\"createForm.team_id\" placeholder=\"选择团队（可选）\" clearable style=\"width: 100%\">",
+    "matches": [
+      "选择团队",
+      "可选"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 98,
+    "line": "<el-form-item label=\"组织者\" prop=\"organizer_id\">",
+    "matches": [
+      "组织者"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 102,
+    "line": "placeholder=\"请选择组织者\"",
+    "matches": [
+      "请选择组织者"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 113,
+    "line": "<el-form-item label=\"计划开始\">",
+    "matches": [
+      "计划开始"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 114,
+    "line": "<el-date-picker v-model=\"createForm.scheduled_start_at\" type=\"datetime\" placeholder=\"选择开始时间\" style=\"width: 100%\" />",
+    "matches": [
+      "选择开始时间"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 116,
+    "line": "<el-form-item label=\"计划结束\">",
+    "matches": [
+      "计划结束"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 117,
+    "line": "<el-date-picker v-model=\"createForm.scheduled_end_at\" type=\"datetime\" placeholder=\"选择结束时间\" style=\"width: 100%\" />",
+    "matches": [
+      "选择结束时间"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 119,
+    "line": "<el-form-item label=\"地点\">",
+    "matches": [
+      "地点"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 120,
+    "line": "<el-input v-model=\"createForm.location\" placeholder=\"会议地点（可选）\" />",
+    "matches": [
+      "会议地点",
+      "可选"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 122,
+    "line": "<el-form-item label=\"参与者\">",
+    "matches": [
+      "参与者"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 128,
+    "line": "placeholder=\"选择参与人员（可选）\"",
+    "matches": [
+      "选择参与人员",
+      "可选"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 141,
+    "line": "<el-button @click=\"showCreateDialog = false\">取消</el-button>",
+    "matches": [
+      "取消"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 142,
+    "line": "<el-button type=\"primary\" :loading=\"creating\" @click=\"handleCreate\">创建</el-button>",
+    "matches": [
+      "创建"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 191,
+    "line": "title: [{ required: true, message: \"请输入会议标题\", trigger: \"blur\" }],",
+    "matches": [
+      "请输入会议标题"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 192,
+    "line": "organizer_id: [{ required: true, message: \"请选择组织者\", trigger: \"change\" }],",
+    "matches": [
+      "请选择组织者"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 231,
+    "line": "console.warn(\"获取团队列表失败\", e);",
+    "matches": [
+      "获取团队列表失败"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 257,
+    "line": "ElMessage.error(\"暂无可选组织者，请先创建用户\");",
+    "matches": [
+      "暂无可选组织者",
+      "请先创建用户"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 282,
+    "line": "console.warn(\"添加参与者失败:\", userId, err);",
+    "matches": [
+      "添加参与者失败"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 285,
+    "line": "ElMessage.success(`会议创建成功，已添加 ${selectedParticipantIds.value.length} 位参与者`);",
+    "matches": [
+      "会议创建成功",
+      "已添加",
+      "位参与者"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 287,
+    "line": "ElMessage.success(\"会议创建成功\");",
+    "matches": [
+      "会议创建成功"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 292,
+    "line": "notifyApiError(err, { prefix: \"创建失败\" });",
+    "matches": [
+      "创建失败"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 301,
+    "line": "ElMessage.success(\"会议已删除\");",
+    "matches": [
+      "会议已删除"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 303,
+    "line": "notifyApiError(err, { prefix: \"删除失败\" });",
+    "matches": [
+      "删除失败"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 321,
+    "line": "planned: \"计划中\",",
+    "matches": [
+      "计划中"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 322,
+    "line": "ongoing: \"进行中\",",
+    "matches": [
+      "进行中"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 323,
+    "line": "done: \"已结束\",",
+    "matches": [
+      "已结束"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingListView.vue",
+    "line_no": 324,
+    "line": "cancelled: \"已取消\",",
+    "matches": [
+      "已取消"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/TaskManager.vue",
+    "line_no": 26,
+    "line": "<span>任务列表</span>",
+    "matches": [
+      "任务列表"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/TaskManager.vue",
+    "line_no": 27,
+    "line": "<el-button text @click=\"$emit('reload')\">刷新</el-button>",
+    "matches": [
+      "刷新"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/TaskManager.vue",
+    "line_no": 31,
+    "line": "<el-empty v-if=\"store.tasks.length === 0\" description=\"暂无任务\" />",
+    "matches": [
+      "暂无任务"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/TaskManager.vue",
+    "line_no": 37,
+    "line": "<el-tag v-if=\"task.is_overdue\" size=\"small\" type=\"danger\">已逾期</el-tag>",
+    "matches": [
+      "已逾期"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/TaskManager.vue",
+    "line_no": 38,
+    "line": "<el-tag v-else-if=\"task.is_due_soon\" size=\"small\" type=\"warning\">即将到期</el-tag>",
+    "matches": [
+      "即将到期"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/TaskManager.vue",
+    "line_no": 47,
+    "line": "<el-option label=\"待办\" value=\"todo\" />",
+    "matches": [
+      "待办"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/TaskManager.vue",
+    "line_no": 48,
+    "line": "<el-option label=\"进行中\" value=\"in_progress\" />",
+    "matches": [
+      "进行中"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/TaskManager.vue",
+    "line_no": 49,
+    "line": "<el-option label=\"已完成\" value=\"done\" />",
+    "matches": [
+      "已完成"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/TaskManager.vue",
+    "line_no": 71,
+    "line": "ElMessage.info(\"当前页面仅支持任务状态管理，请前往任务中心创建任务\");",
+    "matches": [
+      "当前页面仅支持任务状态管理",
+      "请前往任务中心创建任务"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/TaskManager.vue",
+    "line_no": 77,
+    "line": "ElMessage.success(\"状态已更新\");",
+    "matches": [
+      "状态已更新"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/TaskManager.vue",
+    "line_no": 84,
+    "line": "const map: Record<string, string> = { high: \"高\", medium: \"中\", low: \"低\" };",
+    "matches": [
+      "高",
+      "中",
+      "低"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 17,
+    "line": "<span>参与者</span>",
+    "matches": [
+      "参与者"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 18,
+    "line": "<el-button text @click=\"refreshParticipants\">刷新</el-button>",
+    "matches": [
+      "刷新"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 27,
+    "line": "placeholder=\"选择用户\"",
+    "matches": [
+      "选择用户"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 38,
+    "line": "<el-option label=\"必须\" value=\"required\" />",
+    "matches": [
+      "必须"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 39,
+    "line": "<el-option label=\"可选\" value=\"optional\" />",
+    "matches": [
+      "可选"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 40,
+    "line": "<el-option label=\"旁听\" value=\"observer\" />",
+    "matches": [
+      "旁听"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 42,
+    "line": "<el-button type=\"primary\" :loading=\"creatingParticipant\" @click=\"addParticipant\">添加</el-button>",
+    "matches": [
+      "添加"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 45,
+    "line": "<el-empty v-if=\"participants.length === 0\" description=\"暂无参与者\" />",
+    "matches": [
+      "暂无参与者"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 50,
+    "line": "<el-tag size=\"small\" type=\"info\">{{ participant.email || \"无邮箱\" }}</el-tag>",
+    "matches": [
+      "无邮箱"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 62,
+    "line": "<el-option label=\"必须\" value=\"required\" />",
+    "matches": [
+      "必须"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 63,
+    "line": "<el-option label=\"可选\" value=\"optional\" />",
+    "matches": [
+      "可选"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 64,
+    "line": "<el-option label=\"旁听\" value=\"observer\" />",
+    "matches": [
+      "旁听"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 66,
+    "line": "<el-popconfirm title=\"确认移除该参与者？\" @confirm=\"removeParticipant(participant.id)\">",
+    "matches": [
+      "确认移除该参与者"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 68,
+    "line": "<el-button size=\"small\" type=\"danger\" plain>移除</el-button>",
+    "matches": [
+      "移除"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 134,
+    "line": "ElMessage.warning(\"请先选择用户\");",
+    "matches": [
+      "请先选择用户"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 146,
+    "line": "ElMessage.success(\"参与者已添加\");",
+    "matches": [
+      "参与者已添加"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 158,
+    "line": "ElMessage.success(\"参与者角色已更新\");",
+    "matches": [
+      "参与者角色已更新"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 168,
+    "line": "ElMessage.success(\"参与者已移除\");",
+    "matches": [
+      "参与者已移除"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 180,
+    "line": "return email ?? `用户 #${userId}`;",
+    "matches": [
+      "用户"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 185,
+    "line": "invited: \"待确认\",",
+    "matches": [
+      "待确认"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 186,
+    "line": "accepted: \"已接受\",",
+    "matches": [
+      "已接受"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 187,
+    "line": "declined: \"已拒绝\",",
+    "matches": [
+      "已拒绝"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/ParticipantManager.vue",
+    "line_no": 188,
+    "line": "attended: \"已参加\",",
+    "matches": [
+      "已参加"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingDetailView.vue",
+    "line_no": 3,
+    "line": "<el-page-header @back=\"goBack\" content=\"会议工作台\" />",
+    "matches": [
+      "会议工作台"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingDetailView.vue",
+    "line_no": 27,
+    "line": "<p>{{ store.currentMeeting.description || \"暂无描述\" }}</p>",
+    "matches": [
+      "暂无描述"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingDetailView.vue",
+    "line_no": 29,
+    "line": "组织者：{{ store.currentMeeting.organizer.full_name }} · 状态：{{ statusLabel(store.currentMeeting.status) }}",
+    "matches": [
+      "组织者",
+      "状态"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingDetailView.vue",
+    "line_no": 33,
+    "line": "<el-button @click=\"reloadMeeting\">刷新</el-button>",
+    "matches": [
+      "刷新"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingDetailView.vue",
+    "line_no": 34,
+    "line": "<el-button type=\"primary\" plain :disabled=\"!store.currentMeeting.summary\" @click=\"copyShareLink\">生成分享链接</el-button>",
+    "matches": [
+      "生成分享链接"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingDetailView.vue",
+    "line_no": 35,
+    "line": "<el-button type=\"primary\" plain :disabled=\"!store.currentMeeting.summary\" @click=\"distributeByEmail\">邮件分发</el-button>",
+    "matches": [
+      "邮件分发"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingDetailView.vue",
+    "line_no": 36,
+    "line": "<el-button type=\"primary\" @click=\"openTaskDialog\">新建任务</el-button>",
+    "matches": [
+      "新建任务"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingDetailView.vue",
+    "line_no": 102,
+    "line": "ElMessage.error(\"会议ID无效\");",
+    "matches": [
+      "会议",
+      "无效"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingDetailView.vue",
+    "line_no": 121,
+    "line": "ElMessage.success(result.created_now ? \"分享链接已生成并复制\" : \"分享链接已复制\");",
+    "matches": [
+      "分享链接已生成并复制",
+      "分享链接已复制"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingDetailView.vue",
+    "line_no": 137,
+    "line": "title: store.currentMeeting?.title ?? \"会议纪要\",",
+    "matches": [
+      "会议纪要"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingDetailView.vue",
+    "line_no": 143,
+    "line": "ElMessage.success(\"已打开邮件客户端\");",
+    "matches": [
+      "已打开邮件客户端"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingDetailView.vue",
+    "line_no": 155,
+    "line": "planned: \"计划中\",",
+    "matches": [
+      "计划中"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingDetailView.vue",
+    "line_no": 156,
+    "line": "ongoing: \"进行中\",",
+    "matches": [
+      "进行中"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingDetailView.vue",
+    "line_no": 157,
+    "line": "done: \"已结束\",",
+    "matches": [
+      "已结束"
+    ]
+  },
+  {
+    "file": "frontend/src/views/MeetingDetailView.vue",
+    "line_no": 158,
+    "line": "cancelled: \"已取消\",",
+    "matches": [
+      "已取消"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 24,
+    "line": "<p>AI 驱动的智能会议系统</p>",
+    "matches": [
+      "驱动的智能会议系统"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 29,
+    "line": "<el-tab-pane label=\"登录\" name=\"login\">",
+    "matches": [
+      "登录"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 31,
+    "line": "<el-form-item label=\"用户名\" class=\"login-form-item\">",
+    "matches": [
+      "用户名"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 32,
+    "line": "<el-input v-model=\"form.username\" placeholder=\"请输入用户名\" size=\"large\" />",
+    "matches": [
+      "请输入用户名"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 34,
+    "line": "<el-form-item label=\"密码\" class=\"login-form-item\">",
+    "matches": [
+      "密码"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 35,
+    "line": "<el-input v-model=\"form.password\" type=\"password\" placeholder=\"请输入密码\" size=\"large\" show-password />",
+    "matches": [
+      "请输入密码"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 37,
+    "line": "<el-button type=\"primary\" :loading=\"loading\" @click=\"submit\" size=\"large\" class=\"login-btn\">登录</el-button>",
+    "matches": [
+      "登录"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 41,
+    "line": "<span>测试: logintest / plain-password</span>",
+    "matches": [
+      "测试"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 45,
+    "line": "<el-tab-pane label=\"注册\" name=\"register\">",
+    "matches": [
+      "注册"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 47,
+    "line": "<el-form-item label=\"用户名\" class=\"login-form-item\">",
+    "matches": [
+      "用户名"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 48,
+    "line": "<el-input v-model=\"registerForm.username\" placeholder=\"至少3位\" size=\"large\" />",
+    "matches": [
+      "至少",
+      "位"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 50,
+    "line": "<el-form-item label=\"邮箱\" class=\"login-form-item\">",
+    "matches": [
+      "邮箱"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 51,
+    "line": "<el-input v-model=\"registerForm.email\" placeholder=\"请输入邮箱\" size=\"large\" />",
+    "matches": [
+      "请输入邮箱"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 53,
+    "line": "<el-form-item label=\"姓名\" class=\"login-form-item\">",
+    "matches": [
+      "姓名"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 54,
+    "line": "<el-input v-model=\"registerForm.full_name\" placeholder=\"请输入姓名\" size=\"large\" />",
+    "matches": [
+      "请输入姓名"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 56,
+    "line": "<el-form-item label=\"密码\" class=\"login-form-item\">",
+    "matches": [
+      "密码"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 57,
+    "line": "<el-input v-model=\"registerForm.password_hash\" type=\"password\" placeholder=\"至少8位\" size=\"large\" show-password />",
+    "matches": [
+      "至少",
+      "位"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 59,
+    "line": "<el-form-item label=\"确认密码\" class=\"login-form-item\">",
+    "matches": [
+      "确认密码"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 60,
+    "line": "<el-input v-model=\"registerConfirmPassword\" type=\"password\" placeholder=\"再次输入密码\" size=\"large\" show-password />",
+    "matches": [
+      "再次输入密码"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 62,
+    "line": "<el-form-item label=\"角色\" class=\"login-form-item\">",
+    "matches": [
+      "角色"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 64,
+    "line": "<el-option label=\"成员\" value=\"member\" />",
+    "matches": [
+      "成员"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 65,
+    "line": "<el-option label=\"管理员\" value=\"admin\" />",
+    "matches": [
+      "管理员"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 68,
+    "line": "<el-button type=\"primary\" :loading=\"registerLoading\" @click=\"register\" size=\"large\" class=\"login-btn\">注册</el-button>",
+    "matches": [
+      "注册"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 115,
+    "line": "ElMessage.warning(\"请输入用户名\");",
+    "matches": [
+      "请输入用户名"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 119,
+    "line": "ElMessage.warning(\"请输入密码\");",
+    "matches": [
+      "请输入密码"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 128,
+    "line": "error.value = notifyApiError(err, { prefix: \"登录失败\" });",
+    "matches": [
+      "登录失败"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 136,
+    "line": "ElMessage.warning(\"用户名至少需要3个字符\");",
+    "matches": [
+      "用户名至少需要",
+      "个字符"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 140,
+    "line": "ElMessage.warning(\"请输入邮箱地址\");",
+    "matches": [
+      "请输入邮箱地址"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 144,
+    "line": "ElMessage.warning(\"请输入姓名\");",
+    "matches": [
+      "请输入姓名"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 148,
+    "line": "ElMessage.warning(\"密码至少需要8个字符\");",
+    "matches": [
+      "密码至少需要",
+      "个字符"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 152,
+    "line": "ElMessage.warning(\"两次输入的密码不一致\");",
+    "matches": [
+      "两次输入的密码不一致"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 160,
+    "line": "ElMessage.success(\"注册成功，请登录\");",
+    "matches": [
+      "注册成功",
+      "请登录"
+    ]
+  },
+  {
+    "file": "frontend/src/views/LoginView.vue",
+    "line_no": 163,
+    "line": "registerError.value = notifyApiError(err, { prefix: \"注册失败\" });",
+    "matches": [
+      "注册失败"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/SummaryPanel.vue",
+    "line_no": 7,
+    "line": "<span class=\"section-title\">议程</span>",
+    "matches": [
+      "议程"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/SummaryPanel.vue",
+    "line_no": 31,
+    "line": "<span class=\"section-title\">决议</span>",
+    "matches": [
+      "决议"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/SummaryPanel.vue",
+    "line_no": 41,
+    "line": "<span class=\"meta-label\">提议人:</span>",
+    "matches": [
+      "提议人"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/SummaryPanel.vue",
+    "line_no": 52,
+    "line": "<span class=\"section-title\">待办事项</span>",
+    "matches": [
+      "待办事项"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/SummaryPanel.vue",
+    "line_no": 89,
+    "line": "<el-collapse-item title=\"原始摘要\" name=\"raw\">",
+    "matches": [
+      "原始摘要"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/SummaryPanel.vue",
+    "line_no": 99,
+    "line": ":class=\"{ empty: summaryDisplayText === '暂无会议摘要', 'is-clamped': showExpandBtn && !isExpanded }\"",
+    "matches": [
+      "暂无会议摘要"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/SummaryPanel.vue",
+    "line_no": 106,
+    "line": "{{ isExpanded ? \"折叠摘要\" : \"展开全文\" }}",
+    "matches": [
+      "折叠摘要",
+      "展开全文"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/SummaryPanel.vue",
+    "line_no": 172,
+    "line": "return \"高\";",
+    "matches": [
+      "高"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/SummaryPanel.vue",
+    "line_no": 174,
+    "line": "return \"中\";",
+    "matches": [
+      "中"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/SummaryPanel.vue",
+    "line_no": 176,
+    "line": "return \"低\";",
+    "matches": [
+      "低"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/AudioRecorder.vue",
+    "line_no": 10,
+    "line": "<el-button type=\"primary\">上传音频并转写</el-button>",
+    "matches": [
+      "上传音频并转写"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/AudioRecorder.vue",
+    "line_no": 18,
+    "line": "开始录音",
+    "matches": [
+      "开始录音"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/AudioRecorder.vue",
+    "line_no": 24,
+    "line": "暂停录音",
+    "matches": [
+      "暂停录音"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/AudioRecorder.vue",
+    "line_no": 30,
+    "line": "继续录音",
+    "matches": [
+      "继续录音"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/AudioRecorder.vue",
+    "line_no": 38,
+    "line": "停止并转写",
+    "matches": [
+      "停止并转写"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/AudioRecorder.vue",
+    "line_no": 40,
+    "line": "<el-button type=\"success\" @click=\"runPostprocess\">生成纪要与任务</el-button>",
+    "matches": [
+      "生成纪要与任务"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/AudioRecorder.vue",
+    "line_no": 41,
+    "line": "<el-button @click=\"downloadSummary\" :disabled=\"!store.currentMeeting?.summary\">导出纪要</el-button>",
+    "matches": [
+      "导出纪要"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/AudioRecorder.vue",
+    "line_no": 42,
+    "line": "<el-button @click=\"copySummary\" :disabled=\"summaryDisplayText === '暂无会议摘要'\">复制摘要</el-button>",
+    "matches": [
+      "暂无会议摘要",
+      "复制摘要"
+    ]
+  },
+  {
+    "file": "frontend/src/components/meeting/AudioRecorder.vue",
+    "line_no": 45,
+    "line": "录音状态：{{ recordingStateLabel }}",
+    "matches": [
+      "录音状态"
+    ]
+  },
+  {
+    "file": "frontend/src/views/HotwordsView.vue",
+    "line_no": 5,
+    "line": "<h1>热词管理</h1>",
+    "matches": [
+      "热词管理"
+    ]
+  },
+  {
+    "file": "frontend/src/views/HotwordsView.vue",
+    "line_no": 6,
+    "line": "<p>维护个人热词，提升 Whisper 转写准确率。</p>",
+    "matches": [
+      "维护个人热词",
+      "提升",
+      "转写准确率"
+    ]
+  },
+  {
+    "file": "frontend/src/views/HotwordsView.vue",
+    "line_no": 14,
+    "line": "<template #header>新增热词</template>",
+    "matches": [
+      "新增热词"
+    ]
+  },
+  {
+    "file": "frontend/src/views/HotwordsView.vue",
+    "line_no": 16,
+    "line": "<el-form-item label=\"热词\">",
+    "matches": [
+      "热词"
+    ]
+  },
+  {
+    "file": "frontend/src/views/HotwordsView.vue",
+    "line_no": 17,
+    "line": "<el-input v-model=\"word\" placeholder=\"输入热词，例如项目名、人名\" maxlength=\"100\" />",
+    "matches": [
+      "输入热词",
+      "例如项目名",
+      "人名"
+    ]
+  },
+  {
+    "file": "frontend/src/views/HotwordsView.vue",
+    "line_no": 19,
+    "line": "<el-button type=\"primary\" :loading=\"submitting\" @click=\"handleCreate\">添加热词</el-button>",
+    "matches": [
+      "添加热词"
+    ]
+  },
+  {
+    "file": "frontend/src/views/HotwordsView.vue",
+    "line_no": 24,
+    "line": "<template #header>热词列表</template>",
+    "matches": [
+      "热词列表"
+    ]
+  },
+  {
+    "file": "frontend/src/views/HotwordsView.vue",
+    "line_no": 26,
+    "line": "<el-table-column prop=\"word\" label=\"热词\" min-width=\"180\" />",
+    "matches": [
+      "热词"
+    ]
+  },
+  {
+    "file": "frontend/src/views/HotwordsView.vue",
+    "line_no": 27,
+    "line": "<el-table-column prop=\"created_at\" label=\"创建时间\" min-width=\"180\" />",
+    "matches": [
+      "创建时间"
+    ]
+  },
+  {
+    "file": "frontend/src/views/HotwordsView.vue",
+    "line_no": 28,
+    "line": "<el-table-column label=\"操作\" width=\"120\">",
+    "matches": [
+      "操作"
+    ]
+  },
+  {
+    "file": "frontend/src/views/HotwordsView.vue",
+    "line_no": 30,
+    "line": "<el-popconfirm title=\"确认删除此热词？\" @confirm=\"handleDelete(row.id)\">",
+    "matches": [
+      "确认删除此热词"
+    ]
+  },
+  {
+    "file": "frontend/src/views/HotwordsView.vue",
+    "line_no": 32,
+    "line": "<el-button size=\"small\" type=\"danger\" plain>删除</el-button>",
+    "matches": [
+      "删除"
+    ]
+  },
+  {
+    "file": "frontend/src/views/HotwordsView.vue",
+    "line_no": 63,
+    "line": "error.value = notifyApiError(err, { prefix: \"加载热词失败\" });",
+    "matches": [
+      "加载热词失败"
+    ]
+  },
+  {
+    "file": "frontend/src/views/HotwordsView.vue",
+    "line_no": 72,
+    "line": "ElMessage.warning(\"请输入热词\");",
+    "matches": [
+      "请输入热词"
+    ]
+  },
+  {
+    "file": "frontend/src/views/HotwordsView.vue",
+    "line_no": 79,
+    "line": "ElMessage.success(\"热词已添加\");",
+    "matches": [
+      "热词已添加"
+    ]
+  },
+  {
+    "file": "frontend/src/views/HotwordsView.vue",
+    "line_no": 92,
+    "line": "ElMessage.success(\"已删除\");",
+    "matches": [
+      "已删除"
+    ]
+  }
+]

@@ -23,19 +23,19 @@
       <el-card class="base-card">
         <template #header>
           <div class="panel-header">
-            <span>任务列表</span>
-            <el-button text @click="$emit('reload')">刷新</el-button>
+            <span>{{ $t('task.listTitle') }}</span>
+            <el-button text @click="$emit('reload')">{{ $t('common.refresh') }}</el-button>
           </div>
         </template>
 
-        <el-empty v-if="store.tasks.length === 0" description="暂无任务" />
+        <el-empty v-if="store.tasks.length === 0" :description="$t('task.empty')" />
         <ul v-else class="plain-list">
           <li v-for="task in store.tasks" :key="task.id" class="task-row">
             <div class="task-info">
               <span class="task-title" :class="{ done: task.status === 'done' }">{{ task.title }}</span>
               <el-tag size="small" :type="priorityTag(task.priority)">{{ priorityLabel(task.priority) }}</el-tag>
-              <el-tag v-if="task.is_overdue" size="small" type="danger">已逾期</el-tag>
-              <el-tag v-else-if="task.is_due_soon" size="small" type="warning">即将到期</el-tag>
+              <el-tag v-if="task.is_overdue" size="small" type="danger">{{ $t('task.overdue') }}</el-tag>
+              <el-tag v-else-if="task.is_due_soon" size="small" type="warning">{{ $t('task.dueSoon') }}</el-tag>
             </div>
             <div class="task-actions">
               <el-select
@@ -44,9 +44,9 @@
                 style="width: 110px"
                 @change="(val: string) => handleStatusChange(task.id, val as TaskStatus)"
               >
-                <el-option label="待办" value="todo" />
-                <el-option label="进行中" value="in_progress" />
-                <el-option label="已完成" value="done" />
+                <el-option :label="$t('task.statusTodo')" value="todo" />
+                <el-option :label="$t('task.statusInProgress')" value="in_progress" />
+                <el-option :label="$t('task.statusDone')" value="done" />
               </el-select>
             </div>
           </li>
@@ -57,6 +57,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { useMeetingStore } from "../../stores/meetingStore";
 import { ElMessage } from "element-plus";
 import { notifyApiError } from "../../utils/notify";
@@ -68,20 +70,20 @@ defineEmits<{ (e: 'reload'): void }>();
 const store = useMeetingStore();
 
 function openCreateDialog() {
-  ElMessage.info("当前页面仅支持任务状态管理，请前往任务中心创建任务");
+  ElMessage.info(t('task.statusManageOnly'));
 }
 
 async function handleStatusChange(taskId: number, newStatus: TaskStatus) {
   try {
     await store.changeTaskStatus(taskId, newStatus);
-    ElMessage.success("状态已更新");
+    ElMessage.success(t('task.statusUpdateSuccess'));
   } catch (err) {
     notifyApiError(err);
   }
 }
 
 function priorityLabel(p: string): string {
-  const map: Record<string, string> = { high: "高", medium: "中", low: "低" };
+  const map: Record<string, string> = { high: t('task.priorityHigh'), medium: t('task.priorityMedium'), low: t('task.priorityLow') };
   return map[p] ?? p;
 }
 

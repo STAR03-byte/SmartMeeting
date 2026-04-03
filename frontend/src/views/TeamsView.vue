@@ -1,31 +1,31 @@
 <template>
   <section class="teams-page">
     <header class="page-header">
-      <h1>我的团队</h1>
+      <h1>{{ $t('team.title') }}</h1>
       <el-button type="primary" @click="createTeam">
         <el-icon><Plus /></el-icon>
-        创建团队
+        {{ $t('team.createTeam') }}
       </el-button>
     </header>
 
     <section class="teams-section">
       <el-table :data="teams" v-loading="loading" stripe class="teams-table">
-        <el-table-column prop="name" label="团队名称" min-width="150" />
-        <el-table-column prop="description" label="描述" min-width="250">
+        <el-table-column prop="name" :label="$t('team.teamName')" min-width="150" />
+        <el-table-column prop="description" :label="$t('task.taskDescription')" min-width="250">
           <template #default="{ row }">
             {{ row.description || "-" }}
           </template>
         </el-table-column>
-        <el-table-column prop="my_role" label="我的角色" width="120">
+        <el-table-column prop="my_role" :label="$t('team.myRole')" width="120">
           <template #default="{ row }">
             <el-tag :type="roleTagType(row.my_role)">
               {{ roleLabel(row.my_role) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column :label="$t('common.operations')" width="120" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="viewDetail(row)">查看</el-button>
+            <el-button size="small" @click="viewDetail(row)">{{ $t('common.view') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -34,6 +34,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Plus } from '@element-plus/icons-vue';
@@ -51,7 +53,7 @@ async function loadTeams() {
   try {
     teams.value = await getTeams();
   } catch (error) {
-    notifyApiError(error, { prefix: '加载团队列表失败' });
+    notifyApiError(error, { prefix: t('team.loadFailed') });
   } finally {
     loading.value = false;
   }
@@ -66,10 +68,10 @@ function viewDetail(team: Team) {
 }
 
 function roleLabel(role?: string): string {
-  if (role === 'owner') return '所有者';
-  if (role === 'admin') return '管理员';
-  if (role === 'member') return '成员';
-  return role || '未知';
+  if (role === 'owner') return t('team.roleOwner');
+  if (role === 'admin') return t('team.roleAdmin');
+  if (role === 'member') return t('team.roleMember');
+  return role || t('common.unknown');
 }
 
 function roleTagType(role?: string): string {

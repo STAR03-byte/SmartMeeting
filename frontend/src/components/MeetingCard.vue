@@ -5,11 +5,13 @@
       <span class="meta-chip">状态: {{ meeting.status }}</span>
       <span class="meta-chip">ID: {{ meeting.id }}</span>
     </div>
-    <p class="meeting-card-desc">{{ meeting.description || "暂无描述" }}</p>
+    <p class="meeting-card-desc">{{ meeting.description || $t('team.noDescription') }}</p>
   </el-card>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { useRouter } from "vue-router";
 import type { Meeting } from "../api/meetings";
 

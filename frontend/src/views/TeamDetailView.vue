@@ -1,8 +1,8 @@
 <template>
   <div class="team-detail-view" v-loading="loading">
     <div class="header-actions">
-      <h2>团队详情</h2>
-      <el-button @click="$router.back()">返回</el-button>
+      <h2>{{ $t('team.detailTitle') }}</h2>
+      <el-button @click="$router.back()">{{ $t('common.back') }}</el-button>
     </div>
 
     <el-alert
@@ -17,17 +17,17 @@
       <el-card class="team-info-card mb-4">
         <template #header>
           <div class="card-header">
-            <span>基本信息</span>
+            <span>{{ $t('team.basicInfo') }}</span>
             <el-tag v-if="team.my_role" :type="getRoleTagType(team.my_role)">
               {{ getRoleLabel(team.my_role) }}
             </el-tag>
-            <el-tag v-else-if="isOwner" type="danger">所有者</el-tag>
+            <el-tag v-else-if="isOwner" type="danger">{{ $t('team.roleOwner') }}</el-tag>
           </div>
         </template>
         <el-descriptions :column="1" border>
-          <el-descriptions-item label="团队名称">{{ team.name }}</el-descriptions-item>
-          <el-descriptions-item label="团队描述">{{ team.description || '暂无描述' }}</el-descriptions-item>
-          <el-descriptions-item label="创建时间">{{ formatDate(team.created_at) }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('team.teamName')">{{ team.name }}</el-descriptions-item>
+          <el-descriptions-item label="团队描述">{{ team.description || $t('team.noDescription') }}</el-descriptions-item>
+          <el-descriptions-item :label="$t('team.createdAt')">{{ formatDate(team.created_at) }}</el-descriptions-item>
         </el-descriptions>
       </el-card>
 
@@ -35,22 +35,22 @@
       <el-card class="team-members-card">
         <template #header>
           <div class="card-header">
-            <span>成员管理</span>
+            <span>{{ $t('team.memberManagement') }}</span>
             <el-button
               v-if="canManageMembers"
               type="primary"
               size="small"
               @click="showAddMemberDialog = true"
             >
-              添加成员
+              {{ $t('team.addMember') }}
             </el-button>
           </div>
         </template>
 
         <el-table :data="members" style="width: 100%" v-loading="membersLoading">
-          <el-table-column prop="user.full_name" label="姓名" min-width="120" />
-          <el-table-column prop="user.email" label="邮箱" min-width="180" />
-          <el-table-column label="角色" width="150">
+          <el-table-column prop="user.full_name" :label="$t('team.memberName')" min-width="120" />
+          <el-table-column prop="user.email" :label="$t('team.email')" min-width="180" />
+          <el-table-column :label="$t('team.role')" width="150">
             <template #default="{ row }">
               <el-select
                 v-if="isOwner && row.user_id !== team.owner_id"
@@ -59,28 +59,28 @@
                 @change="(val: string) => handleRoleChange(row, val)"
                 :disabled="updatingRole === row.id"
               >
-                <el-option label="管理员" value="admin" />
-                <el-option label="成员" value="member" />
+                <el-option :label="$t('team.roleAdmin')" value="admin" />
+                <el-option :label="$t('team.roleMember')" value="member" />
               </el-select>
               <el-tag v-else :type="getRoleTagType(row.role)">
                 {{ getRoleLabel(row.role) }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="加入时间" width="180">
+          <el-table-column :label="$t('team.joinedAt')" width="180">
             <template #default="{ row }">
               {{ formatDate(row.joined_at) }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="120" fixed="right">
+          <el-table-column :label="$t('common.operations')" width="120" fixed="right">
             <template #default="{ row }">
               <el-popconfirm
                 v-if="canManageMembers && row.user_id !== team.owner_id"
-                title="确定要移除该成员吗？"
+                :title="$t('team.removeConfirm')"
                 @confirm="handleRemoveMember(row)"
               >
                 <template #reference>
-                  <el-button type="danger" link size="small">移除</el-button>
+                  <el-button type="danger" link size="small">{{ $t('team.remove') }}</el-button>
                 </template>
               </el-popconfirm>
             </template>
@@ -92,19 +92,19 @@
     <!-- Add Member Dialog -->
     <el-dialog
       v-model="showAddMemberDialog"
-      title="添加成员"
+      :title="$t('team.addMember')"
       width="500px"
       @open="fetchUsers"
     >
       <el-form :model="addMemberForm" ref="addMemberFormRef" label-width="80px">
         <el-form-item
-          label="选择用户"
+          :label="$t('participant.selectUser')"
           prop="user_id"
-          :rules="[{ required: true, message: '请选择用户', trigger: 'change' }]"
+          :rules="[{ required: true, message: $t('team.selectUserRequired'), trigger: 'change' }]"
         >
           <el-select
             v-model="addMemberForm.user_id"
-            placeholder="请选择要添加的用户"
+            :placeholder="$t('team.selectUserPlaceholder')"
             filterable
             style="width: 100%"
             :loading="usersLoading"
@@ -118,21 +118,21 @@
           </el-select>
         </el-form-item>
         <el-form-item
-          label="角色"
+          :label="$t('team.role')"
           prop="role"
-          :rules="[{ required: true, message: '请选择角色', trigger: 'change' }]"
+          :rules="[{ required: true, message: $t('team.roleRequired'), trigger: 'change' }]"
         >
           <el-select v-model="addMemberForm.role" style="width: 100%">
-            <el-option label="成员" value="member" />
-            <el-option label="管理员" value="admin" />
+            <el-option :label="$t('team.roleMember')" value="member" />
+            <el-option :label="$t('team.roleAdmin')" value="admin" />
           </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="showAddMemberDialog = false">取消</el-button>
+          <el-button @click="showAddMemberDialog = false">{{ $t('common.cancel') }}</el-button>
           <el-button type="primary" @click="handleAddMember" :loading="addingMember">
-            确认添加
+            {{ $t('team.confirmAdd') }}
           </el-button>
         </span>
       </template>
@@ -141,6 +141,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
@@ -204,9 +206,9 @@ const formatDate = (dateStr: string) => {
 
 const getRoleLabel = (role: string) => {
   switch (role) {
-    case 'owner': return '所有者';
-    case 'admin': return '管理员';
-    case 'member': return '成员';
+    case 'owner': return t('team.roleOwner');
+    case 'admin': return t('team.roleAdmin');
+    case 'member': return t('team.roleMember');
     default: return role;
   }
 };
@@ -227,7 +229,7 @@ const loadData = async () => {
     team.value = await getTeam(teamId);
     await loadMembers();
   } catch (err: any) {
-    error.value = getApiErrorMessage(err) || '加载团队信息失败';
+    error.value = getApiErrorMessage(err) || t('team.loadTeamFailed');
   } finally {
     loading.value = false;
   }
@@ -246,7 +248,7 @@ const loadMembers = async () => {
       }
     }
   } catch (err: any) {
-    ElMessage.error(getApiErrorMessage(err) || '加载成员列表失败');
+    ElMessage.error(getApiErrorMessage(err) || t('team.loadMemberFailed'));
   } finally {
     membersLoading.value = false;
   }
@@ -258,7 +260,7 @@ const fetchUsers = async () => {
   try {
     users.value = await getUsers();
   } catch (err: any) {
-    ElMessage.error('加载用户列表失败');
+    ElMessage.error(t('team.loadUserFailed'));
   } finally {
     usersLoading.value = false;
   }
@@ -274,14 +276,14 @@ const handleAddMember = async () => {
           user_id: addMemberForm.value.user_id,
           role: addMemberForm.value.role
         });
-        ElMessage.success('添加成员成功');
+        ElMessage.success(t('team.addMemberSuccess'));
         showAddMemberDialog.value = false;
         // reset form
         addMemberForm.value.user_id = undefined;
         addMemberForm.value.role = 'member';
         await loadMembers();
       } catch (err: any) {
-        ElMessage.error(getApiErrorMessage(err) || '添加成员失败');
+        ElMessage.error(getApiErrorMessage(err) || t('team.addMemberFailed'));
       } finally {
         addingMember.value = false;
       }
@@ -292,10 +294,10 @@ const handleAddMember = async () => {
 const handleRemoveMember = async (member: TeamMember) => {
   try {
     await removeTeamMember(teamId, member.user_id);
-    ElMessage.success('成员已移除');
+    ElMessage.success(t('team.memberRemoved'));
     await loadMembers();
   } catch (err: any) {
-    ElMessage.error(getApiErrorMessage(err) || '移除成员失败');
+    ElMessage.error(getApiErrorMessage(err) || t('team.removeMemberFailed'));
   }
 };
 
@@ -303,10 +305,10 @@ const handleRoleChange = async (member: TeamMember, newRole: string) => {
   updatingRole.value = member.id;
   try {
     await updateMemberRole(teamId, member.user_id, newRole);
-    ElMessage.success('角色更新成功');
+    ElMessage.success(t('team.roleUpdateSuccess'));
     // Local state already updated via v-model
   } catch (err: any) {
-    ElMessage.error(getApiErrorMessage(err) || '角色更新失败');
+    ElMessage.error(getApiErrorMessage(err) || t('team.roleUpdateFailed'));
     // Revert changes on error
     await loadMembers();
   } finally {

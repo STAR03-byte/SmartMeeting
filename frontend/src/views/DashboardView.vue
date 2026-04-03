@@ -4,11 +4,11 @@
       <div class="hero-content">
         <div class="hero-text">
           <h1>{{ greeting }}</h1>
-          <p>高效会议管理，智能任务追踪</p>
+          <p>{{ $t('dashboard.slogan') }}</p>
         </div>
         <div class="hero-actions">
           <router-link to="/meetings?create=1">
-            <el-button type="primary" size="large">新建会议</el-button>
+            <el-button type="primary" size="large">{{ $t('dashboard.newMeeting') }}</el-button>
           </router-link>
         </div>
       </div>
@@ -23,7 +23,7 @@
           </svg>
         </div>
         <div class="stat-content">
-          <span class="stat-label">会议总数</span>
+          <span class="stat-label">{{ $t('dashboard.totalMeetings') }}</span>
           <span class="stat-value">{{ totalMeetings }}</span>
         </div>
       </el-card>
@@ -36,7 +36,7 @@
           </svg>
         </div>
         <div class="stat-content">
-          <span class="stat-label">进行中</span>
+          <span class="stat-label">{{ $t('meeting.statusOngoing') }}</span>
           <span class="stat-value">{{ ongoingMeetings }}</span>
         </div>
       </el-card>
@@ -50,7 +50,7 @@
           </svg>
         </div>
         <div class="stat-content">
-          <span class="stat-label">计划中</span>
+          <span class="stat-label">{{ $t('meeting.statusPlanned') }}</span>
           <span class="stat-value">{{ plannedMeetings }}</span>
         </div>
       </el-card>
@@ -63,7 +63,7 @@
           </svg>
         </div>
         <div class="stat-content">
-          <span class="stat-label">已结束</span>
+          <span class="stat-label">{{ $t('meeting.statusDone') }}</span>
           <span class="stat-value">{{ doneMeetings }}</span>
         </div>
       </el-card>
@@ -73,15 +73,15 @@
       <el-card class="base-card recent-meetings">
         <template #header>
           <div class="panel-header">
-            <span>近期会议</span>
+            <span>{{ $t('dashboard.recentMeetings') }}</span>
             <router-link to="/meetings">
-              <el-button text type="primary" size="small">查看全部</el-button>
+              <el-button text type="primary" size="small">{{ $t('dashboard.viewAll') }}</el-button>
             </router-link>
           </div>
         </template>
 
         <el-skeleton v-if="store.loading" rows="3" animated />
-        <el-empty v-else-if="store.meetings.length === 0" description="暂无会议数据" />
+        <el-empty v-else-if="store.meetings.length === 0" :description="$t('dashboard.noMeetingData')" />
         <ul v-else class="meeting-list">
           <li v-for="item in recentMeetings" :key="item.id" class="meeting-item">
             <div class="meeting-info">
@@ -90,7 +90,7 @@
             </div>
             <div class="meeting-meta">
               <span>{{ formatDate(item.scheduled_start_at) }}</span>
-              <el-button size="small" @click="$router.push(`/meetings/${item.id}`)">查看</el-button>
+              <el-button size="small" @click="$router.push(`/meetings/${item.id}`)">{{ $t('common.view') }}</el-button>
             </div>
           </li>
         </ul>
@@ -99,7 +99,7 @@
       <el-card class="base-card quick-actions">
         <template #header>
           <div class="panel-header">
-            <span>快捷操作</span>
+            <span>{{ $t('dashboard.quickActions') }}</span>
           </div>
         </template>
         <div class="action-grid">
@@ -110,7 +110,7 @@
                 <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
               </svg>
             </div>
-            <span>任务管理</span>
+            <span>{{ $t('dashboard.taskManagement') }}</span>
           </router-link>
           <router-link to="/users" class="action-item">
             <div class="action-icon">
@@ -120,7 +120,7 @@
                 <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
               </svg>
             </div>
-            <span>用户管理</span>
+            <span>{{ $t('dashboard.userManagement') }}</span>
           </router-link>
         </div>
       </el-card>
@@ -130,17 +130,19 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 
 import { useAuthStore } from "../stores/authStore";
 import { useMeetingStore } from "../stores/meetingStore";
 import type { MeetingStatus } from "../api/types";
 
+const { t } = useI18n();
 const authStore = useAuthStore();
 const store = useMeetingStore();
 
 const greeting = computed(() => {
   const hour = new Date().getHours();
-  const timeGreeting = hour < 12 ? "早上好" : hour < 18 ? "下午好" : "晚上好";
+  const timeGreeting = hour < 12 ? t('dashboard.morning') : hour < 18 ? t('dashboard.afternoon') : t('dashboard.evening');
   const name = authStore.currentUser?.full_name || "";
   return name ? `${timeGreeting}，${name}` : `${timeGreeting}！`;
 });
@@ -158,10 +160,10 @@ const recentMeetings = computed(() =>
 
 function statusLabel(status: MeetingStatus): string {
   const map: Record<MeetingStatus, string> = {
-    planned: "计划中",
-    ongoing: "进行中",
-    done: "已结束",
-    cancelled: "已取消",
+    planned: t('meeting.statusPlanned'),
+    ongoing: t('meeting.statusOngoing'),
+    done: t('meeting.statusDone'),
+    cancelled: t('meeting.statusCancelled'),
   };
   return map[status] ?? status;
 }

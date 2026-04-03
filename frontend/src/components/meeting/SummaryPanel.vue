@@ -4,7 +4,7 @@
       <div class="summary-section" v-if="structuredSummary.agenda.length > 0">
         <div class="section-header">
           <el-icon><Document /></el-icon>
-          <span class="section-title">议程</span>
+          <span class="section-title">{{ $t('summary.agenda') }}</span>
         </div>
         <div class="section-content">
           <div
@@ -28,7 +28,7 @@
       <div class="summary-section" v-if="structuredSummary.resolutions.length > 0">
         <div class="section-header">
           <el-icon><CircleCheck /></el-icon>
-          <span class="section-title">决议</span>
+          <span class="section-title">{{ $t('summary.resolutions') }}</span>
         </div>
         <div class="section-content">
           <div
@@ -38,7 +38,7 @@
           >
             <div class="item-decision">{{ item.decision }}</div>
             <div v-if="item.proposer" class="item-meta">
-              <span class="meta-label">提议人:</span>
+              <span class="meta-label">{{ $t('summary.proposer') }}</span>
               <span class="meta-value">{{ item.proposer }}</span>
             </div>
             <div v-if="item.context" class="item-context">{{ item.context }}</div>
@@ -49,7 +49,7 @@
       <div class="summary-section" v-if="structuredSummary.todos.length > 0">
         <div class="section-header">
           <el-icon><List /></el-icon>
-          <span class="section-title">待办事项</span>
+          <span class="section-title">{{ $t('summary.todos') }}</span>
         </div>
         <div class="section-content">
           <div
@@ -86,7 +86,7 @@
         class="raw-summary-section"
       >
         <el-collapse>
-          <el-collapse-item title="原始摘要" name="raw">
+          <el-collapse-item :title="$t('summary.rawSummary')" name="raw">
             <div class="raw-summary-content">{{ structuredSummary.raw_summary }}</div>
           </el-collapse-item>
         </el-collapse>
@@ -96,14 +96,14 @@
     <div v-else ref="summaryBlockRef">
       <div
         class="summary-block"
-        :class="{ empty: summaryDisplayText === '暂无会议摘要', 'is-clamped': showExpandBtn && !isExpanded }"
+        :class="{ empty: summaryDisplayText === $t('summary.emptySummary'), 'is-clamped': showExpandBtn && !isExpanded }"
       >
         {{ summaryDisplayText }}
       </div>
       <transition name="expand-btn">
         <div class="expand-action" v-if="showExpandBtn">
           <el-button text type="primary" @click="isExpanded = !isExpanded">
-            {{ isExpanded ? "折叠摘要" : "展开全文" }}
+            {{ isExpanded ? $t('summary.collapse') : $t('summary.expand') }}
             <span class="expand-arrow" :class="{ 'is-rotated': isExpanded }">▼</span>
           </el-button>
         </div>
@@ -113,6 +113,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { computed, onMounted } from "vue";
 import { Document, CircleCheck, List, User, Clock } from "@element-plus/icons-vue";
 import { useSummary } from "../../composables/useSummary";
@@ -169,11 +171,11 @@ function getPriorityType(priority: string): "danger" | "warning" | "info" {
 function getPriorityLabel(priority: string): string {
   switch (priority) {
     case "high":
-      return "高";
+      return t('task.priorityHigh');
     case "medium":
-      return "中";
+      return t('task.priorityMedium');
     case "low":
-      return "低";
+      return t('task.priorityLow');
     default:
       return priority;
   }

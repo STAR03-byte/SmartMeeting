@@ -7,16 +7,16 @@
     >
       <template #extra>
         <el-button type="primary" @click="handleRetry">
-          重试
+          {{ $t('error.retry') }}
         </el-button>
         <el-button @click="handleGoBack">
-          返回上一页
+          {{ $t('error.back') }}
         </el-button>
       </template>
     </el-result>
     <div v-if="showDetails" class="error-details">
       <el-collapse>
-        <el-collapse-item title="错误详情" name="details">
+        <el-collapse-item :title="$t('error.details')" name="details">
           <pre>{{ errorDetails }}</pre>
         </el-collapse-item>
       </el-collapse>
@@ -26,6 +26,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, computed, onErrorCaptured, type ComponentPublicInstance } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
@@ -70,31 +72,31 @@ const errorIcon = computed(() => {
 
 const errorTitle = computed(() => {
   const code = errorInfo.value?.code;
-  if (!code) return "页面出现错误";
+  if (!code) return t('error.pageError');
 
   const titleMap: Record<string, string> = {
-    GPU_OUT_OF_MEMORY: "GPU 显存不足",
-    GPU_NOT_AVAILABLE: "GPU 不可用",
-    GPU_PROCESSING_FAILED: "GPU 处理失败",
-    MODEL_LOADING_TIMEOUT: "模型加载超时",
-    MODEL_LOADING_FAILED: "模型加载失败",
-    TRANSCRIPTION_FAILED: "音频转写失败",
-    TRANSCRIPTION_TIMEOUT: "转写处理超时",
-    AUDIO_PROCESSING_FAILED: "音频处理失败",
-    INVALID_AUDIO_FORMAT: "音频格式不支持",
-    SPEAKER_DIARIZATION_FAILED: "说话人识别失败",
-    AI_SERVICE_UNAVAILABLE: "AI 服务不可用",
-    NETWORK_TIMEOUT: "网络连接超时",
-    NETWORK_ERROR: "网络连接失败",
+    GPU_OUT_OF_MEMORY: t('error.gpuOOM'),
+    GPU_NOT_AVAILABLE: t('error.gpuUnavailable'),
+    GPU_PROCESSING_FAILED: t('error.gpuFailed'),
+    MODEL_LOADING_TIMEOUT: t('error.modelTimeout'),
+    MODEL_LOADING_FAILED: t('error.modelFailed'),
+    TRANSCRIPTION_FAILED: t('error.transcribeFailed'),
+    TRANSCRIPTION_TIMEOUT: t('error.transcribeTimeout'),
+    AUDIO_PROCESSING_FAILED: t('error.audioFailed'),
+    INVALID_AUDIO_FORMAT: t('error.invalidAudio'),
+    SPEAKER_DIARIZATION_FAILED: t('error.diarizationFailed'),
+    AI_SERVICE_UNAVAILABLE: t('error.aiUnavailable'),
+    NETWORK_TIMEOUT: t('error.networkTimeout'),
+    NETWORK_ERROR: t('error.networkError'),
   };
 
-  return titleMap[code] || "页面出现错误";
+  return titleMap[code] || t('error.pageError');
 });
 
 const errorMessage = computed(() => {
-  if (!errorInfo.value) return "请稍后重试或联系管理员";
+  if (!errorInfo.value) return t('error.defaultMessage');
 
-  let message = errorInfo.value.message || "请稍后重试或联系管理员";
+  let message = errorInfo.value.message || t('error.defaultMessage');
 
   if (errorInfo.value.suggestion) {
     message += `\n\n建议：${errorInfo.value.suggestion}`;
