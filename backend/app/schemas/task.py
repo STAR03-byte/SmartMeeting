@@ -1,9 +1,9 @@
 """任务 Schema 定义。"""
 
 from datetime import datetime
-from typing import Literal
+from typing import ClassVar, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 TaskPriority = Literal["high", "medium", "low"]
 TaskStatus = Literal["todo", "in_progress", "done"]
@@ -60,7 +60,7 @@ class TaskOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config: ClassVar[ConfigDict] = ConfigDict(from_attributes=True)
 
 
 class TaskListOut(BaseModel):

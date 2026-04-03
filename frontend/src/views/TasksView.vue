@@ -148,7 +148,7 @@
             <el-option
               v-for="user in users"
               :key="user.id"
-              :label="`${user.full_name}（${user.username}）`"
+              :label="user.full_name"
               :value="user.id"
             />
           </el-select>
@@ -159,6 +159,24 @@
             <el-option :label="$t('task.priorityMedium')" value="medium" />
             <el-option :label="$t('task.priorityLow')" value="low" />
           </el-select>
+        </el-form-item>
+        <el-form-item :label="$t('common.status')">
+          <el-select v-model="editForm.status" style="width: 160px">
+            <el-option :label="$t('task.statusTodo')" value="todo" />
+            <el-option :label="$t('task.statusInProgress')" value="in_progress" />
+            <el-option :label="$t('task.statusDone')" value="done" />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="$t('task.dueDateLabel')">
+          <el-date-picker
+            v-model="editForm.due_at"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            format="YYYY-MM-DD HH:mm:ss"
+            clearable
+            style="width: 100%"
+            :placeholder="$t('task.dueDateLabel')"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -202,11 +220,15 @@ const editForm = reactive<{
   description: string;
   assignee_id: number | null;
   priority: TaskPriority;
+  status: TaskStatus;
+  due_at: string | null;
 }>({
   title: "",
   description: "",
   assignee_id: null,
   priority: "medium",
+  status: "todo",
+  due_at: null,
 });
 
 const currentPage = ref(1);
@@ -297,6 +319,8 @@ function openEditDialog(task: TaskItem) {
   editForm.description = task.description ?? "";
   editForm.assignee_id = task.assignee_id;
   editForm.priority = task.priority;
+  editForm.status = task.status;
+  editForm.due_at = task.due_at ? task.due_at.replace("T", " ").slice(0, 19) : null;
   editDialogVisible.value = true;
 }
 
@@ -315,6 +339,8 @@ async function saveTaskEdit() {
       description: editForm.description.trim() || null,
       assignee_id: editForm.assignee_id,
       priority: editForm.priority,
+      status: editForm.status,
+      due_at: editForm.due_at,
     });
     const index = tasks.value.findIndex((item) => item.id === updated.id);
     if (index >= 0) {

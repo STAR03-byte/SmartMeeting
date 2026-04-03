@@ -34,6 +34,7 @@
       :title="$t('audio.play')"
       width="500px"
       destroy-on-close
+      @close="cleanupAudio"
     >
       <audio controls style="width: 100%">
         <source :src="currentAudioUrl" type="audio/mpeg" />
@@ -47,7 +48,7 @@
 import { ref, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
 import { useI18n } from 'vue-i18n';
-import { listMeetingAudios, downloadAudio as downloadAudioApi } from '../../api/meetings';
+import { listMeetingAudios, downloadAudio as downloadAudioApi, streamAudio } from '../../api/meetings';
 import type { MeetingAudio } from '../../api/types';
 
 const { t } = useI18n();
@@ -79,9 +80,25 @@ async function loadAudioFiles() {
   }
 }
 
-function playAudio(audio: MeetingAudio) {
-  currentAudioUrl.value = `/api/v1/meetings/${props.meetingId}/audios/${audio.id}/stream`;
-  playerVisible.value = true;
+async function playAudio(audio: MeetingAudio) {
+  try {
+    loading.value = true;
+    const blob = await streamAudio(audio.id, props.meetingId);
+    currentAudioUrl.value = URL.createObjectURL(blob);
+    playerVisible.value = true;
+  } catch (error) {
+    ElMessage.error(t('audio.loadAudioFailed'));
+    console.error('Failed to load audio:', error);
+  } finally {
+    loading.value = false;
+  }
+}
+
+function cleanupAudio() {
+  if (currentAudioUrl.value) {
+    URL.revokeObjectURL(currentAudioUrl.value);
+    currentAudioUrl.value = '';
+  }
 }
 
 async function downloadAudio(audio: MeetingAudio) {
