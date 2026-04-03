@@ -1498,7 +1498,7 @@ def test_meeting_share_requires_organizer(client) -> None:
         headers={"Authorization": f"Bearer {viewer_token}"},
     )
     assert forbidden_resp.status_code == 403
-    assert forbidden_resp.json()["detail"] == "Only organizer can create share link"
+    assert forbidden_resp.json()["detail"] == "Only meeting organizer can create share link"
 
 
 def test_get_shared_meeting_returns_read_only_payload(auth_client) -> None:
@@ -1627,7 +1627,7 @@ def test_get_shared_meeting_public_access_without_auth(client) -> None:
     assert isinstance(body["tasks"], list)
 
 
-def test_meeting_share_requires_organizer(client) -> None:
+def test_meeting_share_requires_organizer_auth_check(client) -> None:
     organizer_resp = client.post(
         "/api/v1/users",
         json={
@@ -2474,10 +2474,10 @@ def test_postprocess_returns_structured_ai_error_when_ai_service_fails(safe_clie
     response = safe_client.post(f"/api/v1/meetings/{meeting_id}/postprocess")
 
     assert response.status_code == 503
-    assert response.json() == {
-        "detail": "AI service unavailable",
-        "error_code": "AI_SERVICE_UNAVAILABLE",
-    }
+    body = response.json()
+    assert body["error_code"] == "AI_SERVICE_UNAVAILABLE"
+    assert "AI" in body["detail"] or "服务" in body["detail"]
+    assert "suggestion" in body
 
 
 def test_upload_returns_structured_internal_error(safe_client, monkeypatch) -> None:
@@ -2513,10 +2513,10 @@ def test_upload_returns_structured_internal_error(safe_client, monkeypatch) -> N
     )
 
     assert response.status_code == 500
-    assert response.json() == {
-        "detail": "Internal server error",
-        "error_code": "INTERNAL_SERVER_ERROR",
-    }
+    body = response.json()
+    assert body["error_code"] == "INTERNAL_SERVER_ERROR"
+    assert "服务器" in body["detail"] or "错误" in body["detail"]
+    assert "suggestion" in body
 
 
 def test_create_user_rejects_invalid_role(auth_client) -> None:

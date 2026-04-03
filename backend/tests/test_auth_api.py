@@ -74,7 +74,7 @@ def test_login_writes_audit_logs_for_success_and_failure(client: TestClient) -> 
     )
     assert ok_login_resp.status_code == 200
 
-    override_get_db = client.app.dependency_overrides[get_db]
+    override_get_db = client.app.dependency_overrides[get_db]  # type: ignore[attr-defined]
     db_gen = override_get_db()
     db = next(db_gen)
     try:

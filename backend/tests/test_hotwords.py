@@ -1,42 +1,72 @@
 from __future__ import annotations
 
-import asyncio
+from unittest.mock import MagicMock
+from typing import cast
 
-from app.services.whisper_service import WhisperTranscriber
-
-
-class _FakeWhisperModel:
-    def __init__(self) -> None:
-        self.calls: list[dict[str, object]] = []
-
-    def transcribe(self, audio: str, language: str, task: str, initial_prompt: str | None = None):
-        self.calls.append(
-            {
-                "audio": audio,
-                "language": language,
-                "task": task,
-                "initial_prompt": initial_prompt,
-            }
-        )
-        return {
-            "language": language,
-            "segments": [
-                {"start": 0.0, "end": 1.0, "text": "接口联调由 SmartMeeting 完成。"},
-            ],
-        }
+from fastapi.testclient import TestClient
+from app.core.security import get_password_hash
+from app.services.hotword_service import clear_hotword_cache, get_hotword_terms
+from sqlalchemy.orm import Session
+from pytest import MonkeyPatch
 
 
-def test_transcribe_file_passes_hotwords_prompt(tmp_path, monkeypatch) -> None:
-    audio_path = tmp_path / "sample.wav"
-    audio_path.write_bytes(b"fake-audio")
+def _login_headers(client: TestClient, username: str, password: str) -> dict[str, str]:
+    login_resp = client.post("/api/v1/auth/login", data={"username": username, "password": password})
+    assert login_resp.status_code == 200
+    return {"Authorization": f"Bearer {login_resp.json()['access_token']}"}
 
-    fake_model = _FakeWhisperModel()
-    transcriber = WhisperTranscriber()
-    monkeypatch.setattr(transcriber, "_load_model", lambda: fake_model)
-    monkeypatch.setattr(transcriber, "_build_speech_ranges", lambda _: [(0.0, 1.0)])
-    monkeypatch.setattr(transcriber, "_build_initial_prompt", lambda: "SmartMeeting,WhisperX")
 
-    result = asyncio.run(transcriber.transcribe_file(audio_path, language="zh"))
+def test_hotwords_crud_flow(client: TestClient) -> None:
+    user_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "hotword_user",
+            "email": "hotword_user@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Hotword User",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
 
-    assert result[0]["text"] == "接口联调由 SmartMeeting 完成。"
-    assert fake_model.calls[0]["initial_prompt"] == "SmartMeeting,WhisperX"
+    headers = _login_headers(client, "hotword_user", "plain-password")
+
+    create_resp = client.post("/api/v1/hotwords", json={"word": "WhisperX"}, headers=headers)
+    assert create_resp.status_code == 201
+    assert create_resp.json()["word"] == "WhisperX"
+
+    list_resp = client.get("/api/v1/hotwords", headers=headers)
+    assert list_resp.status_code == 200
+    list_body = cast(list[dict[str, object]], list_resp.json())
+    assert len(list_body) == 1
+
+    hotword_id = int(cast(int, list_body[0]["id"]))
+    delete_resp = client.delete(f"/api/v1/hotwords/{hotword_id}", headers=headers)
+    assert delete_resp.status_code == 204
+
+    empty_resp = client.get("/api/v1/hotwords", headers=headers)
+    assert empty_resp.status_code == 200
+    assert empty_resp.json() == []
+
+
+def test_hotword_terms_cache_hits_once(monkeypatch: MonkeyPatch) -> None:
+    clear_hotword_cache()
+    calls: list[int] = []
+
+    def fake_list_hotwords(_db: Session, user_id: int):
+        calls.append(user_id)
+        item = MagicMock()
+        item.word = "SmartMeeting"
+        return [item]
+
+    from app.services import hotword_service
+
+    monkeypatch.setattr(hotword_service, "list_hotwords", fake_list_hotwords)
+
+    db = cast(Session, object())
+    first = get_hotword_terms(db, 7)
+    second = get_hotword_terms(db, 7)
+
+    assert first == ("SmartMeeting",)
+    assert second == ("SmartMeeting",)
+    assert calls == [7]
