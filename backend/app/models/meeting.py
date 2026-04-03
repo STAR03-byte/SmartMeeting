@@ -1,22 +1,34 @@
 """会议模型定义。"""
 
+# pyright: reportImportCycles=false
+
 from datetime import datetime
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from app.core.database import Base
+from app.core.database import Base  # pyright: ignore[reportAny]
+
+if TYPE_CHECKING:
+    from app.models.meeting_participant import MeetingParticipant
+    from app.models.team import Team
+    from app.models.user import User
 
 
-class Meeting(Base):
+TypedBase = cast(type[DeclarativeBase], Base)
+
+
+class Meeting(TypedBase):
     """会议主表。"""
 
-    __tablename__ = "meetings"
+    __tablename__: str = "meetings"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     organizer_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"), nullable=True)
     scheduled_start_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     scheduled_end_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     actual_start_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -35,3 +47,7 @@ class Meeting(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    organizer: Mapped["User"] = relationship("User", foreign_keys=[organizer_id])
+    team: Mapped["Team | None"] = relationship("Team")
+    participants: Mapped[list["MeetingParticipant"]] = relationship("MeetingParticipant")

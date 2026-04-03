@@ -46,17 +46,80 @@ def _assert_meeting_permission(meeting: MeetingOut, current_user: CurrentUserOut
         raise HTTPException(status_code=403, detail="无权管理此会议")
 
 
+def _check_meeting_access(
+    meeting_id: int,
+    user_id: int,
+    db: Session,
+) -> str | None:
+    """检查用户是否有权访问会议，返回角色或 None。
+
+    权限规则：
+    - 团队会议：团队成员可查看
+    - 个人会议：参与者可查看
+
+    返回：
+    - "organizer": 会议组织者
+    - "participant": 会议参与者
+    - "team_member": 团队成员（团队会议）
+    - None: 无权访问
+    """
+    from app.models.meeting_participant import MeetingParticipant
+    from app.models.team_member import TeamMember
+
+    # 检查会议参与者身份
+    participant = (
+        db.query(MeetingParticipant)
+        .filter(
+            MeetingParticipant.meeting_id == meeting_id,
+            MeetingParticipant.user_id == user_id,
+        )
+        .first()
+    )
+
+    if participant:
+        return participant.role
+
+    # 如果是团队会议，检查团队成员身份
+    meeting = get_meeting(db, meeting_id)
+    if meeting and meeting.team_id:
+        team_member = (
+            db.query(TeamMember)
+            .filter(
+                TeamMember.team_id == meeting.team_id,
+                TeamMember.user_id == user_id,
+            )
+            .first()
+        )
+        if team_member:
+            return "team_member"
+
+    return None
+
+
 @router.post("", response_model=MeetingOut, status_code=status.HTTP_201_CREATED)
 def create_meeting_api(
     payload: MeetingCreate,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> MeetingOut:
+    from app.models.meeting_participant import MeetingParticipant
+    from app.models.team_member import TeamMember
+
     organizer = get_user(db, payload.organizer_id)
     if not organizer:
         raise HTTPException(status_code=404, detail="Organizer not found")
     if current_user.role != "admin" and current_user.id != payload.organizer_id:
         raise HTTPException(status_code=403, detail="无权管理此会议")
+
+    # 验证团队成员身份（如果是团队会议）
+    if payload.team_id is not None:
+        membership = (
+            db.query(TeamMember)
+            .filter(TeamMember.team_id == payload.team_id, TeamMember.user_id == payload.organizer_id)
+            .first()
+        )
+        if not membership:
+            raise HTTPException(status_code=403, detail="无权在此团队创建会议")
 
     if (
         payload.scheduled_start_at is not None
@@ -68,7 +131,20 @@ def create_meeting_api(
             detail="scheduled_end_at must be after or equal to scheduled_start_at",
         )
 
-    return create_meeting(db, payload)
+    meeting = create_meeting(db, payload)
+
+    # 自动添加组织者到 participants（role=organizer）
+    participant = MeetingParticipant(
+        meeting_id=meeting.id,
+        user_id=payload.organizer_id,
+        role="organizer",
+        participant_role="required",
+        attendance_status="invited",
+    )
+    db.add(participant)
+    db.commit()
+
+    return meeting
 
 
 @router.get("", response_model=MeetingListOut)
@@ -106,12 +182,19 @@ def list_meetings_api(
 def get_meeting_api(
     meeting_id: Annotated[int, Path(ge=1)],
     db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> MeetingDetailOut:
     """查询会议详情。"""
 
     meeting = get_meeting(db, meeting_id)
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
+
+    if current_user.role != "admin":
+        access_role = _check_meeting_access(meeting_id, current_user.id, db)
+        if not access_role:
+            raise HTTPException(status_code=403, detail="无权查看此会议")
+
     organizer = get_user(db, meeting.organizer_id)
     if not organizer:
         raise HTTPException(status_code=404, detail="Organizer not found")

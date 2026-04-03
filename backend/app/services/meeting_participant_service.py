@@ -15,6 +15,7 @@ def _build_participant_out(participant: MeetingParticipant, email: str | None) -
         meeting_id=participant.meeting_id,
         user_id=participant.user_id,
         email=email,
+        role=participant.role,
         participant_role=participant.participant_role,
         attendance_status=participant.attendance_status,
         joined_at=participant.joined_at,
@@ -133,3 +134,28 @@ def delete_participant(db: Session, participant: MeetingParticipant) -> None:
 
     db.delete(participant)
     db.commit()
+
+
+def get_participant_role(db: Session, meeting_id: int, user_id: int) -> str | None:
+    """获取用户在会议中的角色。返回 'organizer', 'participant', 或 None。"""
+    participant = (
+        db.query(MeetingParticipant)
+        .filter(
+            MeetingParticipant.meeting_id == meeting_id,
+            MeetingParticipant.user_id == user_id,
+        )
+        .first()
+    )
+    return participant.role if participant else None
+
+
+def is_organizer(db: Session, meeting_id: int, user_id: int) -> bool:
+    """检查用户是否是会议组织者。"""
+    role = get_participant_role(db, meeting_id, user_id)
+    return role == "organizer"
+
+
+def is_participant(db: Session, meeting_id: int, user_id: int) -> bool:
+    """检查用户是否是会议参与者（包括 organizer）。"""
+    role = get_participant_role(db, meeting_id, user_id)
+    return role in ["organizer", "participant"]

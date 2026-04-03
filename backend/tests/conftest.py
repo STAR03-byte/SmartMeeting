@@ -87,6 +87,31 @@ def auth_client() -> Generator[TestClient, None, None]:
 
 
 @pytest.fixture()
+def member_client() -> Generator[TestClient, None, None]:
+    """返回普通成员身份的客户端（非管理员）。"""
+    app = _create_test_app_and_db()
+    from app.api.v1.endpoints.auth import get_current_user
+    from app.schemas.auth import CurrentUserOut
+
+    def mock_get_current_user_as_member():
+        return CurrentUserOut(
+            id=999,
+            username="member_user",
+            email="member@example.com",
+            full_name="Member User",
+            role="member",
+            is_active=True,
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+        )
+
+    app.dependency_overrides[get_current_user] = mock_get_current_user_as_member
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
 def safe_client() -> Generator[TestClient, None, None]:
     app = _create_test_app_and_db()
     _override_auth(app)

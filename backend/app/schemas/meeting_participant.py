@@ -34,6 +34,7 @@ class MeetingParticipantOut(BaseModel):
     meeting_id: int
     user_id: int
     email: str | None = None
+    role: str | None = None
     participant_role: str
     attendance_status: str
     joined_at: datetime | None

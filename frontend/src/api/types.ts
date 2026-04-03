@@ -48,6 +48,7 @@ export interface MeetingCreatePayload {
   scheduled_start_at?: string | null;
   scheduled_end_at?: string | null;
   location?: string | null;
+  team_id?: number | null;
 }
 
 export interface MeetingListParams {
@@ -174,8 +175,8 @@ export interface MeetingParticipantOut {
 }
 
 /**
- * 说话人信息
- * 用于说话人分离功能，标识每个说话人的基本信息
+ * 说锟斤拷锟斤拷锟斤拷息
+ * 锟斤拷锟斤拷说锟斤拷锟剿凤拷锟诫功锟杰ｏ拷锟斤拷识每锟斤拷说锟斤拷锟剿的伙拷锟斤拷锟斤拷息
  */
 export interface Speaker {
   id: string;
@@ -186,8 +187,8 @@ export interface Speaker {
 }
 
 /**
- * 说话人分离片段
- * 包含说话人标识、时间范围和文本内容
+ * 说锟斤拷锟剿凤拷锟斤拷片锟斤拷
+ * 锟斤拷锟斤拷说锟斤拷锟剿憋拷识锟斤拷时锟戒范围锟斤拷锟侥憋拷锟斤拷锟斤拷
  */
 export interface DiarizationSegment {
   speaker_id: string;
@@ -198,7 +199,7 @@ export interface DiarizationSegment {
 }
 
 /**
- * 说话人重命名请求
+ * 说锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷锟斤拷
  */
 export interface SpeakerRenamePayload {
   speaker_id: string;

@@ -85,6 +85,16 @@
         <el-form-item label="描述">
           <el-input v-model="createForm.description" type="textarea" :rows="3" placeholder="请输入会议描述（可选）" />
         </el-form-item>
+        <el-form-item label="所属团队" prop="team_id">
+          <el-select v-model="createForm.team_id" placeholder="选择团队（可选）" clearable style="width: 100%">
+            <el-option 
+              v-for="team in teams" 
+              :key="team.id" 
+              :label="team.name" 
+              :value="team.id" 
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="组织者" prop="organizer_id">
           <el-select
             v-model="createForm.organizer_id"
@@ -148,6 +158,7 @@ import { notifyApiError } from "../utils/notify";
 import type { MeetingCreatePayload, MeetingListParams, MeetingStatus } from "../api/types";
 import { getUsers, type UserItem } from "../api/users";
 import { createMeetingParticipant } from "../api/participants";
+import { getTeams, type Team } from "../api/teams";
 
 const store = useMeetingStore();
 const route = useRoute();
@@ -163,6 +174,7 @@ const showCreateDialog = ref(false);
 const creating = ref(false);
 const createFormRef = ref<FormInstance>();
 const users = ref<UserItem[]>([]);
+const teams = ref<Team[]>([]);
 const selectedParticipantIds = ref<number[]>([]);
 
 const createForm = reactive<MeetingCreatePayload>({
@@ -172,6 +184,7 @@ const createForm = reactive<MeetingCreatePayload>({
   scheduled_start_at: null,
   scheduled_end_at: null,
   location: null,
+  team_id: null,
 });
 
 const createRules: FormRules = {
@@ -208,6 +221,14 @@ async function loadUsers() {
   users.value = await getUsers();
   if (!createForm.organizer_id && users.value.length > 0) {
     createForm.organizer_id = users.value[0].id;
+  }
+}
+
+async function loadTeams() {
+  try {
+    teams.value = await getTeams();
+  } catch (e) {
+    console.warn("获取团队列表失败", e);
   }
 }
 
@@ -290,6 +311,7 @@ function resetCreateForm() {
   createForm.scheduled_start_at = null;
   createForm.scheduled_end_at = null;
   createForm.location = null;
+  createForm.team_id = null;
   selectedParticipantIds.value = [];
   createFormRef.value?.resetFields();
 }
@@ -321,7 +343,7 @@ function formatDate(iso: string | null): string {
 
 loadMeetings();
 onMounted(async () => {
-  await loadUsers();
+  await Promise.all([loadUsers(), loadTeams()]);
 });
 </script>
 

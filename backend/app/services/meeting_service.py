@@ -185,7 +185,7 @@ def create_or_get_meeting_share(db: Session, meeting: Meeting) -> tuple[MeetingS
     )
 
 
-def build_shared_meeting_out(db: Session, meeting: Meeting) -> SharedMeetingOut:
+def build_shared_meeting_out(db: Session, meeting: Meeting, my_role: str = "guest") -> SharedMeetingOut:
     organizer = get_user(db, meeting.organizer_id)
     if organizer is None:
         raise ValueError("Organizer not found")
@@ -202,6 +202,7 @@ def build_shared_meeting_out(db: Session, meeting: Meeting) -> SharedMeetingOut:
         meeting=MeetingDetailOut.model_validate({**meeting.__dict__, "organizer": organizer}),
         transcripts=[MeetingTranscriptOut.model_validate(item) for item in transcripts],
         tasks=[TaskOut.model_validate(serialize_task_out(task)) for task in tasks],
+        my_role=my_role,
     )
 
 

@@ -20,6 +20,7 @@ class MeetingCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     description: str | None = None
     organizer_id: int
+    team_id: int | None = None
     scheduled_start_at: datetime | None = None
     scheduled_end_at: datetime | None = None
     location: str | None = Field(default=None, max_length=255)
@@ -45,6 +46,7 @@ class MeetingOut(BaseModel):
     title: str
     description: str | None
     organizer_id: int
+    team_id: int | None = None
     scheduled_start_at: datetime | None
     scheduled_end_at: datetime | None
     actual_start_at: datetime | None
@@ -81,6 +83,7 @@ class SharedMeetingOut(BaseModel):
     meeting: MeetingDetailOut
     transcripts: list[MeetingTranscriptOut]
     tasks: list[TaskOut]
+    my_role: str = Field(..., description="当前用户在该会议中的角色（guest/organizer/participant）")
 
 
 class MeetingPostprocessOut(BaseModel):

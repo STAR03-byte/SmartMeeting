@@ -19,7 +19,6 @@
         <RouterLink to="/meetings" class="nav-link">会议列表</RouterLink>
         <RouterLink to="/tasks" class="nav-link">任务中心</RouterLink>
         <RouterLink to="/hotwords" class="nav-link">热词设置</RouterLink>
-        <RouterLink to="/users" class="nav-link">用户管理</RouterLink>
       </nav>
 
       <div class="mt-auto pt-6 border-t-1 border-t-solid border-border-lighter max-[900px]:mt-0 max-[900px]:border-t-0 max-[900px]:pt-0">

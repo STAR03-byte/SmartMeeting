@@ -7,8 +7,10 @@ const MeetingListView = () => import("../views/MeetingListView.vue");
 const SharedMeetingView = () => import("../views/SharedMeetingView.vue");
 const HotwordsView = () => import("../views/HotwordsView.vue");
 const TasksView = () => import("../views/TasksView.vue");
-const UsersView = () => import("../views/UsersView.vue");
 const LoginView = () => import("../views/LoginView.vue");
+const TeamCreateView = () => import("../views/TeamCreateView.vue");
+const TeamsView = () => import("../views/TeamsView.vue");
+const TeamDetailView = () => import("../views/TeamDetailView.vue");
 
 const router = createRouter({
   history: createWebHistory(),
@@ -17,6 +19,11 @@ const router = createRouter({
       path: "/",
       name: "dashboard",
       component: DashboardView,
+    },
+    {
+      path: "/teams",
+      name: "teams",
+      component: TeamsView,
     },
     {
       path: "/meetings",
@@ -46,9 +53,15 @@ const router = createRouter({
       component: HotwordsView,
     },
     {
-      path: "/users",
-      name: "users",
-      component: UsersView,
+      path: "/teams/create",
+      name: "team-create",
+      component: TeamCreateView,
+    },
+    {
+      path: "/teams/:id",
+      name: "team-detail",
+      component: TeamDetailView,
+      props: true,
     },
     {
       path: "/login",

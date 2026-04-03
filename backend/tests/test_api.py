@@ -1559,20 +1559,38 @@ def test_get_shared_meeting_returns_read_only_payload(auth_client) -> None:
 
 
 def test_get_shared_meeting_invalid_token_returns_404(client) -> None:
-    response = client.get("/api/v1/shared/meetings/not-a-real-token")
+    user_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "invalid_token_user",
+            "email": "invalid_token_user@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Invalid Token User",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
 
+    login_resp = client.post(
+        "/api/v1/auth/login",
+        data={"username": "invalid_token_user", "password": "plain-password"},
+    )
+    assert login_resp.status_code == 200
+    headers = {"Authorization": f"Bearer {login_resp.json()['access_token']}"}
+
+    response = client.get("/api/v1/shared/meetings/not-a-real-token", headers=headers)
     assert response.status_code == 404
     assert response.json()["detail"] == "Shared meeting not found"
 
 
-def test_get_shared_meeting_public_access_without_auth(client) -> None:
+def test_get_shared_meeting_requires_auth_and_permission(client) -> None:
     owner_resp = client.post(
         "/api/v1/users",
         json={
-            "username": "public_share_owner",
-            "email": "public_share_owner@example.com",
+            "username": "share_owner",
+            "email": "share_owner@example.com",
             "password_hash": get_password_hash("plain-password"),
-            "full_name": "Public Share Owner",
+            "full_name": "Share Owner",
             "role": "member",
         },
     )
@@ -1581,7 +1599,7 @@ def test_get_shared_meeting_public_access_without_auth(client) -> None:
 
     login_resp = client.post(
         "/api/v1/auth/login",
-        data={"username": "public_share_owner", "password": "plain-password"},
+        data={"username": "share_owner", "password": "plain-password"},
     )
     assert login_resp.status_code == 200
     owner_headers = {"Authorization": f"Bearer {login_resp.json()['access_token']}"}
@@ -1589,8 +1607,8 @@ def test_get_shared_meeting_public_access_without_auth(client) -> None:
     meeting_resp = client.post(
         "/api/v1/meetings",
         json={
-            "title": "公开分享会议",
-            "description": "验证分享链接匿名访问",
+            "title": "分享会议",
+            "description": "验证分享链接需要登录和权限",
             "organizer_id": owner_id,
         },
         headers=owner_headers,
@@ -1605,7 +1623,7 @@ def test_get_shared_meeting_public_access_without_auth(client) -> None:
             "speaker_user_id": owner_id,
             "speaker_name": "Owner",
             "segment_index": 1,
-            "content": "请确认公开分享可匿名访问。",
+            "content": "验证分享链接需要登录和权限。",
         },
         headers=owner_headers,
     )
@@ -1618,13 +1636,53 @@ def test_get_shared_meeting_public_access_without_auth(client) -> None:
     assert share_resp.status_code == 200
     share_token = share_resp.json()["share_token"]
 
-    public_resp = client.get(f"/api/v1/shared/meetings/{share_token}")
-    assert public_resp.status_code == 200
-    body = public_resp.json()
+    unauth_resp = client.get(f"/api/v1/shared/meetings/{share_token}")
+    assert unauth_resp.status_code == 401
+
+    guest_resp = client.post(
+        "/api/v1/users",
+        json={
+            "username": "share_guest",
+            "email": "share_guest@example.com",
+            "password_hash": get_password_hash("plain-password"),
+            "full_name": "Share Guest",
+            "role": "member",
+        },
+    )
+    assert guest_resp.status_code == 201
+    guest_id = guest_resp.json()["id"]
+
+    guest_login_resp = client.post(
+        "/api/v1/auth/login",
+        data={"username": "share_guest", "password": "plain-password"},
+    )
+    assert guest_login_resp.status_code == 200
+    guest_headers = {"Authorization": f"Bearer {guest_login_resp.json()['access_token']}"}
+
+    guest_forbidden_resp = client.get(f"/api/v1/shared/meetings/{share_token}", headers=guest_headers)
+    assert guest_forbidden_resp.status_code == 403
+
+    participant_resp = client.post(
+        "/api/v1/participants",
+        json={
+            "meeting_id": meeting_id,
+            "user_id": guest_id,
+            "role": "participant",
+            "participant_role": "required",
+            "attendance_status": "invited",
+        },
+        headers=owner_headers,
+    )
+    assert participant_resp.status_code == 201
+
+    guest_allowed_resp = client.get(f"/api/v1/shared/meetings/{share_token}", headers=guest_headers)
+    assert guest_allowed_resp.status_code == 200
+    body = guest_allowed_resp.json()
     assert body["meeting"]["id"] == meeting_id
     assert body["meeting"]["summary"]
     assert isinstance(body["transcripts"], list)
     assert isinstance(body["tasks"], list)
+    assert body["my_role"] == "guest"
 
 
 def test_meeting_share_requires_organizer_auth_check(client) -> None:
