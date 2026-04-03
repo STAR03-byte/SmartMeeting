@@ -11,10 +11,12 @@ from sqlalchemy.orm import Session
 from app.models.meeting_audio import MeetingAudio
 from app.models.meeting_transcript import MeetingTranscript
 from app.core.config import settings
+from app.services.hotword_service import get_hotword_terms
 from app.services.meeting_participant_service import list_participants
 from app.services.meeting_service import get_meeting
-from app.services.whisper_service import WhisperServiceError, transcribe_audio_file
-from app.services.speaker_diarization_service import diarize_audio, SpeakerSegment
+from app.services.faster_whisper_service import transcribe_audio_file
+from app.services.whisper_service import WhisperServiceError, WhisperSegment
+from app.services.speaker_diarization_service import diarize_audio
 
 
 def _assign_speaker_labels(
@@ -120,7 +122,7 @@ def _generate_mock_transcripts(meeting_id: int, start_index: int) -> list[Meetin
     return segments
 
 
-async def transcribe_latest_audio(db: Session, meeting_id: int) -> list[MeetingTranscript]:
+async def transcribe_latest_audio(db: Session, meeting_id: int, user_id: int | None = None) -> list[MeetingTranscript]:
 
     meeting = get_meeting(db, meeting_id)
     if not meeting:
@@ -144,7 +146,8 @@ async def transcribe_latest_audio(db: Session, meeting_id: int) -> list[MeetingT
     next_segment_index = 1 if not latest_segment else latest_segment.segment_index + 1
 
     try:
-        transcription = await transcribe_audio_file(latest_audio.storage_path)
+        hotwords = get_hotword_terms(db, user_id)
+        transcription = await transcribe_audio_file(latest_audio.storage_path, hotwords=hotwords)
     except WhisperServiceError:
         segments = _generate_mock_transcripts(meeting_id, next_segment_index)
         participants = _fetch_meeting_participants(db, meeting_id)
@@ -157,8 +160,8 @@ async def transcribe_latest_audio(db: Session, meeting_id: int) -> list[MeetingT
 
     created_segments: list[MeetingTranscript] = []
 
-    for index, segment in enumerate(transcription["segments"], start=next_segment_index):
-        content = segment["text"].strip()
+    for index, segment_data in enumerate(transcription["segments"], start=next_segment_index):
+        content = segment_data["text"].strip()
         if not content:
             continue
         transcript = MeetingTranscript(
@@ -166,9 +169,9 @@ async def transcribe_latest_audio(db: Session, meeting_id: int) -> list[MeetingT
             speaker_user_id=None,
             speaker_name="Whisper",
             segment_index=index,
-            start_time_sec=segment.get("start"),
-            end_time_sec=segment.get("end"),
-            language_code=(segment.get("language") or "zh").replace("zh", "zh-CN", 1),
+            start_time_sec=segment_data.get("start"),
+            end_time_sec=segment_data.get("end"),
+            language_code=(segment_data.get("language") or "zh").replace("zh", "zh-CN", 1),
             source="whisper",
             content=content,
         )

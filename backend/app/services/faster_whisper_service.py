@@ -67,16 +67,19 @@ class FasterWhisperTranscriber:
         except Exception as exc:
             raise WhisperServiceError(f"Failed to load faster-whisper model: {exc}") from exc
 
-    def _build_initial_prompt(self) -> str | None:
-        hotwords = [item.strip() for item in settings.whisper_hot_words.split(",") if item.strip()]
-        if not hotwords:
+    def _build_initial_prompt(self, hotwords: tuple[str, ...] | None = None) -> str | None:
+        prompt_terms = hotwords if hotwords is not None else tuple(
+            item.strip() for item in settings.whisper_hot_words.split(",") if item.strip()
+        )
+        if not prompt_terms:
             return None
-        return "，".join(hotwords)
+        return "，".join(prompt_terms)
 
     async def transcribe_file(
         self,
         audio_path: str | Path,
         language: str | None = None,
+        hotwords: tuple[str, ...] | None = None,
     ) -> list[WhisperSegment]:
         
         file_path = Path(audio_path)
@@ -90,7 +93,7 @@ class FasterWhisperTranscriber:
             return await fallback_transcriber.transcribe_file(audio_path, language)
 
         language_code = language or settings.whisper_language
-        initial_prompt = self._build_initial_prompt()
+        initial_prompt = self._build_initial_prompt(hotwords)
 
         def _sync_transcribe() -> list[WhisperSegment]:
             try:
@@ -126,11 +129,12 @@ class FasterWhisperTranscriber:
         self,
         audio_path: str | Path,
         language: str | None = None,
+        hotwords: tuple[str, ...] | None = None,
     ) -> WhisperResult:
         if not getattr(settings, "use_faster_whisper", True):
             return await fallback_transcriber.transcribe_with_timestamps(audio_path, language)
             
-        segments = await self.transcribe_file(audio_path, language)
+        segments = await self.transcribe_file(audio_path, language, hotwords)
         full_text = " ".join(segment["text"] for segment in segments)
         return {
             "text": full_text,
@@ -144,7 +148,8 @@ faster_whisper_transcriber = FasterWhisperTranscriber()
 async def transcribe_audio_file(
     audio_path: str | Path,
     language: str | None = None,
+    hotwords: tuple[str, ...] | None = None,
 ) -> WhisperResult:
     if getattr(settings, "use_faster_whisper", True):
-        return await faster_whisper_transcriber.transcribe_with_timestamps(audio_path, language)
+        return await faster_whisper_transcriber.transcribe_with_timestamps(audio_path, language, hotwords)
     return await fallback_transcriber.transcribe_with_timestamps(audio_path, language)

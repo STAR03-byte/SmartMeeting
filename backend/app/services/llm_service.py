@@ -2,13 +2,15 @@
 
 import json
 import logging
+import re
 from dataclasses import dataclass
-from typing import TypedDict, cast
+from typing import Literal, TypedDict, cast
 
 from openai import APIConnectionError, APIError, AsyncOpenAI, OpenAIError, RateLimitError
 from openai.types.chat import ChatCompletionMessageParam
 
 from app.core.config import settings
+from app.schemas.structured_summary import AgendaItem, Resolution, StructuredSummary, TodoItem
 
 logger = logging.getLogger(__name__)
 
@@ -225,6 +227,162 @@ class LLMClient:
         content, _provider = await self._call_with_fallback(messages)
         return content
 
+    async def generate_structured_summary(
+        self,
+        transcript_contents: list[tuple[str | None, str]],
+        meeting_title: str | None = None,
+    ) -> StructuredSummary:
+        """Generate structured summary with agenda, resolutions, and todos."""
+        if not transcript_contents:
+            return StructuredSummary(agenda=[], resolutions=[], todos=[], raw_summary=None)
+
+        formatted_transcript = "\n\n".join(
+            f"[{speaker or '未知'}]: {content}"
+            for speaker, content in transcript_contents
+        )
+
+        system_prompt = """你是一个专业的会议记录助手。请根据会议转写内容生成结构化的会议摘要。
+
+输出格式要求（必须是有效的JSON）：
+{
+  "agenda": [
+    {
+      "topic": "讨论主题（必填，不超过100字）",
+      "speaker": "发言人姓名（可选）",
+      "key_points": ["要点1", "要点2"]
+    }
+  ],
+  "resolutions": [
+    {
+      "decision": "决议内容（必填，不超过200字）",
+      "proposer": "提议人（可选）",
+      "context": "决议背景（可选）"
+    }
+  ],
+  "todos": [
+    {
+      "title": "任务标题（必填，不超过50字）",
+      "description": "任务描述（可选）",
+      "assignee": "负责人姓名（可选）",
+      "due_date": "截止时间（可选，如'下周一'）",
+      "priority": "high/medium/low"
+    }
+  ]
+}
+
+要求：
+1. agenda（议程）：列出会议讨论的主要话题，每个话题包含主题、发言人和关键要点
+2. resolutions（决议）：列出会议达成的明确决定，包含决议内容、提议人和背景
+3. todos（待办）：列出需要跟进的任务，包含标题、描述、负责人、截止时间和优先级
+4. 如果某类信息不存在，对应数组为空
+5. 只输出JSON，不要其他内容"""
+
+        user_prompt = f"""请为以下会议转写内容生成结构化摘要：
+
+会议标题：{meeting_title or '未命名会议'}
+
+转写内容：
+{formatted_transcript}
+
+请输出JSON格式的结构化摘要："""
+
+        messages: list[ChatCompletionMessageParam] = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+
+        try:
+            response, _provider = await self._call_with_fallback(messages, temperature=0.1)
+            parsed = self._parse_structured_summary(response)
+            return parsed
+        except (json.JSONDecodeError, LLMServiceError) as exc:
+            logger.warning("Failed to generate structured summary: %s", exc)
+            raw_summary = await self.generate_meeting_summary(
+                [content for _, content in transcript_contents],
+                meeting_title,
+            )
+            return generate_fallback_structured_summary(
+                [content for _, content in transcript_contents],
+                meeting_title,
+                raw_summary,
+            )
+
+    def _parse_structured_summary(self, response: str) -> StructuredSummary:
+        """Parse LLM response into StructuredSummary."""
+        json_match = re.search(r"\{[\s\S]*\}", response)
+        if not json_match:
+            raise json.JSONDecodeError("No JSON object found", response, 0)
+
+        json_str = json_match.group()
+        data = json.loads(json_str)
+
+        agenda: list[AgendaItem] = []
+        for item in data.get("agenda", []):
+            if not isinstance(item, dict):
+                continue
+            topic = item.get("topic")
+            if not isinstance(topic, str) or not topic.strip():
+                continue
+            speaker = item.get("speaker")
+            key_points = item.get("key_points", [])
+            if not isinstance(key_points, list):
+                key_points = []
+            key_points = [str(p) for p in key_points if isinstance(p, str)]
+            agenda.append(
+                AgendaItem(
+                    topic=topic.strip(),
+                    speaker=speaker if isinstance(speaker, str) else None,
+                    key_points=key_points,
+                )
+            )
+
+        resolutions: list[Resolution] = []
+        for item in data.get("resolutions", []):
+            if not isinstance(item, dict):
+                continue
+            decision = item.get("decision")
+            if not isinstance(decision, str) or not decision.strip():
+                continue
+            proposer = item.get("proposer")
+            context = item.get("context")
+            resolutions.append(
+                Resolution(
+                    decision=decision.strip(),
+                    proposer=proposer if isinstance(proposer, str) else None,
+                    context=context if isinstance(context, str) else None,
+                )
+            )
+
+        todos: list[TodoItem] = []
+        for item in data.get("todos", []):
+            if not isinstance(item, dict):
+                continue
+            title = item.get("title")
+            if not isinstance(title, str) or not title.strip():
+                continue
+            description = item.get("description")
+            assignee = item.get("assignee")
+            due_date = item.get("due_date")
+            priority = item.get("priority", "medium")
+            if priority not in ("high", "medium", "low"):
+                priority = "medium"
+            todos.append(
+                TodoItem(
+                    title=title.strip(),
+                    description=description if isinstance(description, str) else None,
+                    assignee=assignee if isinstance(assignee, str) else None,
+                    due_date=due_date if isinstance(due_date, str) else None,
+                    priority=priority,
+                )
+            )
+
+        return StructuredSummary(
+            agenda=agenda,
+            resolutions=resolutions,
+            todos=todos,
+            raw_summary=None,
+        )
+
     async def extract_action_items(
         self,
         transcript_content: str,
@@ -313,6 +471,14 @@ async def generate_meeting_summary(
     return await llm_client.generate_meeting_summary(transcript_contents, meeting_title)
 
 
+async def generate_structured_summary(
+    transcript_contents: list[tuple[str | None, str]],
+    meeting_title: str | None = None,
+) -> StructuredSummary:
+    """Generate structured summary with agenda, resolutions, and todos."""
+    return await llm_client.generate_structured_summary(transcript_contents, meeting_title)
+
+
 async def extract_action_items(
     transcript_content: str,
     participants: list[str] | None = None,
@@ -333,6 +499,54 @@ def generate_fallback_summary(transcript_contents: list[str], meeting_title: str
         f"## {title}\n\n"
         f"**主要讨论**：{content_preview}\n\n"
         f"**后续行动**：请根据转写内容确认具体任务。"
+    )
+
+
+def generate_fallback_structured_summary(
+    transcript_contents: list[str],
+    meeting_title: str | None,
+    raw_summary: str | None = None,
+) -> StructuredSummary:
+    """Generate fallback structured summary when LLM fails."""
+    if not transcript_contents:
+        return StructuredSummary(agenda=[], resolutions=[], todos=[], raw_summary=None)
+
+    title = meeting_title or "未命名会议"
+    content_preview = " ".join(transcript_contents[:5])
+    if len(content_preview) > 200:
+        content_preview = content_preview[:200] + "..."
+
+    agenda: list[AgendaItem] = [
+        AgendaItem(
+            topic=f"会议主题：{title}",
+            speaker=None,
+            key_points=[content_preview[:100]],
+        )
+    ]
+
+    todos: list[TodoItem] = []
+    sentences = [s.strip() for s in " ".join(transcript_contents).split("。") if s.strip()]
+    for sentence in sentences[:3]:
+        priority: Literal["high", "medium", "low"] = "medium"
+        if any(kw in sentence for kw in ["尽快", "紧急", "立即"]):
+            priority = "high"
+        elif any(kw in sentence for kw in ["下周", "月底", "后续"]):
+            priority = "low"
+        todos.append(
+            TodoItem(
+                title=sentence[:50],
+                description=sentence,
+                assignee=None,
+                due_date=None,
+                priority=priority,
+            )
+        )
+
+    return StructuredSummary(
+        agenda=agenda,
+        resolutions=[],
+        todos=todos,
+        raw_summary=raw_summary or generate_fallback_summary(transcript_contents, meeting_title),
     )
 
 
