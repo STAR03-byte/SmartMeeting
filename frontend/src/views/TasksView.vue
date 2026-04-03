@@ -56,15 +56,15 @@
 
     <el-card class="base-card" v-loading="loading">
       <el-table :data="tasks" stripe>
-        <el-table-column prop="title" label="任务" min-width="240">
+        <el-table-column prop="title" :label="$t('task.taskLabel')" min-width="240">
           <template #default="{ row }">
             <span :class="{ 'task-done': row.status === 'done' }">{{ row.title }}</span>
           </template>
         </el-table-column>
         <el-table-column :label="$t('task.meeting')" min-width="180">
           <template #default="{ row }">
-            <router-link v-if="row.meeting_id" :to="`/meetings/${row.meeting_id}`" class="meeting-link" :title="`会议ID: ${row.meeting_id}`">
-              {{ row.meeting_title || `会议 #${row.meeting_id}` }}
+            <router-link v-if="row.meeting_id" :to="`/meetings/${row.meeting_id}`" class="meeting-link" :title="`${$t('task.meetingIdPrefix')}${row.meeting_id}`">
+              {{ row.meeting_title || `${$t('task.meetingFallbackPrefix')}${row.meeting_id}` }}
             </router-link>
             <span v-else>-</span>
           </template>
@@ -92,7 +92,7 @@
             {{ resolveAssigneeName(row.assignee_id) }}
           </template>
         </el-table-column>
-        <el-table-column label="截止时间" width="160">
+        <el-table-column :label="$t('task.dueDateLabel')" width="160">
           <template #default="{ row }">
             {{ formatDate(row.due_at) }}
           </template>
@@ -253,7 +253,7 @@ async function refreshTasks() {
     tasks.value = result.items;
     totalCount.value = result.total;
   } catch (err) {
-    error.value = notifyApiError(err, { prefix: "加载任务失败" });
+    error.value = notifyApiError(err, { prefix: t('task.loadFailed') });
   } finally {
     loading.value = false;
   }
@@ -284,7 +284,7 @@ async function changeStatus(taskId: number, status: TaskStatus) {
     if (index >= 0) {
       tasks.value[index] = updated;
     }
-    ElMessage.success("任务状态已更新");
+    ElMessage.success(t('task.statusUpdateSuccess'));
   } catch (err) {
     notifyApiError(err);
     await refreshTasks();
@@ -352,7 +352,7 @@ function formatDate(iso: string | null): string {
 function resolveAssigneeName(assigneeId: number | null): string {
   if (!assigneeId) return t('task.unassigned');
   const user = users.value.find((item) => item.id === assigneeId);
-  return user ? `${user.full_name}（${user.username}）` : `用户 #${assigneeId}`;
+  return user ? `${user.full_name}（${user.username}）` : `${t('task.userPrefix')}${assigneeId}`;
 }
 </script>
 

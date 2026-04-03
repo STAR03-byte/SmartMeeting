@@ -9,6 +9,7 @@ import type {
   MeetingPostprocessResult,
   MeetingShareCreateResult,
   SharedMeetingDetail,
+  MeetingStatus,
   TaskCreatePayload,
   TaskItem,
   TaskListResult,
@@ -16,6 +17,17 @@ import type {
 } from "./types";
 
 export type { Meeting, MeetingAudio, MeetingCreatePayload, MeetingDetail, MeetingListParams, MeetingListResult, MeetingPostprocessResult, MeetingShareCreateResult, SharedMeetingDetail, TaskCreatePayload, TaskItem, Transcript } from "./types";
+
+export interface MeetingUpdatePayload {
+  title?: string;
+  description?: string | null;
+  scheduled_start_at?: string | null;
+  scheduled_end_at?: string | null;
+  actual_start_at?: string | null;
+  actual_end_at?: string | null;
+  location?: string | null;
+  status?: MeetingStatus;
+}
 
 export interface MeetingExportPayload {
   format?: "txt" | "pdf" | "docx";
@@ -35,6 +47,11 @@ export async function getMeetings(params?: MeetingListParams): Promise<MeetingLi
 
 export async function createMeeting(payload: MeetingCreatePayload): Promise<Meeting> {
   const resp = await apiClient.post<Meeting>("/api/v1/meetings", payload);
+  return resp.data;
+}
+
+export async function updateMeeting(meetingId: number, data: MeetingUpdatePayload): Promise<Meeting> {
+  const resp = await apiClient.patch<Meeting>(`/api/v1/meetings/${meetingId}`, data);
   return resp.data;
 }
 
@@ -103,6 +120,25 @@ export async function exportMeetingSummary(
 
 export async function createMeetingShareLink(meetingId: number): Promise<MeetingShareCreateResult> {
   const resp = await apiClient.post<MeetingShareCreateResult>(`/api/v1/meetings/${meetingId}/share`);
+  return resp.data;
+}
+
+export async function listMeetingAudios(meetingId: number): Promise<MeetingAudio[]> {
+  const resp = await apiClient.get<MeetingAudio[]>(`/api/v1/meetings/${meetingId}/audios`);
+  return resp.data;
+}
+
+export async function downloadAudio(audioId: number, meetingId: number): Promise<Blob> {
+  const resp = await apiClient.get(`/api/v1/meetings/${meetingId}/audios/${audioId}/download`, {
+    responseType: "blob",
+  });
+  return resp.data;
+}
+
+export async function streamAudio(audioId: number, meetingId: number): Promise<Blob> {
+  const resp = await apiClient.get(`/api/v1/meetings/${meetingId}/audios/${audioId}/stream`, {
+    responseType: "blob",
+  });
   return resp.data;
 }
 

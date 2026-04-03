@@ -24,7 +24,7 @@
 
       <div class="mt-auto pt-6 border-t-1 border-t-solid border-border-lighter max-[900px]:mt-0 max-[900px]:border-t-0 max-[900px]:pt-0 flex flex-col gap-3">
         <el-button v-if="showInstallPrompt" type="success" plain @click="installApp" class="w-full">
-          {{ $t('app.installPwa') || '安装桌面应用' }}
+          {{ $t('app.installPwa') }}
         </el-button>
         <el-button v-if="authStore.token" text type="danger" @click="handleLogout">{{ $t('common.logout') }}</el-button>
         <RouterLink v-else to="/login">

@@ -99,7 +99,7 @@
           <el-select
             v-model="createForm.organizer_id"
             filterable
-            placeholder="请选择组织者"
+            :placeholder="$t('meeting.organizerPlaceholder')"
             style="width: 100%"
           >
             <el-option
@@ -110,10 +110,10 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="计划开始">
+        <el-form-item :label="$t('meeting.startTimeLabel')">
           <el-date-picker v-model="createForm.scheduled_start_at" type="datetime" :placeholder="$t('meeting.selectStartTime')" style="width: 100%" />
         </el-form-item>
-        <el-form-item label="计划结束">
+        <el-form-item :label="$t('meeting.endTimeLabel')">
           <el-date-picker v-model="createForm.scheduled_end_at" type="datetime" :placeholder="$t('meeting.selectEndTime')" style="width: 100%" />
         </el-form-item>
         <el-form-item :label="$t('meeting.location')">
@@ -191,7 +191,7 @@ const createForm = reactive<MeetingCreatePayload>({
 
 const createRules: FormRules = {
   title: [{ required: true, message: t('meeting.titlePlaceholder'), trigger: "blur" }],
-  organizer_id: [{ required: true, message: "请选择组织者", trigger: "change" }],
+  organizer_id: [{ required: true, message: t('meeting.organizerRequired'), trigger: "change" }],
 };
 
 watch(
@@ -281,10 +281,10 @@ async function handleCreate() {
             participant_role: "optional",
           });
         } catch (err) {
-          console.warn("添加参与者失败:", userId, err);
+          console.warn(t('meeting.addParticipantFailed'), userId, err);
         }
       }
-      ElMessage.success(`会议创建成功，已添加 ${selectedParticipantIds.value.length} 位参与者`);
+      ElMessage.success(t('meeting.createSuccessWithParticipants', { count: selectedParticipantIds.value.length }));
     } else {
       ElMessage.success(t('meeting.createSuccess'));
     }

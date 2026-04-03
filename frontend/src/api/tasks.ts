@@ -34,6 +34,15 @@ export async function getTasks(params: TaskListParams = {}): Promise<TaskListRes
   return resp.data;
 }
 
+export async function getTask(taskId: number): Promise<TaskItem> {
+  const resp = await apiClient.get<TaskItem>(`/api/v1/tasks/${taskId}`);
+  return resp.data;
+}
+
+export async function deleteTask(taskId: number): Promise<void> {
+  await apiClient.delete(`/api/v1/tasks/${taskId}`);
+}
+
 export async function updateTaskStatus(taskId: number, status: TaskStatus): Promise<TaskItem> {
   const resp = await apiClient.patch<TaskItem>(`/api/v1/tasks/${taskId}`, { status });
   return resp.data;
