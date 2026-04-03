@@ -44,6 +44,7 @@ class TaskOut(BaseModel):
 
     id: int
     meeting_id: int
+    meeting_title: str | None = None
     transcript_id: int | None
     title: str
     description: str | None

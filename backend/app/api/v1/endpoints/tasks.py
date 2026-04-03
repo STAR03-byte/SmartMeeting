@@ -11,6 +11,7 @@ from app.schemas.task import TaskPriority, TaskStatus
 from app.schemas.task import TaskCreate, TaskListOut, TaskOut, TaskUpdate
 from app.services.meeting_service import get_meeting
 from app.services.meeting_transcript_service import get_transcript
+from app.services.meeting_service import get_meeting
 from app.services.task_service import (
     count_tasks,
     create_task,
@@ -106,8 +107,12 @@ def list_tasks_api(
         limit=limit,
         offset=offset,
     )
+
+    meeting_ids = {task.meeting_id for task in tasks}
+    meetings = {m.id: m for m in [get_meeting(db, mid) for mid in meeting_ids] if m}
+    
     return TaskListOut(
-        items=[TaskOut.model_validate(serialize_task_out(task)) for task in tasks],
+        items=[TaskOut.model_validate(serialize_task_out(task, meetings.get(task.meeting_id, None))) for task in tasks],
         total=total,
     )
 

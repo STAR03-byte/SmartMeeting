@@ -61,10 +61,10 @@
             <span :class="{ 'task-done': row.status === 'done' }">{{ row.title }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="所属会议" width="120">
+        <el-table-column label="所属会议" min-width="180">
           <template #default="{ row }">
-            <router-link v-if="row.meeting_id" :to="`/meetings/${row.meeting_id}`" class="meeting-link">
-              #{{ row.meeting_id }}
+            <router-link v-if="row.meeting_id" :to="`/meetings/${row.meeting_id}`" class="meeting-link" :title="`会议ID: ${row.meeting_id}`">
+              {{ row.meeting_title || `会议 #${row.meeting_id}` }}
             </router-link>
             <span v-else>-</span>
           </template>

@@ -190,6 +190,7 @@ export const TaskUpdateSchema = z.object({
 export const TaskItemSchema = z.object({
   id: z.number(),
   meeting_id: z.number(),
+  meeting_title: z.string().nullable().optional(),
   transcript_id: z.number().nullable(),
   title: z.string(),
   description: z.string().nullable(),

@@ -222,3 +222,6 @@ node_modules/
 
 # Sisyphus AI agent working directory
 .sisyphus/
+
+# Test coverage
+frontend/coverage/

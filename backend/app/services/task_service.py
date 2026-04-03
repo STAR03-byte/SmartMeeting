@@ -8,6 +8,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.models.meeting import Meeting
 from app.models.task import Task
 from app.schemas.task import TaskCreate, TaskUpdate
 
@@ -58,9 +59,12 @@ def list_tasks(
             query = query.filter(Task.title.ilike(f"%{normalized_keyword}%"))
 
     if sort_by == "due_at_asc":
-        query = query.order_by(Task.due_at.asc().nullslast(), Task.id.desc())
+        # MySQL 兼容：使用 (due_at IS NULL) 先排序，让 NULL 值排在最后
+        from sqlalchemy import case
+        query = query.order_by(case((Task.due_at.is_(None), 1), else_=0), Task.due_at.asc(), Task.id.desc())
     elif sort_by == "due_at_desc":
-        query = query.order_by(Task.due_at.desc().nullslast(), Task.id.desc())
+        # MySQL 兼容：DESC 时 NULL 自然排在最后
+        query = query.order_by(Task.due_at.desc(), Task.id.desc())
     else:
         query = query.order_by(Task.id.desc())
 
@@ -97,7 +101,8 @@ def count_tasks(
     return int(result or 0)
 
 
-def serialize_task_out(task: Task) -> dict[str, object]:
+def serialize_task_out(task: Task, meeting=None) -> dict[str, object]:
+    meeting_title = meeting.title if meeting else None
     now = datetime.now(UTC)
     due_soon_deadline = now + timedelta(hours=48)
 
@@ -114,6 +119,7 @@ def serialize_task_out(task: Task) -> dict[str, object]:
     return {
         "id": task.id,
         "meeting_id": task.meeting_id,
+        "meeting_title": meeting_title,
         "transcript_id": task.transcript_id,
         "title": task.title,
         "description": task.description,
