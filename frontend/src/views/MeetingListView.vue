@@ -77,7 +77,7 @@
       />
     </section>
 
-    <el-dialog v-model="showCreateDialog" :title="$t('dashboard.newMeeting')" width="520px" @closed="resetCreateForm">
+    <el-dialog v-model="showCreateDialog" :title="$t('dashboard.newMeeting')" width="90%" style="max-width: 520px" @closed="resetCreateForm">
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="80px">
         <el-form-item :label="$t('task.taskTitle')" prop="title">
           <el-input v-model="createForm.title" :placeholder="$t('meeting.titlePlaceholder')" />
@@ -434,5 +434,41 @@ onMounted(async () => {
   margin-top: 24px;
   display: flex;
   justify-content: flex-end;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 767px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .filter-section {
+    padding: 16px;
+  }
+  
+  .filter-bar {
+    flex-direction: column;
+    width: 100%;
+    gap: 12px;
+  }
+  
+  .filter-bar :deep(.el-form-item) {
+    width: 100%;
+  }
+  
+  .filter-bar :deep(.el-select),
+  .filter-bar :deep(.el-input) {
+    width: 100% !important;
+  }
+  
+  .meetings-section {
+    padding: 16px;
+  }
+  
+  .pagination {
+    justify-content: center;
+  }
 }
 </style>

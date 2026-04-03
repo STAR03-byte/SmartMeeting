@@ -135,4 +135,17 @@ onMounted(() => {
 .teams-table :deep(.el-table__row:hover > td) {
   background-color: var(--el-color-primary-light-9) !important;
 }
+
+/* Mobile Adjustments */
+@media (max-width: 767px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .teams-section {
+    padding: 16px;
+  }
+}
 </style>

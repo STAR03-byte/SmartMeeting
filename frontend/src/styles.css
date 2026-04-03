@@ -47,3 +47,30 @@ body {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* Global Mobile Responsive Adjustments */
+@media (max-width: 767px) {
+  /* Minimum touch targets for mobile */
+  .el-button,
+  .el-input__inner,
+  .el-textarea__inner,
+  .el-select-dropdown__item {
+    min-height: 44px !important;
+  }
+  
+  /* Make sure links and clickable items are large enough */
+  a, button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Tables should scroll horizontally on mobile rather than overflowing */
+  .el-table {
+    overflow-x: auto;
+  }
+  
+  /* Adjust base typography slightly for readability */
+  body {
+    font-size: 16px;
+  }
+}

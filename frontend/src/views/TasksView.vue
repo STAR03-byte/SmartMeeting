@@ -135,7 +135,7 @@
       @current-change="handlePageChange"
     />
 
-    <el-dialog v-model="editDialogVisible" :title="$t('task.editTask')" width="520px">
+    <el-dialog v-model="editDialogVisible" :title="$t('task.editTask')" width="90%" style="max-width: 520px">
       <el-form label-width="80px">
         <el-form-item :label="$t('task.taskTitle')">
           <el-input v-model="editForm.title" :placeholder="$t('task.taskTitlePlaceholder')" />
@@ -464,5 +464,33 @@ function resolveAssigneeName(assigneeId: number | null): string {
 
 :deep(.el-table__body-wrapper td) {
   padding: 16px 0;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 767px) {
+  .hero-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 24px;
+    gap: 16px;
+  }
+  
+  .filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter-row > * {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .pagination {
+    justify-content: center;
+  }
+  
+  .base-card :deep(.el-card__body) {
+    padding: 16px;
+  }
 }
 </style>

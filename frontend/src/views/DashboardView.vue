@@ -452,4 +452,33 @@ onMounted(async () => {
   font-weight: 600;
   font-size: 15px;
 }
+
+/* Mobile Adjustments */
+@media (max-width: 767px) {
+  .hero-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .hero-header {
+    padding: 24px;
+  }
+  
+  .meeting-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .meeting-meta {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .base-card :deep(.el-card__header),
+  .base-card :deep(.el-card__body) {
+    padding: 16px;
+  }
+}
 </style>

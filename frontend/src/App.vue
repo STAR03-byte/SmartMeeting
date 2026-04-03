@@ -21,7 +21,10 @@
         <RouterLink to="/hotwords" class="nav-link">{{ $t('app.navHotwords') }}</RouterLink>
       </nav>
 
-      <div class="mt-auto pt-6 border-t-1 border-t-solid border-border-lighter max-[900px]:mt-0 max-[900px]:border-t-0 max-[900px]:pt-0">
+      <div class="mt-auto pt-6 border-t-1 border-t-solid border-border-lighter max-[900px]:mt-0 max-[900px]:border-t-0 max-[900px]:pt-0 flex flex-col gap-3">
+        <el-button v-if="showInstallPrompt" type="success" plain @click="installApp" class="w-full">
+          {{ $t('app.installPwa') || '安装桌面应用' }}
+        </el-button>
         <el-button v-if="authStore.token" text type="danger" @click="handleLogout">{{ $t('common.logout') }}</el-button>
         <RouterLink v-else to="/login">
           <el-button type="primary" size="small">{{ $t('common.goToLogin') }}</el-button>
@@ -35,12 +38,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "./stores/authStore";
 
 const authStore = useAuthStore();
 const router = useRouter();
+
+const showInstallPrompt = ref(false);
+let deferredPrompt: any = null;
 
 const userInitial = computed(() => {
   const name = authStore.currentUser?.full_name || authStore.currentUser?.username || "";
@@ -51,7 +57,23 @@ onMounted(async () => {
   if (authStore.token && !authStore.currentUser) {
     await authStore.loadCurrentUser();
   }
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    showInstallPrompt.value = true;
+  });
 });
+
+async function installApp() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  if (outcome === 'accepted') {
+    showInstallPrompt.value = false;
+  }
+  deferredPrompt = null;
+}
 
 function handleLogout() {
   authStore.signOut();

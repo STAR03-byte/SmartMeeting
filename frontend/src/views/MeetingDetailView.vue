@@ -267,4 +267,23 @@ function statusLabel(status: string): string {
     flex-direction: column;
   }
 }
+
+@media (max-width: 767px) {
+  .summary-actions {
+    justify-content: flex-start;
+    width: 100%;
+    margin-top: 16px;
+    gap: 8px;
+  }
+  .summary-actions .el-button {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+  .base-card :deep(.el-card__body) {
+    padding: 16px;
+  }
+  .header-row h2 {
+    font-size: 24px;
+  }
+}
 </style>

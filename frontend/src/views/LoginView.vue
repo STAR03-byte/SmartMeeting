@@ -332,4 +332,17 @@ async function register() {
   padding-top: 16px;
   border-top: 1px solid var(--el-border-color-lighter);
 }
+
+/* Mobile Adjustments */
+@media (max-width: 480px) {
+  .login-container {
+    gap: 24px;
+  }
+  .login-card :deep(.el-card__body) {
+    padding: 24px 20px;
+  }
+  .login-brand h1 {
+    font-size: 28px;
+  }
+}
 </style>

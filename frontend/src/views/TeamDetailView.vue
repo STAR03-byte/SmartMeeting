@@ -343,4 +343,19 @@ onMounted(() => {
 .mb-4 {
   margin-bottom: 16px;
 }
+
+/* Mobile Adjustments */
+@media (max-width: 767px) {
+  .header-actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
 </style>
