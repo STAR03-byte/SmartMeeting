@@ -32,6 +32,7 @@ export default {
     navDashboard: '仪表盘',
     navMeetings: '会议列表',
     navTasks: '任务中心',
+    navTeams: '我的团队',
     navHotwords: '热词设置'
   },
   dashboard: {

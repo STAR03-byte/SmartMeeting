@@ -18,6 +18,7 @@
         <RouterLink to="/" class="nav-link">{{ $t('app.navDashboard') }}</RouterLink>
         <RouterLink to="/meetings" class="nav-link">{{ $t('app.navMeetings') }}</RouterLink>
         <RouterLink to="/tasks" class="nav-link">{{ $t('app.navTasks') }}</RouterLink>
+        <RouterLink to="/teams" class="nav-link">{{ $t('app.navTeams') }}</RouterLink>
         <RouterLink to="/hotwords" class="nav-link">{{ $t('app.navHotwords') }}</RouterLink>
       </nav>
 

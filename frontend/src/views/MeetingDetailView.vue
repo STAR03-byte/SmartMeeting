@@ -38,6 +38,7 @@
           </div>
 
           <StatsOverview />
+          <AudioFiles :meeting-id="meetingId" />
           <AudioRecorder :meetingId="meetingId" />
           <SummaryPanel :meetingId="meetingId" />
         </el-card>
@@ -76,6 +77,7 @@ import "splitpanes/dist/splitpanes.css";
 
 import AppErrorAlert from "../components/AppErrorAlert.vue";
 import StatsOverview from "../components/meeting/StatsOverview.vue";
+import AudioFiles from "../components/meeting/AudioFiles.vue";
 import AudioRecorder from "../components/meeting/AudioRecorder.vue";
 import SummaryPanel from "../components/meeting/SummaryPanel.vue";
 import TranscriptPanel from "../components/meeting/TranscriptPanel.vue";
