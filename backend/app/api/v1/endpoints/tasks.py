@@ -59,7 +59,7 @@ def _assert_assignee_permission(db: Session, meeting, assignee_id: int, current_
         if team_member:
             return
 
-    raise HTTPException(status_code=400, detail="无权指定该任务负责人")
+    raise HTTPException(status_code=400, detail="任务负责人必须是会议参与者或团队成员")
 
 
 def _assert_task_permission(task, meeting, current_user: CurrentUserOut) -> None:

@@ -212,6 +212,7 @@ def test_create_task_with_unauthorized_assignee_returns_400(auth_client: TestCli
         },
     )
     assert resp.status_code == 400
+    assert resp.json()["detail"] == "任务负责人必须是会议参与者或团队成员"
 
 
 def test_admin_can_create_task_with_any_assignee(auth_client: TestClient) -> None:
