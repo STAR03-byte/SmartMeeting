@@ -40,9 +40,9 @@
               v-if="canManageMembers"
               type="primary"
               size="small"
-              @click="showAddMemberDialog = true"
+              @click="showInviteMemberDialog = true"
             >
-              {{ $t('team.addMember') }}
+              {{ $t('team.inviteMember') }}
             </el-button>
           </div>
         </template>
@@ -65,6 +65,14 @@
               <el-tag v-else :type="getRoleTagType(row.role)">
                 {{ getRoleLabel(row.role) }}
               </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column :label="$t('invitation.pending')" width="130">
+            <template #default="{ row }">
+              <el-tag v-if="row.invitation_status" :type="getInvitationTagType(row.invitation_status)">
+                {{ getInvitationStatusLabel(row.invitation_status) }}
+              </el-tag>
+              <span v-else>-</span>
             </template>
           </el-table-column>
           <el-table-column :label="$t('team.joinedAt')" width="180">
@@ -91,19 +99,19 @@
 
     <!-- Add Member Dialog -->
     <el-dialog
-      v-model="showAddMemberDialog"
-      :title="$t('team.addMember')"
+      v-model="showInviteMemberDialog"
+      :title="$t('team.inviteMember')"
       width="500px"
       @open="fetchUsers"
     >
-      <el-form :model="addMemberForm" ref="addMemberFormRef" label-width="80px">
+      <el-form :model="inviteMemberForm" ref="inviteMemberFormRef" label-width="80px">
         <el-form-item
           :label="$t('participant.selectUser')"
           prop="user_id"
           :rules="[{ required: true, message: $t('team.selectUserRequired'), trigger: 'change' }]"
         >
           <el-select
-            v-model="addMemberForm.user_id"
+            v-model="inviteMemberForm.user_id"
             :placeholder="$t('team.selectUserPlaceholder')"
             filterable
             style="width: 100%"
@@ -117,22 +125,12 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item
-          :label="$t('team.role')"
-          prop="role"
-          :rules="[{ required: true, message: $t('team.roleRequired'), trigger: 'change' }]"
-        >
-          <el-select v-model="addMemberForm.role" style="width: 100%">
-            <el-option :label="$t('team.roleMember')" value="member" />
-            <el-option :label="$t('team.roleAdmin')" value="admin" />
-          </el-select>
-        </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="showAddMemberDialog = false">{{ $t('common.cancel') }}</el-button>
-          <el-button type="primary" @click="handleAddMember" :loading="addingMember">
-            {{ $t('team.confirmAdd') }}
+          <el-button @click="showInviteMemberDialog = false">{{ $t('common.cancel') }}</el-button>
+          <el-button type="primary" @click="handleInviteMember" :loading="invitingMember">
+            {{ $t('team.confirmInvite') }}
           </el-button>
         </span>
       </template>
@@ -147,12 +145,13 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import type { FormInstance } from 'element-plus';
-import { getTeam, getTeamMembers, addTeamMember, removeTeamMember, updateMemberRole } from '../api/teams';
+import { getTeam, getTeamMembers, removeTeamMember, updateMemberRole } from '../api/teams';
 import type { Team, TeamMember } from '../api/teams';
 import { getUsers } from '../api/users';
 import type { UserItem } from '../api/types';
 import { useAuthStore } from '../stores/authStore';
 import { getApiErrorMessage } from '../api/client';
+import { sendInvitation } from '../api/teamInvitations';
 
 const route = useRoute();
 const teamId = Number(route.params.id);
@@ -168,14 +167,13 @@ const membersLoading = ref(false);
 const updatingRole = ref<number | null>(null);
 
 // Add Member
-const showAddMemberDialog = ref(false);
+const showInviteMemberDialog = ref(false);
 const users = ref<UserItem[]>([]);
 const usersLoading = ref(false);
-const addingMember = ref(false);
-const addMemberFormRef = ref<FormInstance>();
-const addMemberForm = ref({
+const invitingMember = ref(false);
+const inviteMemberFormRef = ref<FormInstance>();
+const inviteMemberForm = ref({
   user_id: undefined as number | undefined,
-  role: 'member'
 });
 
 const isOwner = computed(() => {
@@ -218,6 +216,24 @@ const getRoleTagType = (role: string) => {
     case 'owner': return 'danger';
     case 'admin': return 'warning';
     case 'member': return 'info';
+    default: return '';
+  }
+};
+
+const getInvitationStatusLabel = (status: string) => {
+  switch (status) {
+    case 'pending': return t('invitation.pending');
+    case 'accepted': return t('participant.statusAccepted');
+    case 'rejected': return t('participant.statusDeclined');
+    default: return status;
+  }
+};
+
+const getInvitationTagType = (status: string) => {
+  switch (status) {
+    case 'pending': return 'warning';
+    case 'accepted': return 'success';
+    case 'rejected': return 'info';
     default: return '';
   }
 };
@@ -266,26 +282,22 @@ const fetchUsers = async () => {
   }
 };
 
-const handleAddMember = async () => {
-  if (!addMemberFormRef.value) return;
-  await addMemberFormRef.value.validate(async (valid) => {
-    if (valid && addMemberForm.value.user_id) {
-      addingMember.value = true;
+const handleInviteMember = async () => {
+  if (!inviteMemberFormRef.value) return;
+  await inviteMemberFormRef.value.validate(async (valid) => {
+    if (valid && inviteMemberForm.value.user_id) {
+      invitingMember.value = true;
       try {
-        await addTeamMember(teamId, {
-          user_id: addMemberForm.value.user_id,
-          role: addMemberForm.value.role
-        });
-        ElMessage.success(t('team.addMemberSuccess'));
-        showAddMemberDialog.value = false;
-        // reset form
-        addMemberForm.value.user_id = undefined;
-        addMemberForm.value.role = 'member';
+        await sendInvitation(teamId, inviteMemberForm.value.user_id);
+        ElMessage.success(t('team.inviteMemberSuccess'));
+        showInviteMemberDialog.value = false;
+        inviteMemberForm.value.user_id = undefined;
         await loadMembers();
+        window.dispatchEvent(new Event('team-invitations-changed'));
       } catch (err: any) {
-        ElMessage.error(getApiErrorMessage(err) || t('team.addMemberFailed'));
+        ElMessage.error(getApiErrorMessage(err) || t('team.inviteMemberFailed'));
       } finally {
-        addingMember.value = false;
+        invitingMember.value = false;
       }
     }
   });

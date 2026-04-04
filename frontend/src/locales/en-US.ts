@@ -33,6 +33,7 @@ export default {
     navMeetings: 'Meetings',
     navTasks: 'Tasks',
     navTeams: 'My Teams',
+    navInvitations: 'My Invitations',
     navHotwords: 'Hotwords',
     installPwa: 'Install Desktop App'
   },
@@ -65,6 +66,10 @@ export default {
     createdAt: 'Created At',
     memberManagement: 'Member Management',
     addMember: 'Add Member',
+    inviteMember: 'Invite Member',
+    confirmInvite: 'Confirm Invite',
+    inviteMemberSuccess: 'Invitation sent',
+    inviteMemberFailed: 'Failed to send invitation',
     memberName: 'Name',
     email: 'Email',
     role: 'Role',
@@ -93,6 +98,15 @@ export default {
 
     selectTeamOptional: 'Select Team (Optional)',
     selectTeam: 'Select Team',
+  },
+  invitation: {
+    title: 'My Invitations',
+    pending: 'Pending',
+    accept: 'Accept',
+    reject: 'Reject',
+    noInvitations: 'No pending invitations',
+    sentBy: 'Sent By',
+    toTeam: 'Team',
   },
   meeting: {
     deleteConfirm: 'Confirm delete this meeting?',

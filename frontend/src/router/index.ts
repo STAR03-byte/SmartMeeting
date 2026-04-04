@@ -11,6 +11,7 @@ const LoginView = () => import("../views/LoginView.vue");
 const TeamCreateView = () => import("../views/TeamCreateView.vue");
 const TeamsView = () => import("../views/TeamsView.vue");
 const TeamDetailView = () => import("../views/TeamDetailView.vue");
+const InvitationsView = () => import("../views/InvitationsView.vue");
 
 const router = createRouter({
   history: createWebHistory(),
@@ -62,6 +63,11 @@ const router = createRouter({
       name: "team-detail",
       component: TeamDetailView,
       props: true,
+    },
+    {
+      path: "/invitations",
+      name: "invitations",
+      component: InvitationsView,
     },
     {
       path: "/login",

@@ -33,6 +33,7 @@ export default {
     navMeetings: '会议列表',
     navTasks: '任务中心',
     navTeams: '我的团队',
+    navInvitations: '我的邀请',
     navHotwords: '热词设置',
     installPwa: '安装桌面应用'
   },
@@ -65,6 +66,10 @@ export default {
     createdAt: '创建时间',
     memberManagement: '成员管理',
     addMember: '添加成员',
+    inviteMember: '邀请成员',
+    confirmInvite: '确认邀请',
+    inviteMemberSuccess: '邀请已发送',
+    inviteMemberFailed: '邀请发送失败',
     memberName: '姓名',
     email: '邮箱',
     role: '角色',
@@ -93,6 +98,15 @@ export default {
 
     selectTeamOptional: '选择团队（可选）',
     selectTeam: '选择团队',
+  },
+  invitation: {
+    title: '我的邀请',
+    pending: '待处理',
+    accept: '接受',
+    reject: '拒绝',
+    noInvitations: '暂无待处理邀请',
+    sentBy: '邀请人',
+    toTeam: '所属团队',
   },
   meeting: {
     deleteConfirm: '确认删除此会议？',

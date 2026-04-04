@@ -19,6 +19,10 @@
         <RouterLink to="/meetings" class="nav-link">{{ $t('app.navMeetings') }}</RouterLink>
         <RouterLink to="/tasks" class="nav-link">{{ $t('app.navTasks') }}</RouterLink>
         <RouterLink to="/teams" class="nav-link">{{ $t('app.navTeams') }}</RouterLink>
+        <RouterLink to="/invitations" class="nav-link nav-link-badge">
+          <span>{{ $t('app.navInvitations') }}</span>
+          <el-badge v-if="pendingInvitationCount > 0" :value="pendingInvitationCount" class="ml-2" />
+        </RouterLink>
         <RouterLink to="/hotwords" class="nav-link">{{ $t('app.navHotwords') }}</RouterLink>
       </nav>
 
@@ -42,22 +46,40 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "./stores/authStore";
+import { getMyInvitations } from './api/teamInvitations';
 
 const authStore = useAuthStore();
 const router = useRouter();
 
 const showInstallPrompt = ref(false);
 let deferredPrompt: any = null;
+const pendingInvitationCount = ref(0);
 
 const userInitial = computed(() => {
   const name = authStore.currentUser?.full_name || authStore.currentUser?.username || "";
   return name.charAt(0).toUpperCase() || "?";
 });
 
+const loadPendingInvitationCount = async () => {
+  if (!authStore.token) {
+    pendingInvitationCount.value = 0;
+    return;
+  }
+  try {
+    const invitations = await getMyInvitations();
+    pendingInvitationCount.value = invitations.filter((item) => item.status === 'pending').length;
+  } catch {
+    pendingInvitationCount.value = 0;
+  }
+};
+
 onMounted(async () => {
   if (authStore.token && !authStore.currentUser) {
     await authStore.loadCurrentUser();
   }
+  await loadPendingInvitationCount();
+
+  window.addEventListener('team-invitations-changed', loadPendingInvitationCount);
 
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
@@ -104,4 +126,6 @@ function handleLogout() {
   color: var(--el-color-primary);
   font-weight: 600;
 }
+
+.nav-link-badge { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 </style>
