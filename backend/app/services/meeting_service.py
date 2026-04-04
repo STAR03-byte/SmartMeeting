@@ -4,12 +4,14 @@ from datetime import UTC, datetime
 from secrets import token_urlsafe
 import re
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.meeting import Meeting
 from app.models.meeting_audio import MeetingAudio
 from app.models.meeting_participant import MeetingParticipant
 from app.models.meeting_transcript import MeetingTranscript
+from app.models.team_member import TeamMember
 from app.models.task import Task
 from app.models.user import User
 from app.schemas.meeting import MeetingCreate, MeetingDetailOut, MeetingShareOut, MeetingUpdate, SharedMeetingOut
@@ -87,10 +89,25 @@ def list_meetings(
     sort_by: str | None = None,
     limit: int | None = None,
     offset: int = 0,
+    current_user_id: int | None = None,
+    is_admin: bool = False,
 ) -> list[Meeting]:
     """查询会议列表。"""
 
     query = db.query(Meeting)
+
+    if not is_admin and current_user_id is not None:
+        participant_meeting_ids = db.query(MeetingParticipant.meeting_id).filter(
+            MeetingParticipant.user_id == current_user_id
+        )
+        user_team_ids = db.query(TeamMember.team_id).filter(TeamMember.user_id == current_user_id)
+        query = query.filter(
+            or_(
+                Meeting.organizer_id == current_user_id,
+                Meeting.id.in_(participant_meeting_ids),
+                Meeting.team_id.in_(user_team_ids),
+            )
+        )
 
     if status is not None:
         query = query.filter(Meeting.status == status)
@@ -124,8 +141,23 @@ def count_meetings(
     status: str | None = None,
     organizer_id: int | None = None,
     keyword: str | None = None,
+    current_user_id: int | None = None,
+    is_admin: bool = False,
 ) -> int:
     query = db.query(Meeting)
+
+    if not is_admin and current_user_id is not None:
+        participant_meeting_ids = db.query(MeetingParticipant.meeting_id).filter(
+            MeetingParticipant.user_id == current_user_id
+        )
+        user_team_ids = db.query(TeamMember.team_id).filter(TeamMember.user_id == current_user_id)
+        query = query.filter(
+            or_(
+                Meeting.organizer_id == current_user_id,
+                Meeting.id.in_(participant_meeting_ids),
+                Meeting.team_id.in_(user_team_ids),
+            )
+        )
 
     if status is not None:
         query = query.filter(Meeting.status == status)

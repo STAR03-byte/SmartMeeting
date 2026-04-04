@@ -153,6 +153,7 @@ def create_meeting_api(
 @router.get("", response_model=MeetingListOut)
 def list_meetings_api(
     db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
     status: Annotated[str | None, Query()] = None,
     organizer_id: Annotated[int | None, Query()] = None,
     keyword: Annotated[str | None, Query()] = None,
@@ -167,6 +168,8 @@ def list_meetings_api(
         status=status,
         organizer_id=organizer_id,
         keyword=keyword,
+        current_user_id=current_user.id,
+        is_admin=(current_user.role == "admin"),
     )
 
     meetings = list_meetings(
@@ -177,6 +180,8 @@ def list_meetings_api(
         sort_by=sort_by,
         limit=limit,
         offset=offset,
+        current_user_id=current_user.id,
+        is_admin=(current_user.role == "admin"),
     )
     return MeetingListOut(items=[MeetingOut.model_validate(meeting) for meeting in meetings], total=total)
 

@@ -1,4 +1,5 @@
 import { defineStore } from "pinia";
+import { useMeetingStore } from "./meetingStore";
 
 import { getApiErrorMessage } from "../api/client";
 import { fetchCurrentUser, login, type LoginResponse } from "../api/auth";
@@ -62,6 +63,8 @@ export const useAuthStore = defineStore("auth", {
       }
     },
     signOut() {
+      const meetingStore = useMeetingStore();
+      meetingStore.clearAllState();
       this.currentUser = null;
       this.setToken(null);
     },

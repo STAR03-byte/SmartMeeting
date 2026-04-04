@@ -206,5 +206,16 @@ export const useMeetingStore = defineStore("meeting", {
       this.speakers = [];
       this.diarizationSegments = [];
     },
+    clearAllState() {
+      this.meetings = [];
+      this.meetingsTotal = 0;
+      this.currentMeeting = null;
+      this.transcripts = [];
+      this.tasks = [];
+      this.speakers = [];
+      this.diarizationSegments = [];
+      this.loading = false;
+      this.error = null;
+    },
   },
 });
