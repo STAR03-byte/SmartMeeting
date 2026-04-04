@@ -1,3 +1,4 @@
+# pyright: reportAny=false, reportUnknownMemberType=false, reportUnknownVariableType=false, reportUnusedImport=false, reportUnusedCallResult=false, reportUnusedParameter=false
 """FastAPI 应用入口。"""
 
 from collections.abc import AsyncIterator
@@ -9,6 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 
 from app.api.v1.router import api_router
@@ -34,7 +36,63 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         except OperationalError as exc:
             if "already exists" not in str(exc).lower():
                 raise
+    elif engine.dialect.name == "mysql":
+        _ensure_mysql_team_features()
     yield
+
+
+def _ensure_mysql_team_features() -> None:
+    with engine.begin() as connection:
+        is_public_exists = connection.execute(
+            text(
+                """
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'teams'
+                  AND column_name = 'is_public'
+                """
+            )
+        ).scalar_one()
+
+        if not is_public_exists:
+            connection.execute(text("ALTER TABLE teams ADD COLUMN is_public TINYINT(1) NOT NULL DEFAULT 0"))
+
+        team_invitations_exists = connection.execute(
+            text(
+                """
+                SELECT COUNT(*)
+                FROM information_schema.tables
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'team_invitations'
+                """
+            )
+        ).scalar_one()
+
+        if not team_invitations_exists:
+            connection.execute(
+                text(
+                    """
+                    CREATE TABLE team_invitations (
+                        id BIGINT NOT NULL AUTO_INCREMENT,
+                        team_id BIGINT NOT NULL,
+                        inviter_id BIGINT NOT NULL,
+                        invitee_id BIGINT NOT NULL,
+                        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        PRIMARY KEY (id),
+                        UNIQUE KEY uk_team_invitation_status (team_id, invitee_id, status),
+                        KEY ix_team_invitations_team_id (team_id),
+                        KEY ix_team_invitations_inviter_id (inviter_id),
+                        KEY ix_team_invitations_invitee_id (invitee_id),
+                        CONSTRAINT fk_team_invitations_team_id FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE,
+                        CONSTRAINT fk_team_invitations_inviter_id FOREIGN KEY (inviter_id) REFERENCES users (id) ON DELETE CASCADE,
+                        CONSTRAINT fk_team_invitations_invitee_id FOREIGN KEY (invitee_id) REFERENCES users (id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    """
+                )
+            )
 
 
 app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)

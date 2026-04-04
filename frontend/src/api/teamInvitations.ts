@@ -36,14 +36,14 @@ export async function sendInvitation(teamId: number, inviteeId: number): Promise
 }
 
 export async function getMyInvitations(): Promise<Invitation[]> {
-  const response = await apiClient.get<Invitation[]>('/api/v1/team-invitations/me');
+  const response = await apiClient.get<Invitation[]>('/api/v1/invitations');
   return response.data;
 }
 
 export async function acceptInvitation(id: number): Promise<void> {
-  await apiClient.post(`/api/v1/team-invitations/${id}/accept`);
+  await apiClient.post(`/api/v1/invitations/${id}/accept`);
 }
 
 export async function rejectInvitation(id: number): Promise<void> {
-  await apiClient.post(`/api/v1/team-invitations/${id}/reject`);
+  await apiClient.post(`/api/v1/invitations/${id}/reject`);
 }

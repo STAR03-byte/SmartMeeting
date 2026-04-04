@@ -7,7 +7,7 @@
 
     <el-empty v-if="!loading && invitations.length === 0" :description="$t('invitation.noInvitations')" />
 
-    <el-space v-else direction="vertical" fill size="12" class="w-full">
+    <el-space v-else direction="vertical" fill :size="12" class="w-full">
       <el-card v-for="invitation in invitations" :key="invitation.id">
         <div class="invitation-row">
           <div>
