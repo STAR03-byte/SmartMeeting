@@ -2,6 +2,7 @@
 
 from sqlalchemy.orm import Session
 
+from app.core.security import get_password_hash
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 
@@ -9,7 +10,12 @@ from app.schemas.user import UserCreate, UserUpdate
 def create_user(db: Session, payload: UserCreate) -> User:
     """创建用户。"""
 
-    user = User(**payload.model_dump())
+    data = payload.model_dump()
+    raw_password = data["password_hash"]
+    if not raw_password.startswith("$pbkdf2-sha256$"):
+        data["password_hash"] = get_password_hash(raw_password)
+
+    user = User(**data)
     db.add(user)
     db.commit()
     db.refresh(user)
