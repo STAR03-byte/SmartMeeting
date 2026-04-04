@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.meeting_participant import MeetingParticipant
+from app.models.team_member import TeamMember
 from app.schemas.auth import CurrentUserOut
 from app.schemas.task import TaskPriority, TaskStatus
 from app.schemas.task import TaskCreate, TaskListOut, TaskOut, TaskUpdate
@@ -32,6 +34,32 @@ def _assert_meeting_task_permission(meeting, current_user: CurrentUserOut) -> No
         return
     if meeting.organizer_id != current_user.id:
         raise HTTPException(status_code=403, detail="无权管理此会议的任务")
+
+
+def _assert_assignee_permission(db: Session, meeting, assignee_id: int, current_user: CurrentUserOut) -> None:
+    if current_user.role == "admin":
+        return
+    if assignee_id == meeting.organizer_id:
+        return
+
+    participant = (
+        db.query(MeetingParticipant)
+        .filter(MeetingParticipant.meeting_id == meeting.id, MeetingParticipant.user_id == assignee_id)
+        .first()
+    )
+    if participant:
+        return
+
+    if meeting.team_id is not None:
+        team_member = (
+            db.query(TeamMember)
+            .filter(TeamMember.team_id == meeting.team_id, TeamMember.user_id == assignee_id)
+            .first()
+        )
+        if team_member:
+            return
+
+    raise HTTPException(status_code=400, detail="无权指定该任务负责人")
 
 
 def _assert_task_permission(task, meeting, current_user: CurrentUserOut) -> None:
@@ -67,6 +95,9 @@ def create_task_api(
     if payload.assignee_id is not None and not get_user(db, payload.assignee_id):
         raise HTTPException(status_code=404, detail="Assignee not found")
 
+    if payload.assignee_id is not None:
+        _assert_assignee_permission(db, meeting, payload.assignee_id, current_user)
+
     if payload.reporter_id is not None and not get_user(db, payload.reporter_id):
         raise HTTPException(status_code=404, detail="Reporter not found")
 
@@ -76,6 +107,7 @@ def create_task_api(
 @router.get("", response_model=TaskListOut)
 def list_tasks_api(
     db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
     assignee_id: Annotated[int | None, Query()] = None,
     meeting_id: Annotated[int | None, Query()] = None,
     status: Annotated[TaskStatus | None, Query()] = None,
@@ -94,6 +126,8 @@ def list_tasks_api(
         status=status,
         priority=priority,
         keyword=keyword,
+        current_user_id=current_user.id,
+        is_admin=(current_user.role == "admin"),
     )
 
     tasks = list_tasks(
@@ -106,6 +140,8 @@ def list_tasks_api(
         sort_by=sort_by,
         limit=limit,
         offset=offset,
+        current_user_id=current_user.id,
+        is_admin=(current_user.role == "admin"),
     )
 
     meeting_ids = {task.meeting_id for task in tasks}
@@ -118,13 +154,21 @@ def list_tasks_api(
 
 
 @router.get("/{task_id}", response_model=TaskOut)
-def get_task_api(task_id: int, db: Annotated[Session, Depends(get_db)]) -> TaskOut:
+def get_task_api(
+    task_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
+) -> TaskOut:
     """查询任务详情。"""
 
     task = get_task(db, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    return TaskOut.model_validate(serialize_task_out(task))
+    meeting = get_meeting(db, task.meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    _assert_task_permission(task, meeting, current_user)
+    return TaskOut.model_validate(serialize_task_out(task, meeting))
 
 
 @router.patch("/{task_id}", response_model=TaskOut)
