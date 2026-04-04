@@ -3,12 +3,14 @@ import { apiClient } from './client';
 export interface TeamCreate {
   name: string;
   description?: string;
+  is_public?: boolean;
 }
 
 export interface Team {
   id: number;
   name: string;
   description: string | null;
+  is_public: boolean;
   owner_id: number;
   created_at: string;
   updated_at: string;
@@ -21,6 +23,7 @@ export interface TeamMember {
   user_id: number;
   role: string;
   joined_at: string;
+  invitation_status?: 'pending' | 'accepted' | 'rejected';
   user: {
     id: number;
     email: string;
@@ -33,6 +36,11 @@ export const getTeams = async () => {
   return response.data;
 };
 
+export const getPublicTeams = async () => {
+  const response = await apiClient.get<Team[]>('/api/v1/teams/public');
+  return response.data;
+};
+
 export const getTeam = async (teamId: number) => {
   const response = await apiClient.get<Team>(`/api/v1/teams/${teamId}`);
   return response.data;
@@ -40,6 +48,11 @@ export const getTeam = async (teamId: number) => {
 
 export const createTeam = async (data: TeamCreate) => {
   const response = await apiClient.post<Team>('/api/v1/teams', data);
+  return response.data;
+};
+
+export const joinPublicTeam = async (teamId: number) => {
+  const response = await apiClient.post<Team>(`/api/v1/teams/${teamId}/join`);
   return response.data;
 };
 

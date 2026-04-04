@@ -75,6 +75,12 @@ class FasterWhisperTranscriber:
             return None
         return "，".join(prompt_terms)
 
+    def _normalize_language_code(self, language: str | None) -> str:
+        language_code = (language or settings.whisper_language).strip().lower()
+        if language_code in {"zh", "zh-cn", "zh_hans", "zh-hans", "chinese"}:
+            return "zh"
+        return language_code
+
     async def transcribe_file(
         self,
         audio_path: str | Path,
@@ -92,7 +98,7 @@ class FasterWhisperTranscriber:
             logger.warning("faster-whisper preload failed, falling back to original whisper: %s", exc)
             return await fallback_transcriber.transcribe_file(audio_path, language)
 
-        language_code = language or settings.whisper_language
+        language_code = self._normalize_language_code(language)
         initial_prompt = self._build_initial_prompt(hotwords)
 
         def _sync_transcribe() -> list[WhisperSegment]:
@@ -139,7 +145,7 @@ class FasterWhisperTranscriber:
         return {
             "text": full_text,
             "segments": segments,
-            "language": segments[0]["language"] if segments else (language or settings.whisper_language),
+            "language": segments[0]["language"] if segments else self._normalize_language_code(language),
         }
 
 

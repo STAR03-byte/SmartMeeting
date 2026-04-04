@@ -1,6 +1,6 @@
 """团队 REST API。"""
 
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
@@ -19,6 +19,19 @@ router = APIRouter(prefix="/teams", tags=["teams"], dependencies=[Depends(get_cu
 MAX_TEAMS_PER_USER = 5
 
 
+def _team_out(team: Team, my_role: str) -> TeamOut:
+    return TeamOut(
+        id=team.id,
+        name=team.name,
+        description=team.description,
+        is_public=team.is_public,
+        owner_id=team.owner_id,
+        my_role=my_role,
+        created_at=team.created_at,
+        updated_at=team.updated_at,
+    )
+
+
 @router.post("", response_model=TeamOut, status_code=status.HTTP_201_CREATED)
 def create_team(
     payload: TeamCreate,
@@ -27,15 +40,13 @@ def create_team(
 ) -> TeamOut:
     """创建团队（当前用户自动成为 owner）。"""
 
-    team_count = (
+    team_count = cast(
+        int,
         db.query(func.count())
         .select_from(Team)
         .filter(Team.owner_id == current_user.id)
         .scalar()
     )
-
-    if team_count is None:
-        team_count = 0
 
     if team_count >= MAX_TEAMS_PER_USER:
         raise HTTPException(
@@ -46,6 +57,7 @@ def create_team(
     team = Team(
         name=payload.name,
         description=payload.description,
+        is_public=payload.is_public,
         owner_id=current_user.id,
     )
     db.add(team)
@@ -56,19 +68,11 @@ def create_team(
         user_id=current_user.id,
         role="owner",
     )
-    db.add(team_member)
+    _ = db.add(team_member)
     db.commit()
     db.refresh(team)
 
-    return TeamOut(
-        id=team.id,
-        name=team.name,
-        description=team.description,
-        owner_id=team.owner_id,
-        my_role="owner",
-        created_at=team.created_at,
-        updated_at=team.updated_at,
-    )
+    return _team_out(team, "owner")
 
 
 @router.get("", response_model=list[TeamOut])
@@ -91,18 +95,23 @@ def list_teams(
 
     role_map = {m.team_id: m.role for m in memberships}
 
-    return [
-        TeamOut(
-            id=team.id,
-            name=team.name,
-            description=team.description,
-            owner_id=team.owner_id,
-            my_role=role_map.get(team.id, "member"),
-            created_at=team.created_at,
-            updated_at=team.updated_at,
-        )
-        for team in teams
-    ]
+    return [_team_out(team, role_map.get(team.id, "member")) for team in teams]
+
+
+@router.get("/public", response_model=list[TeamOut])
+def list_public_teams_endpoint(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
+) -> list[TeamOut]:
+    public_teams = db.query(Team).filter(Team.is_public.is_(True)).all()
+    user_team_ids = {
+        tm.team_id
+        for tm in db.query(TeamMember)
+        .filter(TeamMember.user_id == current_user.id)
+        .all()
+    }
+
+    return [_team_out(team, "guest") for team in public_teams if team.id not in user_team_ids]
 
 
 @router.get("/{team_id}", response_model=TeamOut)
@@ -131,15 +140,38 @@ def get_team(
             detail="团队不存在",
         )
 
-    return TeamOut(
-        id=team.id,
-        name=team.name,
-        description=team.description,
-        owner_id=team.owner_id,
-        my_role=membership.role,
-        created_at=team.created_at,
-        updated_at=team.updated_at,
+    return _team_out(team, membership.role)
+
+
+@router.post("/{team_id}/join", response_model=TeamOut)
+def join_public_team_endpoint(
+    team_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
+) -> TeamOut:
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team or not team.is_public:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="公开团队不存在",
+        )
+
+    existing = (
+        db.query(TeamMember)
+        .filter(TeamMember.team_id == team_id, TeamMember.user_id == current_user.id)
+        .first()
     )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="您已经是该团队成员",
+        )
+
+    member = TeamMember(team_id=team_id, user_id=current_user.id, role="member")
+    db.add(member)
+    db.commit()
+
+    return _team_out(team, "member")
 
 
 def _require_team_role(
@@ -171,7 +203,7 @@ def list_team_members(
     current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> list[TeamMemberOut]:
     """获取团队成员列表（owner/admin 权限）。"""
-    _require_team_role(db, team_id, current_user.id, ["owner", "admin"])
+    _ = _require_team_role(db, team_id, current_user.id, ["owner", "admin"])
 
     members = (
         db.query(TeamMember)
@@ -199,7 +231,7 @@ def add_team_member(
     current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> TeamMemberOut:
     """添加团队成员（owner/admin 权限）。"""
-    _require_team_role(db, team_id, current_user.id, ["owner", "admin"])
+    _ = _require_team_role(db, team_id, current_user.id, ["owner", "admin"])
 
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
@@ -208,14 +240,13 @@ def add_team_member(
             detail="团队不存在",
         )
 
-    member_count = (
+    member_count = cast(
+        int,
         db.query(func.count())
         .select_from(TeamMember)
         .filter(TeamMember.team_id == team_id)
         .scalar()
     )
-    if member_count is None:
-        member_count = 0
 
     if member_count >= 20:
         raise HTTPException(
@@ -246,16 +277,11 @@ def add_team_member(
         user_id=payload.user_id,
         role=payload.role,
     )
-    db.add(new_member)
+    _ = db.add(new_member)
     db.commit()
     db.refresh(new_member)
 
-    return TeamMemberOut(
-        user_id=new_member.user_id,
-        user_name=user.username,
-        role=new_member.role,
-        joined_at=new_member.joined_at,
-    )
+    return TeamMemberOut(user_id=new_member.user_id, user_name=user.username, role=new_member.role, joined_at=new_member.joined_at)
 
 
 @router.delete("/{team_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -266,7 +292,7 @@ def remove_team_member(
     current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> None:
     """移除团队成员（owner/admin 权限）。"""
-    _require_team_role(db, team_id, current_user.id, ["owner", "admin"])
+    _ = _require_team_role(db, team_id, current_user.id, ["owner", "admin"])
 
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
@@ -292,7 +318,7 @@ def remove_team_member(
             detail="成员不存在",
         )
 
-    db.delete(member)
+    _ = db.delete(member)
     db.commit()
 
 
@@ -305,7 +331,7 @@ def update_member_role(
     current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> TeamMemberOut:
     """修改成员角色（仅 owner 权限）。"""
-    _require_team_role(db, team_id, current_user.id, ["owner"])
+    _ = _require_team_role(db, team_id, current_user.id, ["owner"])
 
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
@@ -335,9 +361,4 @@ def update_member_role(
     db.commit()
     db.refresh(member)
 
-    return TeamMemberOut(
-        user_id=member.user_id,
-        user_name=member.user.username,
-        role=member.role,
-        joined_at=member.joined_at,
-    )
+    return TeamMemberOut(user_id=member.user_id, user_name=member.user.username, role=member.role, joined_at=member.joined_at)

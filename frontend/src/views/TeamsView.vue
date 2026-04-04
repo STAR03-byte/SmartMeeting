@@ -9,26 +9,58 @@
     </header>
 
     <section class="teams-section">
-      <el-table :data="teams" v-loading="loading" stripe class="teams-table">
-        <el-table-column prop="name" :label="$t('team.teamName')" min-width="150" />
-        <el-table-column prop="description" :label="$t('task.taskDescription')" min-width="250">
-          <template #default="{ row }">
-            {{ row.description || "-" }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="my_role" :label="$t('team.myRole')" width="120">
-          <template #default="{ row }">
-            <el-tag :type="roleTagType(row.my_role)">
-              {{ roleLabel(row.my_role) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column :label="$t('common.operations')" width="120" fixed="right">
-          <template #default="{ row }">
-            <el-button size="small" @click="viewDetail(row)">{{ $t('common.view') }}</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <el-tabs v-model="activeTab" @tab-change="handleTabChange">
+        <el-tab-pane label="My Teams" name="mine">
+          <el-table :data="teams" v-loading="myTeamsLoading" stripe class="teams-table">
+            <el-table-column prop="name" :label="$t('team.teamName')" min-width="150" />
+            <el-table-column prop="description" :label="$t('task.taskDescription')" min-width="250">
+              <template #default="{ row }">
+                {{ row.description || '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="is_public" label="Visibility" width="120">
+              <template #default="{ row }">
+                <el-tag :type="row.is_public ? 'success' : 'info'">
+                  {{ row.is_public ? 'Public' : 'Private' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="my_role" :label="$t('team.myRole')" width="120">
+              <template #default="{ row }">
+                <el-tag :type="roleTagType(row.my_role)">
+                  {{ roleLabel(row.my_role) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column :label="$t('common.operations')" width="120" fixed="right">
+              <template #default="{ row }">
+                <el-button size="small" @click="viewDetail(row)">{{ $t('common.view') }}</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+
+        <el-tab-pane label="Discover" name="discover">
+          <el-table :data="publicTeams" v-loading="discoverLoading" stripe class="teams-table">
+            <el-table-column prop="name" :label="$t('team.teamName')" min-width="150" />
+            <el-table-column prop="description" :label="$t('task.taskDescription')" min-width="250">
+              <template #default="{ row }">
+                {{ row.description || '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column label="Visibility" width="120">
+              <template #default>
+                <el-tag type="success">Public</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column :label="$t('common.operations')" width="180" fixed="right">
+              <template #default="{ row }">
+                <el-button size="small" type="primary" @click="joinTeam(row)">Join</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-tab-pane>
+      </el-tabs>
     </section>
   </section>
 </template>
@@ -39,23 +71,38 @@ const { t } = useI18n();
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Plus } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
 
-import { getTeams, type Team } from '../api/teams';
+import { getPublicTeams, getTeams, joinPublicTeam, type Team } from '../api/teams';
 import { notifyApiError } from '../utils/notify';
 
 const router = useRouter();
 
 const teams = ref<Team[]>([]);
-const loading = ref(false);
+const publicTeams = ref<Team[]>([]);
+const activeTab = ref('mine');
+const myTeamsLoading = ref(false);
+const discoverLoading = ref(false);
 
 async function loadTeams() {
-  loading.value = true;
+  myTeamsLoading.value = true;
   try {
     teams.value = await getTeams();
   } catch (error) {
     notifyApiError(error, { prefix: t('team.loadFailed') });
   } finally {
-    loading.value = false;
+    myTeamsLoading.value = false;
+  }
+}
+
+async function loadPublicTeams() {
+  discoverLoading.value = true;
+  try {
+    publicTeams.value = await getPublicTeams();
+  } catch (error) {
+    notifyApiError(error, { prefix: t('team.loadFailed') });
+  } finally {
+    discoverLoading.value = false;
   }
 }
 
@@ -65,6 +112,22 @@ function createTeam() {
 
 function viewDetail(team: Team) {
   router.push(`/teams/${team.id}`);
+}
+
+async function joinTeam(team: Team) {
+  try {
+    await joinPublicTeam(team.id);
+    ElMessage.success('已加入团队');
+    await Promise.all([loadTeams(), loadPublicTeams()]);
+  } catch (error) {
+    notifyApiError(error, { prefix: '加入团队失败' });
+  }
+}
+
+async function handleTabChange(name: string | number) {
+  if (name === 'discover' && publicTeams.value.length === 0) {
+    await loadPublicTeams();
+  }
 }
 
 function roleLabel(role?: string): string {
@@ -82,7 +145,7 @@ function roleTagType(role?: string): string {
 }
 
 onMounted(() => {
-  loadTeams();
+  void Promise.all([loadTeams(), loadPublicTeams()]);
 });
 </script>
 

@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     faster_whisper_compute_type: str = "int8_float16"  # int8_float16 or int8
     whisper_model: str = "small"  # tiny | base | small | medium | large
     whisper_device: str = "cpu"  # cpu | cuda | auto
-    whisper_language: str = "zh"  # Chinese
+    whisper_language: str = "zh"
     whisper_hot_words: str = ""
     whisper_normalize_to_simplified: bool = True
     enable_speaker_diarization: bool = False

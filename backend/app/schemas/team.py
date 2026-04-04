@@ -12,6 +12,7 @@ class TeamCreate(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=255)
     description: str | None = None
+    is_public: bool = False
 
 
 class TeamOut(BaseModel):
@@ -20,6 +21,7 @@ class TeamOut(BaseModel):
     id: int
     name: str
     description: str | None
+    is_public: bool
     owner_id: int
     my_role: str  # 当前用户在该团队的角色
     created_at: datetime

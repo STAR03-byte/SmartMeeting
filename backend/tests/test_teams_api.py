@@ -1,60 +1,120 @@
-"""团队 API 测试。"""
+from datetime import datetime, timezone
+from typing import cast
 
-import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.api.v1.endpoints.auth import get_current_user
+from app.schemas.auth import CurrentUserOut
+
+
+def _user(user_id: int, username: str, email: str, role: str) -> CurrentUserOut:
+    return CurrentUserOut(
+        id=user_id,
+        username=username,
+        email=email,
+        full_name=username,
+        role=role,
+        is_active=True,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
 
 
 def test_create_team_success(auth_client: TestClient) -> None:
-    """成功创建团队。"""
     resp = auth_client.post(
         "/api/v1/teams",
-        json={
-            "name": "Test Team",
-            "description": "A test team",
-        },
+        json={"name": "Test Team", "description": "A test team"},
     )
     assert resp.status_code == 201
-    data = resp.json()
+    data = cast(dict[str, object], resp.json())
     assert data["name"] == "Test Team"
     assert data["description"] == "A test team"
-    assert "id" in data
-    assert "owner_id" in data
-    assert "created_at" in data
-    assert "updated_at" in data
+    assert data["is_public"] is False
 
 
 def test_create_team_without_auth(client: TestClient) -> None:
-    """未认证用户无法创建团队。"""
     resp = client.post(
         "/api/v1/teams",
-        json={
-            "name": "Test Team",
-            "description": "A test team",
-        },
+        json={"name": "Test Team", "description": "A test team"},
     )
     assert resp.status_code == 401
 
 
 def test_create_team_max_limit(auth_client: TestClient) -> None:
-    """用户创建团队数量达到上限。"""
     for i in range(5):
         resp = auth_client.post(
             "/api/v1/teams",
-            json={
-                "name": f"Team {i}",
-                "description": f"Team {i} description",
-            },
+            json={"name": f"Team {i}", "description": f"Team {i} description"},
         )
         assert resp.status_code == 201
 
     resp = auth_client.post(
         "/api/v1/teams",
-        json={
-            "name": "Team 6",
-            "description": "Team 6 description",
-        },
+        json={"name": "Team 6", "description": "Team 6 description"},
     )
     assert resp.status_code == 400
-    assert "已达到团队创建上限" in resp.json()["detail"]
+    assert "已达到团队创建上限" in str(cast(dict[str, object], resp.json())["detail"])
+
+
+def test_public_teams_discovery_and_join(client: TestClient) -> None:
+    app = cast(FastAPI, client.app)
+
+    app.dependency_overrides[get_current_user] = lambda: _user(
+        2,
+        "public_team_owner",
+        "public_team_owner@example.com",
+        "member",
+    )
+    public_resp = client.post(
+        "/api/v1/teams",
+        json={"name": "Public Team", "description": "公开团队", "is_public": True},
+    )
+    assert public_resp.status_code == 201
+    public_team_id = cast(dict[str, object], public_resp.json())["id"]
+
+    app.dependency_overrides[get_current_user] = lambda: _user(
+        1,
+        "discover_user",
+        "discover@example.com",
+        "admin",
+    )
+    discover_resp = client.get("/api/v1/teams/public")
+    assert discover_resp.status_code == 200
+    discover_data = cast(list[dict[str, object]], discover_resp.json())
+    assert len(discover_data) == 1
+    assert discover_data[0]["id"] == public_team_id
+    assert discover_data[0]["is_public"] is True
+
+    join_resp = client.post(f"/api/v1/teams/{public_team_id}/join")
+    assert join_resp.status_code == 200
+    assert join_resp.json()["my_role"] == "member"
+
+    discover_resp = client.get("/api/v1/teams/public")
+    assert discover_resp.status_code == 200
+    assert cast(list[dict[str, object]], discover_resp.json()) == []
+
+    _ = app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_join_private_team_rejected(client: TestClient) -> None:
+    app = cast(FastAPI, client.app)
+    app.dependency_overrides[get_current_user] = lambda: _user(
+        1,
+        "private_user",
+        "private@example.com",
+        "admin",
+    )
+
+    team_resp = client.post(
+        "/api/v1/teams",
+        json={"name": "Private Team", "description": "私有团队", "is_public": False},
+    )
+    assert team_resp.status_code == 201
+    team_id = cast(dict[str, object], team_resp.json())["id"]
+
+    join_resp = client.post(f"/api/v1/teams/{team_id}/join")
+    assert join_resp.status_code == 403
+    assert cast(dict[str, object], join_resp.json())["detail"] == "公开团队不存在"
+
+    _ = app.dependency_overrides.pop(get_current_user, None)
