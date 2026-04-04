@@ -49,7 +49,7 @@ export default {
     noMeetingData: '暂无会议数据',
     quickActions: '快捷操作',
     taskManagement: '任务管理',
-    userManagement: '用户管理'
+    pendingInvitations: '待处理邀请'
   },
   team: {
     title: '我的团队',

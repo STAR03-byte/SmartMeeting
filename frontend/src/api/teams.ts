@@ -18,17 +18,13 @@ export interface Team {
 }
 
 export interface TeamMember {
-  id: number;
-  team_id: number;
   user_id: number;
+  user_name: string;
+  full_name: string;
+  email: string;
   role: string;
   joined_at: string;
   invitation_status?: 'pending' | 'accepted' | 'rejected';
-  user: {
-    id: number;
-    email: string;
-    full_name: string;
-  };
 }
 
 export const getTeams = async () => {
@@ -73,5 +69,10 @@ export const removeTeamMember = async (teamId: number, userId: number) => {
 
 export const updateMemberRole = async (teamId: number, userId: number, role: string) => {
   const response = await apiClient.patch<TeamMember>(`/api/v1/teams/${teamId}/members/${userId}`, { role });
+  return response.data;
+};
+
+export const deleteTeam = async (teamId: number) => {
+  const response = await apiClient.delete(`/api/v1/teams/${teamId}`);
   return response.data;
 };

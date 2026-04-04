@@ -118,3 +118,48 @@ def test_join_private_team_rejected(client: TestClient) -> None:
     assert cast(dict[str, object], join_resp.json())["detail"] == "公开团队不存在"
 
     _ = app.dependency_overrides.pop(get_current_user, None)
+
+
+def test_delete_team_success(auth_client: TestClient) -> None:
+    team_resp = auth_client.post(
+        "/api/v1/teams",
+        json={"name": "Delete Team", "description": "to be removed", "is_public": False},
+    )
+    assert team_resp.status_code == 201
+    team_id = cast(dict[str, object], team_resp.json())["id"]
+
+    delete_resp = auth_client.delete(f"/api/v1/teams/{team_id}")
+    assert delete_resp.status_code == 204
+
+    list_resp = auth_client.get("/api/v1/teams")
+    assert list_resp.status_code == 200
+    teams = cast(list[dict[str, object]], list_resp.json())
+    assert all(t["id"] != team_id for t in teams)
+
+
+def test_delete_team_forbidden_for_non_owner(client: TestClient) -> None:
+    app = cast(FastAPI, client.app)
+
+    app.dependency_overrides[get_current_user] = lambda: _user(
+        1,
+        "team_owner",
+        "team_owner@example.com",
+        "member",
+    )
+    team_resp = client.post(
+        "/api/v1/teams",
+        json={"name": "Owner Team", "description": "owner only", "is_public": False},
+    )
+    assert team_resp.status_code == 201
+    team_id = cast(dict[str, object], team_resp.json())["id"]
+
+    app.dependency_overrides[get_current_user] = lambda: _user(
+        2,
+        "other_user",
+        "other_user@example.com",
+        "member",
+    )
+    forbidden_resp = client.delete(f"/api/v1/teams/{team_id}")
+    assert forbidden_resp.status_code == 403
+
+    _ = app.dependency_overrides.pop(get_current_user, None)

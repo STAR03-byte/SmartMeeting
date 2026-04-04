@@ -7,7 +7,10 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.meeting import Meeting
 from app.models.team import Team
+from app.models.team_invitation import TeamInvitation
+from app.models.team_invite_link import TeamInviteLink
 from app.models.team_member import TeamMember
 from app.models.user import User
 from app.schemas.auth import CurrentUserOut
@@ -202,8 +205,18 @@ def list_team_members(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> list[TeamMemberOut]:
-    """获取团队成员列表（owner/admin 权限）。"""
-    _ = _require_team_role(db, team_id, current_user.id, ["owner", "admin"])
+    """获取团队成员列表（团队成员均可查看）。"""
+    # 验证当前用户是团队成员
+    membership = (
+        db.query(TeamMember)
+        .filter(TeamMember.team_id == team_id, TeamMember.user_id == current_user.id)
+        .first()
+    )
+    if not membership:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="团队不存在或您无权访问",
+        )
 
     members = (
         db.query(TeamMember)
@@ -216,6 +229,8 @@ def list_team_members(
         TeamMemberOut(
             user_id=m.user_id,
             user_name=m.user.username,
+            full_name=m.user.full_name,
+            email=m.user.email,
             role=m.role,
             joined_at=m.joined_at,
         )
@@ -281,7 +296,14 @@ def add_team_member(
     db.commit()
     db.refresh(new_member)
 
-    return TeamMemberOut(user_id=new_member.user_id, user_name=user.username, role=new_member.role, joined_at=new_member.joined_at)
+    return TeamMemberOut(
+        user_id=new_member.user_id,
+        user_name=user.username,
+        full_name=user.full_name,
+        email=user.email,
+        role=new_member.role,
+        joined_at=new_member.joined_at,
+    )
 
 
 @router.delete("/{team_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -361,4 +383,38 @@ def update_member_role(
     db.commit()
     db.refresh(member)
 
-    return TeamMemberOut(user_id=member.user_id, user_name=member.user.username, role=member.role, joined_at=member.joined_at)
+    return TeamMemberOut(
+        user_id=member.user_id,
+        user_name=member.user.username,
+        full_name=member.user.full_name,
+        email=member.user.email,
+        role=member.role,
+        joined_at=member.joined_at,
+    )
+
+
+@router.delete("/{team_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_team(
+    team_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
+) -> None:
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="团队不存在",
+        )
+
+    if team.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只有团队所有者可以删除团队",
+        )
+
+    db.query(Meeting).filter(Meeting.team_id == team_id).update({Meeting.team_id: None}, synchronize_session=False)
+    db.query(TeamInvitation).filter(TeamInvitation.team_id == team_id).delete(synchronize_session=False)
+    db.query(TeamInviteLink).filter(TeamInviteLink.team_id == team_id).delete(synchronize_session=False)
+    db.query(TeamMember).filter(TeamMember.team_id == team_id).delete(synchronize_session=False)
+    db.delete(team)
+    db.commit()

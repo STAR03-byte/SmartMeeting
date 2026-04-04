@@ -18,7 +18,7 @@ def _login_headers(client: TestClient, username: str, password: str) -> dict[str
 
 def test_hotwords_crud_flow(client: TestClient) -> None:
     user_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "hotword_user",
             "email": "hotword_user@example.com",

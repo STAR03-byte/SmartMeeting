@@ -124,3 +124,45 @@ def test_invitation_permission_checks(auth_client: TestClient) -> None:
     reject_resp = auth_client.post(f"/api/v1/invitations/{invitation_id}/reject")
     assert reject_resp.status_code == 200
     assert reject_resp.json()["status"] == "rejected"
+
+
+def test_generate_invite_link_and_accept_by_token(auth_client: TestClient) -> None:
+    _create_owner_user(auth_client)
+    team_id = _create_team(auth_client)
+
+    link_resp = auth_client.post(f"/api/v1/teams/{team_id}/invite-link", json={"expires_in_hours": 24})
+    assert link_resp.status_code == 201
+    token = link_resp.json()["invite_token"]
+    assert token
+
+    invitee_id = _create_user(auth_client, "invitee_by_token", "invitee_by_token@example.com")
+    _set_current_user(auth_client, invitee_id, "invitee_by_token")
+
+    accept_resp = auth_client.post(f"/api/v1/invitations/accept-by-token/{token}")
+    assert accept_resp.status_code == 200
+    assert accept_resp.json()["status"] == "accepted"
+    assert accept_resp.json()["invitee_id"] == invitee_id
+
+
+def test_accept_reject_are_idempotent_for_processed_invitation(auth_client: TestClient) -> None:
+    _create_owner_user(auth_client)
+    team_id = _create_team(auth_client)
+    invitee_id = _create_user(auth_client, "invitee_idempotent", "invitee_idempotent@example.com")
+
+    _set_current_user(auth_client, 1, "test_user")
+    send_resp = auth_client.post(f"/api/v1/teams/{team_id}/invitations", json={"invitee_id": invitee_id})
+    assert send_resp.status_code == 201
+    invitation_id = send_resp.json()["id"]
+
+    _set_current_user(auth_client, invitee_id, "invitee_idempotent")
+    accept_resp_1 = auth_client.post(f"/api/v1/invitations/{invitation_id}/accept")
+    assert accept_resp_1.status_code == 200
+    assert accept_resp_1.json()["status"] == "accepted"
+
+    accept_resp_2 = auth_client.post(f"/api/v1/invitations/{invitation_id}/accept")
+    assert accept_resp_2.status_code == 200
+    assert accept_resp_2.json()["status"] == "accepted"
+
+    reject_resp = auth_client.post(f"/api/v1/invitations/{invitation_id}/reject")
+    assert reject_resp.status_code == 200
+    assert reject_resp.json()["status"] == "accepted"

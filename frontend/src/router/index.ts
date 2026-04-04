@@ -12,6 +12,7 @@ const TeamCreateView = () => import("../views/TeamCreateView.vue");
 const TeamsView = () => import("../views/TeamsView.vue");
 const TeamDetailView = () => import("../views/TeamDetailView.vue");
 const InvitationsView = () => import("../views/InvitationsView.vue");
+const InviteAcceptView = () => import("../views/InviteAcceptView.vue");
 
 const router = createRouter({
   history: createWebHistory(),
@@ -68,6 +69,12 @@ const router = createRouter({
       path: "/invitations",
       name: "invitations",
       component: InvitationsView,
+    },
+    {
+      path: "/invite/:token",
+      name: "invite-accept",
+      component: InviteAcceptView,
+      props: true,
     },
     {
       path: "/login",

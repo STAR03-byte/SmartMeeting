@@ -49,7 +49,7 @@ export default {
     noMeetingData: 'No meeting data',
     quickActions: 'Quick Actions',
     taskManagement: 'Task Management',
-    userManagement: 'User Management'
+    pendingInvitations: 'Pending Invitations'
   },
   team: {
     title: 'My Teams',

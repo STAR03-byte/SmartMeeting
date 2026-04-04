@@ -5,9 +5,11 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.schemas.auth import CurrentUserOut
-from app.schemas.team_invitation import TeamInvitationCreate, TeamInvitationOut
+from app.schemas.team_invitation import TeamInvitationCreate, TeamInvitationOut, TeamInviteLinkCreate, TeamInviteLinkOut
 from app.services.team_invitation_service import (
+    accept_invite_link,
     accept_invitation,
+    create_invite_link,
     create_invitation,
     get_user_invitations,
     reject_invitation,
@@ -29,6 +31,26 @@ def send_invitation(
     current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> TeamInvitationOut:
     return TeamInvitationOut.model_validate(create_invitation(db, team_id, current_user.id, payload))
+
+
+@router.post(
+    "/teams/{team_id}/invite-link",
+    response_model=TeamInviteLinkOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_team_invite_link_api(
+    team_id: int,
+    payload: TeamInviteLinkCreate,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
+) -> TeamInviteLinkOut:
+    invite_link = create_invite_link(db, team_id, current_user.id, payload.expires_in_hours)
+    return TeamInviteLinkOut(
+        team_id=invite_link.team_id,
+        invite_token=invite_link.invite_token,
+        invite_path=f"/invite/{invite_link.invite_token}",
+        expires_at=invite_link.expires_at,
+    )
 
 
 @router.get("/invitations", response_model=list[TeamInvitationOut])
@@ -55,3 +77,12 @@ def reject_team_invitation(
     current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> TeamInvitationOut:
     return TeamInvitationOut.model_validate(reject_invitation(db, invitation_id, current_user.id))
+
+
+@router.post("/invitations/accept-by-token/{invite_token}", response_model=TeamInvitationOut)
+def accept_team_invitation_by_token(
+    invite_token: str,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
+) -> TeamInvitationOut:
+    return TeamInvitationOut.model_validate(accept_invite_link(db, invite_token, current_user.id))

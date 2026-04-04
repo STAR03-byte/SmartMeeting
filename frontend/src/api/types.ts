@@ -165,6 +165,8 @@ export interface MeetingParticipantOut {
   id: number;
   meeting_id: number;
   user_id: number;
+  username: string;
+  full_name: string;
   email: string | null;
   participant_role: string;
   attendance_status: string;

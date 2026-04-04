@@ -18,10 +18,21 @@
         <template #header>
           <div class="card-header">
             <span>{{ $t('team.basicInfo') }}</span>
-            <el-tag v-if="team.my_role" :type="getRoleTagType(team.my_role)">
-              {{ getRoleLabel(team.my_role) }}
-            </el-tag>
-            <el-tag v-else-if="isOwner" type="danger">{{ $t('team.roleOwner') }}</el-tag>
+            <div class="header-tags">
+              <el-tag v-if="team.my_role" :type="getRoleTagType(team.my_role)">
+                {{ getRoleLabel(team.my_role) }}
+              </el-tag>
+              <el-tag v-else-if="isOwner" type="danger">{{ $t('team.roleOwner') }}</el-tag>
+              <el-popconfirm
+                v-if="isOwner"
+                title="确定要删除该团队吗？此操作不可恢复"
+                @confirm="handleDeleteTeam"
+              >
+                <template #reference>
+                  <el-button type="danger" size="small" :loading="deletingTeam">删除团队</el-button>
+                </template>
+              </el-popconfirm>
+            </div>
           </div>
         </template>
         <el-descriptions :column="1" border>
@@ -29,6 +40,12 @@
           <el-descriptions-item label="团队描述">{{ team.description || $t('team.noDescription') }}</el-descriptions-item>
           <el-descriptions-item :label="$t('team.createdAt')">{{ formatDate(team.created_at) }}</el-descriptions-item>
         </el-descriptions>
+        <div v-if="canManageMembers" class="invite-link-block">
+          <el-button type="primary" plain :loading="creatingInviteLink" @click="handleCreateInviteLink">
+            生成邀请链接
+          </el-button>
+          <el-input v-if="inviteLink" :model-value="inviteLink" readonly class="mt-2" />
+        </div>
       </el-card>
 
       <!-- Member List (Visible to all, but actions restricted) -->
@@ -48,8 +65,12 @@
         </template>
 
         <el-table :data="members" style="width: 100%" v-loading="membersLoading">
-          <el-table-column prop="user.full_name" :label="$t('team.memberName')" min-width="120" />
-          <el-table-column prop="user.email" :label="$t('team.email')" min-width="180" />
+          <el-table-column :label="$t('team.memberName')" min-width="120">
+            <template #default="{ row }">
+              {{ row.full_name }} ({{ row.user_name }})
+            </template>
+          </el-table-column>
+          <el-table-column prop="email" :label="$t('team.email')" min-width="180" />
           <el-table-column :label="$t('team.role')" width="150">
             <template #default="{ row }">
               <el-select
@@ -102,7 +123,6 @@
       v-model="showInviteMemberDialog"
       :title="$t('team.inviteMember')"
       width="500px"
-      @open="fetchUsers"
     >
       <el-form :model="inviteMemberForm" ref="inviteMemberFormRef" label-width="80px">
         <el-form-item
@@ -114,6 +134,8 @@
             v-model="inviteMemberForm.user_id"
             :placeholder="$t('team.selectUserPlaceholder')"
             filterable
+            remote
+            :remote-method="handleUserSearch"
             style="width: 100%"
             :loading="usersLoading"
           >
@@ -145,13 +167,14 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import type { FormInstance } from 'element-plus';
-import { getTeam, getTeamMembers, removeTeamMember, updateMemberRole } from '../api/teams';
+import { getTeam, getTeamMembers, removeTeamMember, updateMemberRole, deleteTeam } from '../api/teams';
 import type { Team, TeamMember } from '../api/teams';
-import { getUsers } from '../api/users';
+import { searchInvitableUsers } from '../api/users';
 import type { UserItem } from '../api/types';
 import { useAuthStore } from '../stores/authStore';
 import { getApiErrorMessage } from '../api/client';
 import { sendInvitation } from '../api/teamInvitations';
+import { createTeamInviteLink } from '../api/teamInvitations';
 
 const route = useRoute();
 const teamId = Number(route.params.id);
@@ -165,6 +188,7 @@ const members = ref<TeamMember[]>([]);
 const membersLoading = ref(false);
 
 const updatingRole = ref<number | null>(null);
+const deletingTeam = ref(false);
 
 // Add Member
 const showInviteMemberDialog = ref(false);
@@ -175,6 +199,9 @@ const inviteMemberFormRef = ref<FormInstance>();
 const inviteMemberForm = ref({
   user_id: undefined as number | undefined,
 });
+const userSearchKeyword = ref('');
+const creatingInviteLink = ref(false);
+const inviteLink = ref('');
 
 const isOwner = computed(() => {
   if (!team.value || !authStore.currentUser) return false;
@@ -270,15 +297,39 @@ const loadMembers = async () => {
   }
 };
 
-const fetchUsers = async () => {
-  if (users.value.length > 0) return;
+const fetchUsers = async (keyword = '') => {
   usersLoading.value = true;
   try {
-    users.value = await getUsers();
+    const normalized = keyword.trim();
+    if (normalized.length < 2) {
+      users.value = [];
+      return;
+    }
+    users.value = await searchInvitableUsers(teamId, normalized, 20);
   } catch (err: any) {
     ElMessage.error(t('team.loadUserFailed'));
   } finally {
     usersLoading.value = false;
+  }
+};
+
+const handleUserSearch = async (keyword: string) => {
+  userSearchKeyword.value = keyword;
+  await fetchUsers(keyword);
+};
+
+const handleCreateInviteLink = async () => {
+  creatingInviteLink.value = true;
+  try {
+    const data = await createTeamInviteLink(teamId, 72);
+    const fullLink = `${window.location.origin}${data.invite_path}`;
+    inviteLink.value = fullLink;
+    await navigator.clipboard.writeText(fullLink);
+    ElMessage.success('邀请链接已生成并复制');
+  } catch (err: any) {
+    ElMessage.error(getApiErrorMessage(err) || t('team.inviteMemberFailed'));
+  } finally {
+    creatingInviteLink.value = false;
   }
 };
 
@@ -292,6 +343,8 @@ const handleInviteMember = async () => {
         ElMessage.success(t('team.inviteMemberSuccess'));
         showInviteMemberDialog.value = false;
         inviteMemberForm.value.user_id = undefined;
+        userSearchKeyword.value = '';
+        users.value = [];
         await loadMembers();
         window.dispatchEvent(new Event('team-invitations-changed'));
       } catch (err: any) {
@@ -314,7 +367,7 @@ const handleRemoveMember = async (member: TeamMember) => {
 };
 
 const handleRoleChange = async (member: TeamMember, newRole: string) => {
-  updatingRole.value = member.id;
+  updatingRole.value = member.user_id;
   try {
     await updateMemberRole(teamId, member.user_id, newRole);
     ElMessage.success(t('team.roleUpdateSuccess'));
@@ -325,6 +378,21 @@ const handleRoleChange = async (member: TeamMember, newRole: string) => {
     await loadMembers();
   } finally {
     updatingRole.value = null;
+  }
+};
+
+const handleDeleteTeam = async () => {
+  if (!isOwner.value) return;
+  deletingTeam.value = true;
+  try {
+    await deleteTeam(teamId);
+    ElMessage.success('团队已删除');
+    // 跳转到团队列表页
+    window.location.href = '/teams';
+  } catch (err: any) {
+    ElMessage.error(getApiErrorMessage(err) || '删除团队失败');
+  } finally {
+    deletingTeam.value = false;
   }
 };
 
@@ -352,8 +420,17 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
 }
+.header-tags {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 .mb-4 {
   margin-bottom: 16px;
+}
+
+.invite-link-block {
+  margin-top: 12px;
 }
 
 /* Mobile Adjustments */

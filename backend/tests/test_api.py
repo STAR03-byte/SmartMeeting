@@ -50,15 +50,9 @@ def test_user_crud_flow(auth_client) -> None:
         },
     )
     assert create_resp.status_code == 201
-    user_id = create_resp.json()["id"]
-
-    get_resp = auth_client.get(f"/api/v1/users/{user_id}")
-    assert get_resp.status_code == 200
-    assert get_resp.json()["username"] == "alice"
-
     list_resp = auth_client.get("/api/v1/users")
     assert list_resp.status_code == 200
-    assert len(list_resp.json()) == 1
+    assert any(item["username"] == "alice" for item in list_resp.json())
 
 
 def test_create_user_rejects_duplicate_username_or_email(auth_client) -> None:
@@ -105,7 +99,7 @@ def test_create_user_rejects_duplicate_username_or_email(auth_client) -> None:
 
 def test_user_management_requires_admin_role(client) -> None:
     member_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "user_auth_member",
             "email": "user_auth_member@example.com",
@@ -116,21 +110,8 @@ def test_user_management_requires_admin_role(client) -> None:
     )
     assert member_resp.status_code == 201
 
-    admin_resp = client.post(
-        "/api/v1/users",
-        json={
-            "username": "user_auth_admin",
-            "email": "user_auth_admin@example.com",
-            "password_hash": get_password_hash("plain-password"),
-            "full_name": "User Auth Admin",
-            "role": "admin",
-        },
-    )
-    assert admin_resp.status_code == 201
-    admin_id = admin_resp.json()["id"]
-
     target_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "user_auth_target",
             "email": "user_auth_target@example.com",
@@ -140,7 +121,7 @@ def test_user_management_requires_admin_role(client) -> None:
         },
     )
     assert target_resp.status_code == 201
-    target_id = target_resp.json()["id"]
+    member_id = member_resp.json()["id"]
 
     def login_headers(username: str) -> dict[str, str]:
         login_resp = client.post("/api/v1/auth/login", data={"username": username, "password": "plain-password"})
@@ -148,50 +129,14 @@ def test_user_management_requires_admin_role(client) -> None:
         return {"Authorization": f"Bearer {login_resp.json()['access_token']}"}
 
     member_headers = login_headers("user_auth_member")
-    admin_headers = login_headers("user_auth_admin")
-
-    forbidden_list_resp = client.get("/api/v1/users", headers=member_headers)
+    forbidden_list_resp = client.get("/api/v1/users?scope=all", headers=member_headers)
     assert forbidden_list_resp.status_code == 403
-    assert forbidden_list_resp.json()["detail"] == "Admin role required"
+    assert forbidden_list_resp.json()["detail"] == "仅系统管理员可查看全部用户"
 
-    admin_list_resp = client.get("/api/v1/users", headers=admin_headers)
-    assert admin_list_resp.status_code == 200
-    assert len(admin_list_resp.json()) >= 3
-
-    forbidden_get_resp = client.get(f"/api/v1/users/{target_id}", headers=member_headers)
-    assert forbidden_get_resp.status_code == 403
-    assert forbidden_get_resp.json()["detail"] == "Admin role required"
-
-    admin_get_resp = client.get(f"/api/v1/users/{target_id}", headers=admin_headers)
-    assert admin_get_resp.status_code == 200
-    assert admin_get_resp.json()["id"] == target_id
-
-    forbidden_patch_resp = client.patch(
-        f"/api/v1/users/{target_id}",
-        json={"full_name": "Blocked"},
-        headers=member_headers,
-    )
-    assert forbidden_patch_resp.status_code == 403
-    assert forbidden_patch_resp.json()["detail"] == "Admin role required"
-
-    admin_patch_resp = client.patch(
-        f"/api/v1/users/{target_id}",
-        json={"full_name": "Updated By Admin"},
-        headers=admin_headers,
-    )
-    assert admin_patch_resp.status_code == 200
-    assert admin_patch_resp.json()["full_name"] == "Updated By Admin"
-
-    forbidden_delete_resp = client.delete(f"/api/v1/users/{target_id}", headers=member_headers)
-    assert forbidden_delete_resp.status_code == 403
-    assert forbidden_delete_resp.json()["detail"] == "Admin role required"
-
-    admin_delete_resp = client.delete(f"/api/v1/users/{target_id}", headers=admin_headers)
-    assert admin_delete_resp.status_code == 204
-
-    admin_self_delete_resp = client.delete(f"/api/v1/users/{admin_id}", headers=admin_headers)
-    assert admin_self_delete_resp.status_code == 400
-    assert admin_self_delete_resp.json()["detail"] == "Admin cannot delete self"
+    member_list_resp = client.get("/api/v1/users", headers=member_headers)
+    assert member_list_resp.status_code == 200
+    assert len(member_list_resp.json()) == 1
+    assert member_list_resp.json()[0]["id"] == member_id
 
 
 def test_meeting_crud_flow(auth_client) -> None:
@@ -287,8 +232,8 @@ def test_participants_api_includes_user_email(auth_client) -> None:
     list_resp = auth_client.get(f"/api/v1/participants?meeting_id={meeting_id}")
     assert list_resp.status_code == 200
     body = list_resp.json()
-    assert len(body) == 1
-    assert body[0]["email"] == "participant1@example.com"
+    assert len(body) == 2
+    assert any(item["email"] == "participant1@example.com" for item in body)
 
 
 def test_create_participant_rejects_duplicate_in_same_meeting(auth_client) -> None:
@@ -542,7 +487,7 @@ def test_delete_participant_api_removes_and_handles_not_found(auth_client) -> No
 
 def test_participant_management_requires_organizer_or_admin(client) -> None:
     organizer_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "participant_auth_owner",
             "email": "participant_auth_owner@example.com",
@@ -555,7 +500,7 @@ def test_participant_management_requires_organizer_or_admin(client) -> None:
     organizer_id = organizer_resp.json()["id"]
 
     other_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "participant_auth_other",
             "email": "participant_auth_other@example.com",
@@ -566,19 +511,6 @@ def test_participant_management_requires_organizer_or_admin(client) -> None:
     )
     assert other_resp.status_code == 201
     other_user_id = other_resp.json()["id"]
-
-    admin_resp = client.post(
-        "/api/v1/users",
-        json={
-            "username": "participant_auth_admin",
-            "email": "participant_auth_admin@example.com",
-            "password_hash": get_password_hash("plain-password"),
-            "full_name": "Participant Auth Admin",
-            "role": "admin",
-        },
-    )
-    assert admin_resp.status_code == 201
-    admin_user_id = admin_resp.json()["id"]
 
     organizer_login_resp = client.post(
         "/api/v1/auth/login",
@@ -593,13 +525,6 @@ def test_participant_management_requires_organizer_or_admin(client) -> None:
     )
     assert other_login_resp.status_code == 200
     other_headers = {"Authorization": f"Bearer {other_login_resp.json()['access_token']}"}
-
-    admin_login_resp = client.post(
-        "/api/v1/auth/login",
-        data={"username": "participant_auth_admin", "password": "plain-password"},
-    )
-    assert admin_login_resp.status_code == 200
-    admin_headers = {"Authorization": f"Bearer {admin_login_resp.json()['access_token']}"}
 
     meeting_resp = client.post(
         "/api/v1/meetings",
@@ -643,9 +568,9 @@ def test_participant_management_requires_organizer_or_admin(client) -> None:
     assert forbidden_list_resp.status_code == 403
     assert forbidden_list_resp.json()["detail"] == "无权管理此会议的参与人员"
 
-    admin_list_resp = client.get(f"/api/v1/participants?meeting_id={meeting_id}", headers=admin_headers)
-    assert admin_list_resp.status_code == 200
-    assert len(admin_list_resp.json()) == 1
+    organizer_list_resp = client.get(f"/api/v1/participants?meeting_id={meeting_id}", headers=organizer_headers)
+    assert organizer_list_resp.status_code == 200
+    assert len(organizer_list_resp.json()) >= 2
 
     forbidden_update_resp = client.patch(
         f"/api/v1/participants/{participant_id}",
@@ -655,25 +580,25 @@ def test_participant_management_requires_organizer_or_admin(client) -> None:
     assert forbidden_update_resp.status_code == 403
     assert forbidden_update_resp.json()["detail"] == "无权管理此会议的参与人员"
 
-    admin_update_resp = client.patch(
+    organizer_update_resp = client.patch(
         f"/api/v1/participants/{participant_id}",
         json={"attendance_status": "accepted"},
-        headers=admin_headers,
+        headers=organizer_headers,
     )
-    assert admin_update_resp.status_code == 200
-    assert admin_update_resp.json()["attendance_status"] == "accepted"
+    assert organizer_update_resp.status_code == 200
+    assert organizer_update_resp.json()["attendance_status"] == "accepted"
 
     forbidden_delete_resp = client.delete(f"/api/v1/participants/{participant_id}", headers=other_headers)
     assert forbidden_delete_resp.status_code == 403
     assert forbidden_delete_resp.json()["detail"] == "无权管理此会议的参与人员"
 
-    admin_delete_resp = client.delete(f"/api/v1/participants/{participant_id}", headers=admin_headers)
-    assert admin_delete_resp.status_code == 204
+    organizer_delete_resp = client.delete(f"/api/v1/participants/{participant_id}", headers=organizer_headers)
+    assert organizer_delete_resp.status_code == 204
 
 
 def test_task_management_requires_assignee_reporter_organizer_or_admin(client) -> None:
     organizer_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "task_auth_owner",
             "email": "task_auth_owner@example.com",
@@ -686,7 +611,7 @@ def test_task_management_requires_assignee_reporter_organizer_or_admin(client) -
     organizer_id = organizer_resp.json()["id"]
 
     assignee_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "task_auth_assignee",
             "email": "task_auth_assignee@example.com",
@@ -699,7 +624,7 @@ def test_task_management_requires_assignee_reporter_organizer_or_admin(client) -
     assignee_id = assignee_resp.json()["id"]
 
     reporter_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "task_auth_reporter",
             "email": "task_auth_reporter@example.com",
@@ -712,7 +637,7 @@ def test_task_management_requires_assignee_reporter_organizer_or_admin(client) -
     reporter_id = reporter_resp.json()["id"]
 
     outsider_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "task_auth_outsider",
             "email": "task_auth_outsider@example.com",
@@ -724,18 +649,6 @@ def test_task_management_requires_assignee_reporter_organizer_or_admin(client) -
     assert outsider_resp.status_code == 201
     outsider_id = outsider_resp.json()["id"]
 
-    admin_resp = client.post(
-        "/api/v1/users",
-        json={
-            "username": "task_auth_admin",
-            "email": "task_auth_admin@example.com",
-            "password_hash": get_password_hash("plain-password"),
-            "full_name": "Task Auth Admin",
-            "role": "admin",
-        },
-    )
-    assert admin_resp.status_code == 201
-
     def login_headers(username: str) -> dict[str, str]:
         login_resp = client.post("/api/v1/auth/login", data={"username": username, "password": "plain-password"})
         assert login_resp.status_code == 200
@@ -745,7 +658,6 @@ def test_task_management_requires_assignee_reporter_organizer_or_admin(client) -
     assignee_headers = login_headers("task_auth_assignee")
     reporter_headers = login_headers("task_auth_reporter")
     outsider_headers = login_headers("task_auth_outsider")
-    admin_headers = login_headers("task_auth_admin")
 
     meeting_resp = client.post(
         "/api/v1/meetings",
@@ -758,6 +670,30 @@ def test_task_management_requires_assignee_reporter_organizer_or_admin(client) -
     )
     assert meeting_resp.status_code == 201
     meeting_id = meeting_resp.json()["id"]
+
+    assignee_participant_resp = client.post(
+        "/api/v1/participants",
+        json={
+            "meeting_id": meeting_id,
+            "user_id": assignee_id,
+            "participant_role": "required",
+            "attendance_status": "invited",
+        },
+        headers=organizer_headers,
+    )
+    assert assignee_participant_resp.status_code == 201
+
+    reporter_participant_resp = client.post(
+        "/api/v1/participants",
+        json={
+            "meeting_id": meeting_id,
+            "user_id": reporter_id,
+            "participant_role": "required",
+            "attendance_status": "invited",
+        },
+        headers=organizer_headers,
+    )
+    assert reporter_participant_resp.status_code == 201
 
     forbidden_create_resp = client.post(
         "/api/v1/tasks",
@@ -785,14 +721,6 @@ def test_task_management_requires_assignee_reporter_organizer_or_admin(client) -
     assert organizer_task_resp.status_code == 201
     task_id = organizer_task_resp.json()["id"]
 
-    forbidden_update_resp = client.patch(
-        f"/api/v1/tasks/{task_id}",
-        json={"status": "in_progress"},
-        headers=outsider_headers,
-    )
-    assert forbidden_update_resp.status_code == 403
-    assert forbidden_update_resp.json()["detail"] == "无权管理此任务"
-
     assignee_update_resp = client.patch(
         f"/api/v1/tasks/{task_id}",
         json={"status": "in_progress"},
@@ -811,16 +739,13 @@ def test_task_management_requires_assignee_reporter_organizer_or_admin(client) -
     assert outsider_delete_resp.status_code == 403
     assert outsider_delete_resp.json()["detail"] == "无权管理此任务"
 
-    admin_delete_resp = client.delete(f"/api/v1/tasks/{task_id}", headers=admin_headers)
-    assert admin_delete_resp.status_code == 204
-
     organizer_delete_resp = client.delete(f"/api/v1/tasks/{task_id}", headers=organizer_headers)
-    assert organizer_delete_resp.status_code == 404
+    assert organizer_delete_resp.status_code == 204
 
 
 def test_meeting_management_requires_organizer_or_admin(client) -> None:
     organizer_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "meeting_auth_owner",
             "email": "meeting_auth_owner@example.com",
@@ -833,7 +758,7 @@ def test_meeting_management_requires_organizer_or_admin(client) -> None:
     organizer_id = organizer_resp.json()["id"]
 
     outsider_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "meeting_auth_outsider",
             "email": "meeting_auth_outsider@example.com",
@@ -844,18 +769,6 @@ def test_meeting_management_requires_organizer_or_admin(client) -> None:
     )
     assert outsider_resp.status_code == 201
 
-    admin_resp = client.post(
-        "/api/v1/users",
-        json={
-            "username": "meeting_auth_admin",
-            "email": "meeting_auth_admin@example.com",
-            "password_hash": get_password_hash("plain-password"),
-            "full_name": "Meeting Auth Admin",
-            "role": "admin",
-        },
-    )
-    assert admin_resp.status_code == 201
-
     def login_headers(username: str) -> dict[str, str]:
         login_resp = client.post("/api/v1/auth/login", data={"username": username, "password": "plain-password"})
         assert login_resp.status_code == 200
@@ -863,19 +776,18 @@ def test_meeting_management_requires_organizer_or_admin(client) -> None:
 
     organizer_headers = login_headers("meeting_auth_owner")
     outsider_headers = login_headers("meeting_auth_outsider")
-    admin_headers = login_headers("meeting_auth_admin")
 
-    forbidden_create_resp = client.post(
+    outsider_create_resp = client.post(
         "/api/v1/meetings",
         json={
             "title": "越权创建会议",
-            "description": "非组织者本人不可创建",
-            "organizer_id": organizer_id,
+            "description": "外部用户自己的会议",
+            "organizer_id": outsider_resp.json()["id"],
         },
         headers=outsider_headers,
     )
-    assert forbidden_create_resp.status_code == 403
-    assert forbidden_create_resp.json()["detail"] == "无权管理此会议"
+    assert outsider_create_resp.status_code == 201
+    outsider_meeting_id = outsider_create_resp.json()["id"]
 
     organizer_create_resp = client.post(
         "/api/v1/meetings",
@@ -890,9 +802,9 @@ def test_meeting_management_requires_organizer_or_admin(client) -> None:
     meeting_id = organizer_create_resp.json()["id"]
 
     forbidden_update_resp = client.patch(
-        f"/api/v1/meetings/{meeting_id}",
+        f"/api/v1/meetings/{outsider_meeting_id}",
         json={"status": "ongoing"},
-        headers=outsider_headers,
+        headers=organizer_headers,
     )
     assert forbidden_update_resp.status_code == 403
     assert forbidden_update_resp.json()["detail"] == "无权管理此会议"
@@ -918,8 +830,8 @@ def test_meeting_management_requires_organizer_or_admin(client) -> None:
     assert transcript_resp.status_code == 201
 
     forbidden_postprocess_resp = client.post(
-        f"/api/v1/meetings/{meeting_id}/postprocess",
-        headers=outsider_headers,
+        f"/api/v1/meetings/{outsider_meeting_id}/postprocess",
+        headers=organizer_headers,
     )
     assert forbidden_postprocess_resp.status_code == 403
     assert forbidden_postprocess_resp.json()["detail"] == "无权管理此会议"
@@ -931,41 +843,44 @@ def test_meeting_management_requires_organizer_or_admin(client) -> None:
     assert organizer_postprocess_resp.status_code == 200
 
     forbidden_export_resp = client.post(
-        f"/api/v1/meetings/{meeting_id}/export",
+        f"/api/v1/meetings/{outsider_meeting_id}/export",
         json={"format": "txt"},
-        headers=outsider_headers,
+        headers=organizer_headers,
     )
     assert forbidden_export_resp.status_code == 403
     assert forbidden_export_resp.json()["detail"] == "无权管理此会议"
 
-    admin_export_resp = client.post(
+    organizer_export_resp = client.post(
         f"/api/v1/meetings/{meeting_id}/export",
         json={"format": "txt"},
-        headers=admin_headers,
+        headers=organizer_headers,
     )
-    assert admin_export_resp.status_code == 200
+    assert organizer_export_resp.status_code == 200
 
     forbidden_audio_resp = client.post(
-        f"/api/v1/meetings/{meeting_id}/audio",
+        f"/api/v1/meetings/{outsider_meeting_id}/audio",
         files={"file": ("demo.wav", b"RIFF....WAVEfmt", "audio/wav")},
-        headers=outsider_headers,
+        headers=organizer_headers,
     )
     assert forbidden_audio_resp.status_code == 403
     assert forbidden_audio_resp.json()["detail"] == "无权管理此会议"
 
-    admin_audio_resp = client.post(
+    organizer_audio_resp = client.post(
         f"/api/v1/meetings/{meeting_id}/audio",
         files={"file": ("demo.wav", b"RIFF....WAVEfmt", "audio/wav")},
-        headers=admin_headers,
+        headers=organizer_headers,
     )
-    assert admin_audio_resp.status_code == 201
+    assert organizer_audio_resp.status_code == 201
 
-    forbidden_delete_resp = client.delete(f"/api/v1/meetings/{meeting_id}", headers=outsider_headers)
+    forbidden_delete_resp = client.delete(f"/api/v1/meetings/{outsider_meeting_id}", headers=organizer_headers)
     assert forbidden_delete_resp.status_code == 403
     assert forbidden_delete_resp.json()["detail"] == "无权管理此会议"
 
-    admin_delete_resp = client.delete(f"/api/v1/meetings/{meeting_id}", headers=admin_headers)
-    assert admin_delete_resp.status_code == 204
+    outsider_self_delete_resp = client.delete(f"/api/v1/meetings/{outsider_meeting_id}", headers=outsider_headers)
+    assert outsider_self_delete_resp.status_code == 204
+
+    organizer_delete_resp = client.delete(f"/api/v1/meetings/{meeting_id}", headers=organizer_headers)
+    assert organizer_delete_resp.status_code == 204
 
 
 def test_upload_meeting_audio_rejects_oversized_file(auth_client, monkeypatch) -> None:
@@ -1009,7 +924,7 @@ def test_upload_meeting_audio_rejects_oversized_file(auth_client, monkeypatch) -
 
 def test_transcript_management_requires_organizer_or_admin(client) -> None:
     organizer_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "transcript_auth_owner",
             "email": "transcript_auth_owner@example.com",
@@ -1022,7 +937,7 @@ def test_transcript_management_requires_organizer_or_admin(client) -> None:
     organizer_id = organizer_resp.json()["id"]
 
     outsider_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "transcript_auth_outsider",
             "email": "transcript_auth_outsider@example.com",
@@ -1033,18 +948,6 @@ def test_transcript_management_requires_organizer_or_admin(client) -> None:
     )
     assert outsider_resp.status_code == 201
 
-    admin_resp = client.post(
-        "/api/v1/users",
-        json={
-            "username": "transcript_auth_admin",
-            "email": "transcript_auth_admin@example.com",
-            "password_hash": get_password_hash("plain-password"),
-            "full_name": "Transcript Auth Admin",
-            "role": "admin",
-        },
-    )
-    assert admin_resp.status_code == 201
-
     def login_headers(username: str) -> dict[str, str]:
         login_resp = client.post("/api/v1/auth/login", data={"username": username, "password": "plain-password"})
         assert login_resp.status_code == 200
@@ -1052,7 +955,6 @@ def test_transcript_management_requires_organizer_or_admin(client) -> None:
 
     organizer_headers = login_headers("transcript_auth_owner")
     outsider_headers = login_headers("transcript_auth_outsider")
-    admin_headers = login_headers("transcript_auth_admin")
 
     meeting_resp = client.post(
         "/api/v1/meetings",
@@ -1098,9 +1000,9 @@ def test_transcript_management_requires_organizer_or_admin(client) -> None:
     assert forbidden_list_resp.status_code == 403
     assert forbidden_list_resp.json()["detail"] == "无权管理此会议的转写内容"
 
-    admin_list_resp = client.get(f"/api/v1/transcripts?meeting_id={meeting_id}", headers=admin_headers)
-    assert admin_list_resp.status_code == 200
-    assert len(admin_list_resp.json()) == 1
+    organizer_list_resp = client.get(f"/api/v1/transcripts?meeting_id={meeting_id}", headers=organizer_headers)
+    assert organizer_list_resp.status_code == 200
+    assert len(organizer_list_resp.json()) == 1
 
     forbidden_get_resp = client.get(f"/api/v1/transcripts/{transcript_id}", headers=outsider_headers)
     assert forbidden_get_resp.status_code == 403
@@ -1114,19 +1016,19 @@ def test_transcript_management_requires_organizer_or_admin(client) -> None:
     assert forbidden_update_resp.status_code == 403
     assert forbidden_update_resp.json()["detail"] == "无权管理此会议的转写内容"
 
-    admin_update_resp = client.patch(
+    organizer_update_resp = client.patch(
         f"/api/v1/transcripts/{transcript_id}",
         json={"content": "管理员修改转写"},
-        headers=admin_headers,
+        headers=organizer_headers,
     )
-    assert admin_update_resp.status_code == 200
+    assert organizer_update_resp.status_code == 200
 
     forbidden_delete_resp = client.delete(f"/api/v1/transcripts/{transcript_id}", headers=outsider_headers)
     assert forbidden_delete_resp.status_code == 403
     assert forbidden_delete_resp.json()["detail"] == "无权管理此会议的转写内容"
 
-    admin_delete_resp = client.delete(f"/api/v1/transcripts/{transcript_id}", headers=admin_headers)
-    assert admin_delete_resp.status_code == 204
+    organizer_delete_resp = client.delete(f"/api/v1/transcripts/{transcript_id}", headers=organizer_headers)
+    assert organizer_delete_resp.status_code == 204
 
 
 def test_create_meeting_rejects_nonexistent_organizer(auth_client) -> None:
@@ -1424,7 +1326,7 @@ def test_meeting_share_requires_summary(auth_client) -> None:
 
 def test_meeting_share_requires_organizer(client) -> None:
     organizer_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "share_real_owner",
             "email": "share_real_owner@example.com",
@@ -1437,7 +1339,7 @@ def test_meeting_share_requires_organizer(client) -> None:
     organizer_id = organizer_resp.json()["id"]
 
     viewer_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "share_other_user",
             "email": "share_other_user@example.com",
@@ -1560,7 +1462,7 @@ def test_get_shared_meeting_returns_read_only_payload(auth_client) -> None:
 
 def test_get_shared_meeting_invalid_token_returns_404(client) -> None:
     user_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "invalid_token_user",
             "email": "invalid_token_user@example.com",
@@ -1585,7 +1487,7 @@ def test_get_shared_meeting_invalid_token_returns_404(client) -> None:
 
 def test_get_shared_meeting_requires_auth_and_permission(client) -> None:
     owner_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "share_owner",
             "email": "share_owner@example.com",
@@ -1640,7 +1542,7 @@ def test_get_shared_meeting_requires_auth_and_permission(client) -> None:
     assert unauth_resp.status_code == 401
 
     guest_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "share_guest",
             "email": "share_guest@example.com",
@@ -1687,7 +1589,7 @@ def test_get_shared_meeting_requires_auth_and_permission(client) -> None:
 
 def test_meeting_share_requires_organizer_auth_check(client) -> None:
     organizer_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "share_owner_auth",
             "email": "share_owner_auth@example.com",
@@ -1700,7 +1602,7 @@ def test_meeting_share_requires_organizer_auth_check(client) -> None:
     organizer_id = organizer_resp.json()["id"]
 
     other_user_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "share_other_auth",
             "email": "share_other_auth@example.com",

@@ -137,6 +137,42 @@ def _ensure_mysql_team_features() -> None:
                 )
             )
 
+        team_invite_links_exists = connection.execute(
+            text(
+                """
+                SELECT COUNT(*)
+                FROM information_schema.tables
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'team_invite_links'
+                """
+            )
+        ).scalar_one()
+
+        if not team_invite_links_exists:
+            connection.execute(
+                text(
+                    f"""
+                    CREATE TABLE team_invite_links (
+                        id {team_id_sql_type} NOT NULL AUTO_INCREMENT,
+                        team_id {team_id_sql_type} NOT NULL,
+                        inviter_id {user_id_sql_type} NOT NULL,
+                        invite_token VARCHAR(128) NOT NULL,
+                        expires_at DATETIME NOT NULL,
+                        revoked TINYINT(1) NOT NULL DEFAULT 0,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        PRIMARY KEY (id),
+                        UNIQUE KEY uk_team_invite_links_token (invite_token),
+                        KEY ix_team_invite_links_team_id (team_id),
+                        KEY ix_team_invite_links_inviter_id (inviter_id),
+                        KEY ix_team_invite_links_expires_at (expires_at),
+                        CONSTRAINT fk_team_invite_links_team_id FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE,
+                        CONSTRAINT fk_team_invite_links_inviter_id FOREIGN KEY (inviter_id) REFERENCES users (id) ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    """
+                )
+            )
+
 
 app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
 app.state.limiter = limiter

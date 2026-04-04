@@ -33,6 +33,8 @@ class MeetingParticipantOut(BaseModel):
     id: int
     meeting_id: int
     user_id: int
+    username: str
+    full_name: str
     email: str | None = None
     role: str | None = None
     participant_role: str

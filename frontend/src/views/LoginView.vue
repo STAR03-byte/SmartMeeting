@@ -60,10 +60,7 @@
                 <el-input v-model="registerConfirmPassword" type="password" placeholder="再次输入密码" size="large" show-password />
               </el-form-item>
               <el-form-item :label="$t('team.role')" class="login-form-item">
-                <el-select v-model="registerForm.role" size="large" style="width: 100%">
-                  <el-option :label="$t('team.roleMember')" value="member" />
-                  <el-option :label="$t('team.roleAdmin')" value="admin" />
-                </el-select>
+                <el-input :model-value="$t('team.roleMember')" size="large" disabled />
               </el-form-item>
               <el-button type="primary" :loading="registerLoading" @click="register" size="large" class="login-btn">注册</el-button>
             </el-form>
@@ -107,7 +104,7 @@ const registerForm = reactive({
   email: "",
   full_name: "",
   password_hash: "",
-  role: "member" as "admin" | "member",
+  role: "member" as "member",
 });
 
 const registerConfirmPassword = ref("");

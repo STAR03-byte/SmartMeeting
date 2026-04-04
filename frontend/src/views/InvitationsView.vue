@@ -56,6 +56,7 @@ const loadInvitations = async () => {
 };
 
 const handleAccept = async (id: number) => {
+  if (actingId.value !== null) return;
   actingId.value = id;
   try {
     await acceptInvitation(id);
@@ -70,6 +71,7 @@ const handleAccept = async (id: number) => {
 };
 
 const handleReject = async (id: number) => {
+  if (actingId.value !== null) return;
   actingId.value = id;
   try {
     await rejectInvitation(id);

@@ -50,7 +50,11 @@ def create_participant_api(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    return create_participant(db, payload)
+    created = create_participant(db, payload)
+    participant_out = get_participant_out(db, created.id)
+    if not participant_out:
+        raise HTTPException(status_code=404, detail="Participant not found")
+    return participant_out
 
 
 @router.get("", response_model=list[MeetingParticipantOut])
@@ -104,7 +108,11 @@ def update_participant_api(
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
     _assert_participant_management_permission(meeting, current_user)
-    return update_participant(db, participant, payload)
+    updated = update_participant(db, participant, payload)
+    participant_out = get_participant_out(db, updated.id)
+    if not participant_out:
+        raise HTTPException(status_code=404, detail="Participant not found")
+    return participant_out
 
 
 @router.delete("/{participant_id}", status_code=status.HTTP_204_NO_CONTENT)

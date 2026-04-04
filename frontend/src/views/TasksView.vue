@@ -148,7 +148,7 @@
             <el-option
               v-for="user in users"
               :key="user.id"
-              :label="user.full_name"
+              :label="user.username"
               :value="user.id"
             />
           </el-select>
@@ -190,27 +190,27 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 const { t } = useI18n();
-import { onMounted, reactive, ref } from "vue";
+import { onMounted, onUnmounted, reactive, ref, computed } from "vue";
 import { ElMessage } from "element-plus";
 
 import AppErrorAlert from "../components/AppErrorAlert.vue";
 import { notifyApiError } from "../utils/notify";
 import {
-  getTasks,
   updateTask,
   updateTaskStatus,
   type TaskListParams,
-  type TaskListResult,
   type TaskItem,
   type TaskPriority,
   type TaskStatus,
 } from "../api/tasks";
 import { getUsers, type UserItem } from "../api/users";
+import { useTaskCenterStore } from "../stores/taskCenterStore";
 
-const tasks = ref<TaskItem[]>([]);
+const taskCenterStore = useTaskCenterStore();
+const tasks = computed(() => taskCenterStore.tasks);
 const users = ref<UserItem[]>([]);
-const loading = ref(false);
-const error = ref<string | null>(null);
+const loading = computed(() => taskCenterStore.loading);
+const error = computed(() => taskCenterStore.error);
 const editDialogVisible = ref(false);
 const editingTask = ref<TaskItem | null>(null);
 const savingEdit = ref(false);
@@ -233,7 +233,7 @@ const editForm = reactive<{
 
 const currentPage = ref(1);
 const pageSize = 20;
-const totalCount = ref(0);
+const totalCount = computed(() => taskCenterStore.total);
 const sortBy = ref("id_desc");
 
 const filters = reactive<{
@@ -252,9 +252,6 @@ function applyFiltersAndRefresh() {
 }
 
 async function refreshTasks() {
-  loading.value = true;
-  error.value = null;
-  totalCount.value = 0;
   try {
     const params: TaskListParams = {
       limit: pageSize,
@@ -271,19 +268,28 @@ async function refreshTasks() {
     if (normalizedKeyword.length > 0) {
       params.keyword = normalizedKeyword;
     }
-    const result: TaskListResult = await getTasks(params);
-    tasks.value = result.items;
-    totalCount.value = result.total;
+    await taskCenterStore.fetchTasks(params);
+    await refreshUsers();
   } catch (err) {
-    error.value = notifyApiError(err, { prefix: t('task.loadFailed') });
-  } finally {
-    loading.value = false;
+    notifyApiError(err, { prefix: t('task.loadFailed') });
   }
 }
 
 async function refreshUsers() {
   try {
-    users.value = await getUsers();
+    const meetingIds = Array.from(new Set(tasks.value.map((t) => t.meeting_id).filter((id): id is number => typeof id === "number")));
+    if (meetingIds.length === 0) {
+      users.value = await getUsers({ scope: "selectable" });
+      return;
+    }
+    const buckets = await Promise.all(meetingIds.map((meetingId) => getUsers({ meeting_id: meetingId, scope: "selectable" })));
+    const merged = new Map<number, UserItem>();
+    for (const group of buckets) {
+      for (const user of group) {
+        merged.set(user.id, user);
+      }
+    }
+    users.value = Array.from(merged.values());
   } catch (err) {
     notifyApiError(err, { prefix: t('task.loadUserFailed') });
   }
@@ -302,11 +308,12 @@ function handleSortChange() {
 async function changeStatus(taskId: number, status: TaskStatus) {
   try {
     const updated = await updateTaskStatus(taskId, status);
-    const index = tasks.value.findIndex((item) => item.id === taskId);
+    const index = taskCenterStore.tasks.findIndex((item) => item.id === taskId);
     if (index >= 0) {
-      tasks.value[index] = updated;
+      taskCenterStore.tasks[index] = updated;
     }
     ElMessage.success(t('task.statusUpdateSuccess'));
+    window.dispatchEvent(new Event('tasks-updated'));
   } catch (err) {
     notifyApiError(err);
     await refreshTasks();
@@ -342,12 +349,13 @@ async function saveTaskEdit() {
       status: editForm.status,
       due_at: editForm.due_at,
     });
-    const index = tasks.value.findIndex((item) => item.id === updated.id);
+    const index = taskCenterStore.tasks.findIndex((item) => item.id === updated.id);
     if (index >= 0) {
-      tasks.value[index] = updated;
+      taskCenterStore.tasks[index] = updated;
     }
     ElMessage.success(t('task.updateSuccess'));
     editDialogVisible.value = false;
+    window.dispatchEvent(new Event('tasks-updated'));
   } catch (err) {
     notifyApiError(err, { prefix: t('task.updateFailed') });
   } finally {
@@ -356,8 +364,13 @@ async function saveTaskEdit() {
 }
 
 onMounted(async () => {
-  await refreshUsers();
   await refreshTasks();
+  await refreshUsers();
+  window.addEventListener('tasks-updated', refreshTasks);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('tasks-updated', refreshTasks);
 });
 
 function priorityLabel(p: string): string {
@@ -378,7 +391,7 @@ function formatDate(iso: string | null): string {
 function resolveAssigneeName(assigneeId: number | null): string {
   if (!assigneeId) return t('task.unassigned');
   const user = users.value.find((item) => item.id === assigneeId);
-  return user ? `${user.full_name}（${user.username}）` : `${t('task.userPrefix')}${assigneeId}`;
+  return user ? user.username : "已删除用户";
 }
 </script>
 

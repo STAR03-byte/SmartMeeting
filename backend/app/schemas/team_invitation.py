@@ -19,3 +19,14 @@ class TeamInvitationOut(BaseModel):
     updated_at: datetime
 
     model_config: ClassVar[ConfigDict] = ConfigDict(from_attributes=True)
+
+
+class TeamInviteLinkCreate(BaseModel):
+    expires_in_hours: int = 72
+
+
+class TeamInviteLinkOut(BaseModel):
+    team_id: int
+    invite_token: str
+    invite_path: str
+    expires_at: datetime

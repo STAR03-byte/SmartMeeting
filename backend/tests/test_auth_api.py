@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.core.database import get_db
+from typing import Any, cast
 
 from app.core.security import get_password_hash
 from app.models.audit_log import AuditLog
@@ -9,7 +10,7 @@ from app.models.audit_log import AuditLog
 @pytest.mark.usefixtures("client")
 def test_login_and_me_flow(client: TestClient) -> None:
     user_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "login_user",
             "email": "login_user@example.com",
@@ -50,7 +51,7 @@ def test_login_rejects_invalid_credentials(client: TestClient) -> None:
 @pytest.mark.usefixtures("client")
 def test_login_writes_audit_logs_for_success_and_failure(client: TestClient) -> None:
     user_resp = client.post(
-        "/api/v1/users",
+        "/api/v1/register",
         json={
             "username": "audit_login_user",
             "email": "audit_login_user@example.com",
@@ -74,7 +75,8 @@ def test_login_writes_audit_logs_for_success_and_failure(client: TestClient) -> 
     )
     assert ok_login_resp.status_code == 200
 
-    override_get_db = client.app.dependency_overrides[get_db]  # type: ignore[attr-defined]
+    app = cast(Any, client.app)
+    override_get_db = app.dependency_overrides[get_db]
     db_gen = override_get_db()
     db = next(db_gen)
     try:
@@ -101,3 +103,19 @@ def test_login_writes_audit_logs_for_success_and_failure(client: TestClient) -> 
         assert login_failed is not None
     finally:
         db_gen.close()
+
+
+@pytest.mark.usefixtures("client")
+def test_register_forces_member_role_even_if_admin_requested(client: TestClient) -> None:
+    resp = client.post(
+        "/api/v1/register",
+        json={
+            "username": "register_force_member",
+            "email": "register_force_member@example.com",
+            "password_hash": "plain-password",
+            "full_name": "Register Force Member",
+            "role": "admin",
+        },
+    )
+    assert resp.status_code == 201
+    assert resp.json()["role"] == "member"

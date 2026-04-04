@@ -9,11 +9,25 @@ from app.schemas.meeting_participant import MeetingParticipantCreate, MeetingPar
 from app.schemas.meeting_participant import MeetingParticipantOut
 
 
-def _build_participant_out(participant: MeetingParticipant, email: str | None) -> MeetingParticipantOut:
+def _build_participant_out(
+    participant: MeetingParticipant, 
+    email: str | None, 
+    username: str = "", 
+    full_name: str = ""
+) -> MeetingParticipantOut:
+    safe_username = username.strip() if username else ""
+    safe_full_name = full_name.strip() if full_name else ""
+    if not safe_username:
+        safe_username = "已删除用户"
+    if not safe_full_name:
+        safe_full_name = safe_username
+
     return MeetingParticipantOut(
         id=participant.id,
         meeting_id=participant.meeting_id,
         user_id=participant.user_id,
+        username=safe_username,
+        full_name=safe_full_name,
         email=email,
         role=participant.role,
         participant_role=participant.participant_role,
@@ -61,11 +75,19 @@ def list_participants_out(db: Session, meeting_id: int | None = None) -> list[Me
         query = query.filter(MeetingParticipant.meeting_id == meeting_id)
     participants = query.order_by(MeetingParticipant.id.desc()).all()
     user_ids = [participant.user_id for participant in participants]
-    user_email_map: dict[int, str] = {}
+    user_map: dict[int, User] = {}
     if user_ids:
         users = db.query(User).filter(User.id.in_(user_ids)).all()
-        user_email_map = {user.id: user.email for user in users}
-    return [_build_participant_out(participant, user_email_map.get(participant.user_id)) for participant in participants]
+        user_map = {user.id: user for user in users}
+    return [
+        _build_participant_out(
+            participant, 
+            user_map.get(participant.user_id).email if participant.user_id in user_map else None,
+            user_map.get(participant.user_id).username if participant.user_id in user_map else "",
+            user_map.get(participant.user_id).full_name if participant.user_id in user_map else ""
+        ) 
+        for participant in participants
+    ]
 
 
 
@@ -84,11 +106,19 @@ def list_participants_out_paginated(
         query = query.limit(limit)
     participants = query.all()
     user_ids = [participant.user_id for participant in participants]
-    user_email_map: dict[int, str] = {}
+    user_map: dict[int, User] = {}
     if user_ids:
         users = db.query(User).filter(User.id.in_(user_ids)).all()
-        user_email_map = {user.id: user.email for user in users}
-    return [_build_participant_out(participant, user_email_map.get(participant.user_id)) for participant in participants]
+        user_map = {user.id: user for user in users}
+    return [
+        _build_participant_out(
+            participant,
+            user_map.get(participant.user_id).email if participant.user_id in user_map else None,
+            user_map.get(participant.user_id).username if participant.user_id in user_map else "",
+            user_map.get(participant.user_id).full_name if participant.user_id in user_map else ""
+        )
+        for participant in participants
+    ]
 
 
 def count_participants(db: Session, meeting_id: int | None = None) -> int:
@@ -110,7 +140,9 @@ def get_participant_out(db: Session, participant_id: int) -> MeetingParticipantO
         return None
     user = db.query(User).filter(User.id == participant.user_id).first()
     email = user.email if user is not None else None
-    return _build_participant_out(participant, email)
+    username = user.username if user is not None else ""
+    full_name = user.full_name if user is not None else ""
+    return _build_participant_out(participant, email, username, full_name)
 
 
 def update_participant(

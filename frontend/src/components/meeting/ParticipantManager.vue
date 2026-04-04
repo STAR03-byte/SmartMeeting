@@ -30,7 +30,7 @@
             <el-option
               v-for="user in availableUsers"
               :key="user.id"
-              :label="`${user.full_name} (${user.username})`"
+              :label="user.username"
               :value="user.id"
             />
           </el-select>
@@ -46,8 +46,7 @@
         <ul v-else class="plain-list">
           <li v-for="participant in participants" :key="participant.id" class="participant-row">
             <div class="participant-main">
-              <strong>{{ resolveParticipantName(participant.user_id, participant.email) }}</strong>
-              <el-tag size="small" type="info">{{ participant.email || $t('participant.noEmail') }}</el-tag>
+              <strong>{{ participant.username }}</strong>
               <el-tag size="small" :type="attendanceTag(participant.attendance_status)">
                 {{ attendanceLabel(participant.attendance_status) }}
               </el-tag>
@@ -125,7 +124,7 @@ async function refreshParticipants() {
 
 async function refreshUsers() {
   try {
-    users.value = await getUsers();
+    users.value = await getUsers({ scope: "selectable", meeting_id: props.meetingId });
   } catch (err) {
     notifyApiError(err);
   }
@@ -172,14 +171,6 @@ async function removeParticipant(participantId: number) {
   } catch (err) {
     notifyApiError(err);
   }
-}
-
-function resolveParticipantName(userId: number, email: string | null): string {
-  const user = users.value.find((item) => item.id === userId);
-  if (user) {
-    return `${user.full_name} (${user.username})`;
-  }
-  return email ?? `用户 #${userId}`;
 }
 
 function attendanceLabel(status: string): string {

@@ -11,6 +11,7 @@ from app.models.user import User
 from app.models.team import Team
 from app.models.team_member import TeamMember
 from app.models.team_invitation import TeamInvitation
+from app.models.team_invite_link import TeamInviteLink
 
 __all__ = [
     "User",
@@ -24,4 +25,5 @@ __all__ = [
     "Team",
     "TeamMember",
     "TeamInvitation",
+    "TeamInviteLink",
 ]

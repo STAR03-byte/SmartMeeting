@@ -101,6 +101,7 @@
             filterable
             :placeholder="$t('meeting.organizerPlaceholder')"
             style="width: 100%"
+            :disabled="!canChooseOrganizer"
           >
             <el-option
               v-for="user in users"
@@ -148,7 +149,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 const { t } = useI18n();
-import { onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { Plus } from "@element-plus/icons-vue";
@@ -161,8 +162,10 @@ import type { MeetingCreatePayload, MeetingListParams, MeetingStatus } from "../
 import { getUsers, type UserItem } from "../api/users";
 import { createMeetingParticipant } from "../api/participants";
 import { getTeams, type Team } from "../api/teams";
+import { useAuthStore } from "../stores/authStore";
 
 const store = useMeetingStore();
+const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 
@@ -188,6 +191,8 @@ const createForm = reactive<MeetingCreatePayload>({
   location: null,
   team_id: null,
 });
+
+const canChooseOrganizer = computed(() => authStore.currentUser?.role === "admin");
 
 const createRules: FormRules = {
   title: [{ required: true, message: t('meeting.titlePlaceholder'), trigger: "blur" }],
@@ -220,7 +225,7 @@ async function loadMeetings() {
 }
 
 async function loadUsers() {
-  users.value = await getUsers();
+  users.value = await getUsers({ team_id: createForm.team_id ?? undefined, scope: "selectable" });
   if (!createForm.organizer_id && users.value.length > 0) {
     createForm.organizer_id = users.value[0].id;
   }
@@ -233,6 +238,17 @@ async function loadTeams() {
     console.warn(t('team.loadFailed'), e);
   }
 }
+
+watch(
+  () => createForm.team_id,
+  async () => {
+    await loadUsers();
+    if (!users.value.some((u) => u.id === createForm.organizer_id)) {
+      createForm.organizer_id = users.value[0]?.id ?? (authStore.currentUser?.id ?? 1);
+    }
+    selectedParticipantIds.value = selectedParticipantIds.value.filter((id) => users.value.some((u) => u.id === id));
+  }
+);
 
 function applyFilter() {
   currentPage.value = 1;
@@ -309,7 +325,7 @@ async function handleDelete(meetingId: number) {
 function resetCreateForm() {
   createForm.title = "";
   createForm.description = null;
-  createForm.organizer_id = users.value[0]?.id ?? 1;
+  createForm.organizer_id = authStore.currentUser?.id ?? users.value[0]?.id ?? 1;
   createForm.scheduled_start_at = null;
   createForm.scheduled_end_at = null;
   createForm.location = null;
@@ -345,7 +361,11 @@ function formatDate(iso: string | null): string {
 
 loadMeetings();
 onMounted(async () => {
-  await Promise.all([loadUsers(), loadTeams()]);
+  await Promise.all([loadTeams()]);
+  await loadUsers();
+  if (!canChooseOrganizer.value && authStore.currentUser) {
+    createForm.organizer_id = authStore.currentUser.id;
+  }
 });
 </script>
 

@@ -1,0 +1,3 @@
+USE smartmeeting;
+
+DROP TABLE IF EXISTS team_invite_links;

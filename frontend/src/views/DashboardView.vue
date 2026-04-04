@@ -112,15 +112,14 @@
             </div>
             <span>{{ $t('dashboard.taskManagement') }}</span>
           </router-link>
-          <router-link to="/users" class="action-item">
+          <router-link to="/invitations" class="action-item">
             <div class="action-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+                <path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3zm-8.27 4a2 2 0 0 1-3.46 0"/>
               </svg>
             </div>
-            <span>{{ $t('dashboard.userManagement') }}</span>
+            <span>{{ $t('dashboard.pendingInvitations') }}</span>
+            <el-badge v-if="pendingInvitationsCount > 0" :value="pendingInvitationsCount" class="invitation-badge" />
           </router-link>
         </div>
       </el-card>
@@ -129,16 +128,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 
 import { useAuthStore } from "../stores/authStore";
 import { useMeetingStore } from "../stores/meetingStore";
 import type { MeetingStatus } from "../api/types";
+import { getPendingInvitationsCount } from "../api/teamInvitations";
 
 const { t } = useI18n();
 const authStore = useAuthStore();
 const store = useMeetingStore();
+const pendingInvitationsCount = ref(0);
 
 const greeting = computed(() => {
   const hour = new Date().getHours();
@@ -183,8 +184,18 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleString("zh-CN");
 }
 
+const loadPendingInvitations = async () => {
+  try {
+    pendingInvitationsCount.value = await getPendingInvitationsCount();
+  } catch {
+    // 静默失败，不影响主页面显示
+    pendingInvitationsCount.value = 0;
+  }
+};
+
 onMounted(async () => {
   await store.fetchMeetings({ limit: 100, offset: 0 });
+  await loadPendingInvitations();
 });
 </script>
 
@@ -451,6 +462,10 @@ onMounted(async () => {
 .action-item span {
   font-weight: 600;
   font-size: 15px;
+}
+
+.invitation-badge {
+  margin-left: auto;
 }
 
 /* Mobile Adjustments */

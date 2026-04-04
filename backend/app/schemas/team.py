@@ -35,6 +35,8 @@ class TeamMemberOut(BaseModel):
 
     user_id: int
     user_name: str
+    full_name: str
+    email: str
     role: str
     joined_at: datetime
 
