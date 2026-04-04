@@ -159,8 +159,9 @@ async function register() {
   registerError.value = null;
   try {
     await registerUser(registerForm);
-    ElMessage.success("注册成功，请登录");
-    activeTab.value = "login";
+    await authStore.signIn(registerForm.username, registerForm.password_hash);
+    ElMessage.success("注册成功，已自动登录");
+    await router.push(resolveSafeRedirect(route.query.redirect));
   } catch (err) {
     registerError.value = notifyApiError(err, { prefix: "注册失败" });
   } finally {
