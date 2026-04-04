@@ -4,6 +4,7 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 import logging
+import re
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -41,6 +42,17 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     yield
 
 
+def _normalize_mysql_id_type(raw_type: str | None) -> str:
+    if not raw_type:
+        return "BIGINT UNSIGNED"
+    t = raw_type.strip().lower()
+    if t.startswith("bigint"):
+        return "BIGINT UNSIGNED" if "unsigned" in t else "BIGINT"
+    if t.startswith("int"):
+        return "INT UNSIGNED" if "unsigned" in t else "INT"
+    return "BIGINT UNSIGNED"
+
+
 def _ensure_mysql_team_features() -> None:
     with engine.begin() as connection:
         is_public_exists = connection.execute(
@@ -58,6 +70,37 @@ def _ensure_mysql_team_features() -> None:
         if not is_public_exists:
             connection.execute(text("ALTER TABLE teams ADD COLUMN is_public TINYINT(1) NOT NULL DEFAULT 0"))
 
+        team_id_raw_type = connection.execute(
+            text(
+                """
+                SELECT COLUMN_TYPE
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'teams'
+                  AND column_name = 'id'
+                LIMIT 1
+                """
+            )
+        ).scalar_one_or_none()
+        user_id_raw_type = connection.execute(
+            text(
+                """
+                SELECT COLUMN_TYPE
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'users'
+                  AND column_name = 'id'
+                LIMIT 1
+                """
+            )
+        ).scalar_one_or_none()
+
+        team_id_sql_type = _normalize_mysql_id_type(team_id_raw_type)
+        user_id_sql_type = _normalize_mysql_id_type(user_id_raw_type)
+
+        if not re.fullmatch(r"[A-Z ]+", team_id_sql_type) or not re.fullmatch(r"[A-Z ]+", user_id_sql_type):
+            raise RuntimeError("Invalid MySQL id type detected while ensuring team features")
+
         team_invitations_exists = connection.execute(
             text(
                 """
@@ -72,12 +115,12 @@ def _ensure_mysql_team_features() -> None:
         if not team_invitations_exists:
             connection.execute(
                 text(
-                    """
+                    f"""
                     CREATE TABLE team_invitations (
-                        id BIGINT NOT NULL AUTO_INCREMENT,
-                        team_id BIGINT NOT NULL,
-                        inviter_id BIGINT NOT NULL,
-                        invitee_id BIGINT NOT NULL,
+                        id {team_id_sql_type} NOT NULL AUTO_INCREMENT,
+                        team_id {team_id_sql_type} NOT NULL,
+                        inviter_id {user_id_sql_type} NOT NULL,
+                        invitee_id {user_id_sql_type} NOT NULL,
                         status VARCHAR(20) NOT NULL DEFAULT 'pending',
                         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
