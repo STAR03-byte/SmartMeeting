@@ -194,7 +194,11 @@ def update_task(db: Session, task: Task, payload: TaskUpdate) -> Task:
                 )
 
         if next_status == "done":
-            data["completed_at"] = datetime.now(UTC)
+            now_local = datetime.now()
+            created_at = task.created_at
+            if created_at.tzinfo is not None:
+                created_at = created_at.replace(tzinfo=None)
+            data["completed_at"] = now_local if now_local >= created_at else created_at
         elif task.status == "done" and next_status != "done":
             data["completed_at"] = None
 

@@ -198,6 +198,61 @@ def test_update_task_rejects_invalid_status_transition(client) -> None:
         db_gen.close()
 
 
+def test_update_task_done_sets_naive_completed_at(client) -> None:
+    db, db_gen = _db_from_client(client)
+    try:
+        meeting, assignee, reporter = _seed_meeting_context(db)
+        task = create_task(
+            db,
+            TaskCreate(
+                meeting_id=meeting.id,
+                title="完成检查",
+                assignee_id=assignee.id,
+                reporter_id=reporter.id,
+                status="todo",
+            ),
+        )
+
+        in_progress = update_task(db, task, TaskUpdate(status="in_progress"))
+        done = update_task(db, in_progress, TaskUpdate(status="done"))
+
+        assert done.completed_at is not None
+        assert done.completed_at.tzinfo is None
+        assert done.completed_at >= done.created_at
+    finally:
+        db_gen.close()
+
+
+def test_update_task_done_never_sets_completed_before_created(client) -> None:
+    db, db_gen = _db_from_client(client)
+    try:
+        meeting, assignee, reporter = _seed_meeting_context(db)
+        task = create_task(
+            db,
+            TaskCreate(
+                meeting_id=meeting.id,
+                title="边界检查",
+                assignee_id=assignee.id,
+                reporter_id=reporter.id,
+                status="todo",
+            ),
+        )
+
+        future_created_at = datetime.now() + timedelta(hours=1)
+        task.created_at = future_created_at
+        db.add(task)
+        db.commit()
+        db.refresh(task)
+
+        in_progress = update_task(db, task, TaskUpdate(status="in_progress"))
+        done = update_task(db, in_progress, TaskUpdate(status="done"))
+
+        assert done.completed_at is not None
+        assert done.completed_at >= done.created_at
+    finally:
+        db_gen.close()
+
+
 def test_task_rule_helpers_extract_priority_and_assignee() -> None:
     content = "请王伟今天完成发布，并跟进验收。"
 

@@ -21,6 +21,7 @@ from app.services.meeting_service import (
     generate_tasks_from_transcripts_with_llm,
     normalize_summary_text,
 )
+from app.services import meeting_service
 
 class _MetadataOwner(Protocol):
     metadata: MetaData
@@ -384,5 +385,77 @@ def test_generate_tasks_from_transcripts_with_llm_reuses_existing_tasks() -> Non
         assert len(reused_tasks) == 1
         assert reused_tasks[0].id == seeded_tasks[0].id
         assert reused_version == "existing-v1"
+    finally:
+        db.close()
+
+
+def test_resolve_assignee_id_by_name_matches_fullname_username_and_email_prefix() -> None:
+    db = make_session()
+    try:
+        db.add_all(
+            [
+                User(
+                    username="wanglei",
+                    email="wang.lei@example.com",
+                    password_hash="hashed_password_123",
+                    full_name="王磊",
+                    role="member",
+                ),
+                User(
+                    username="li_na",
+                    email="li.na@example.com",
+                    password_hash="hashed_password_123",
+                    full_name="Li Na",
+                    role="member",
+                ),
+            ]
+        )
+        db.commit()
+
+        wang = db.query(User).filter(User.username == "wanglei").first()
+        lina = db.query(User).filter(User.username == "li_na").first()
+        assert wang is not None
+        assert lina is not None
+
+        assert meeting_service.resolve_assignee_id_by_name(db, "王磊") == wang.id
+        assert meeting_service.resolve_assignee_id_by_name(db, "wang lei") == wang.id
+        assert meeting_service.resolve_assignee_id_by_name(db, "wang.lei") == wang.id
+        assert meeting_service.resolve_assignee_id_by_name(db, "LiNa") == lina.id
+        assert meeting_service.resolve_assignee_id_by_name(db, "li.na") == lina.id
+    finally:
+        db.close()
+
+
+def test_resolve_assignee_id_from_text_matches_embedded_aliases() -> None:
+    db = make_session()
+    try:
+        db.add_all(
+            [
+                User(
+                    username="wanglei",
+                    email="wang.lei@example.com",
+                    password_hash="hashed_password_123",
+                    full_name="王磊",
+                    role="member",
+                ),
+                User(
+                    username="lina",
+                    email="li.na@example.com",
+                    password_hash="hashed_password_123",
+                    full_name="Li Na",
+                    role="member",
+                ),
+            ]
+        )
+        db.commit()
+
+        wang = db.query(User).filter(User.username == "wanglei").first()
+        lina = db.query(User).filter(User.username == "lina").first()
+        assert wang is not None
+        assert lina is not None
+
+        assert meeting_service.resolve_assignee_id_from_text(db, "Wang Lei needs to deliver v1") == wang.id
+        assert meeting_service.resolve_assignee_id_from_text(db, "please ask wang.lei to send doc") == wang.id
+        assert meeting_service.resolve_assignee_id_from_text(db, "li.na should add test cases") == lina.id
     finally:
         db.close()

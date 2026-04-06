@@ -22,10 +22,72 @@ from app.services.llm_service import (
     ExtractedTask,
     LLMServiceError,
     extract_action_items as llm_extract_action_items,
+    generate_fallback_tasks,
     generate_meeting_summary as llm_generate_meeting_summary,
 )
+from app.core.config import settings
 from app.services.user_service import get_user
 from app.services.task_service import serialize_task_out
+
+
+def normalize_person_key(value: str | None) -> str:
+    if not value:
+        return ""
+    normalized = value.strip().lower()
+    normalized = re.sub(r"[\s._\-]+", "", normalized)
+    return normalized
+
+
+def resolve_assignee_id_by_name(db: Session, assignee_name: str | None) -> int | None:
+    target = normalize_person_key(assignee_name)
+    if not target:
+        return None
+
+    users = db.query(User).all()
+    alias_index: list[tuple[int, str]] = []
+    for user in users:
+        aliases = {
+            user.full_name,
+            user.username,
+            user.email.split("@", 1)[0] if user.email and "@" in user.email else user.email,
+        }
+        for alias in aliases:
+            normalized_alias = normalize_person_key(alias)
+            if normalized_alias:
+                alias_index.append((user.id, normalized_alias))
+
+    for user_id, alias in alias_index:
+        if alias == target:
+            return user_id
+
+    if len(target) >= 3:
+        for user_id, alias in alias_index:
+            if target in alias or alias in target:
+                return user_id
+
+    return None
+
+
+def resolve_assignee_id_from_text(db: Session, text: str | None) -> int | None:
+    normalized_text = normalize_person_key(text)
+    if not normalized_text:
+        return None
+
+    users = db.query(User).all()
+    for user in users:
+        aliases = {
+            user.full_name,
+            user.username,
+            user.email.split("@", 1)[0] if user.email and "@" in user.email else user.email,
+        }
+        for alias in aliases:
+            normalized_alias = normalize_person_key(alias)
+            if not normalized_alias:
+                continue
+            if len(normalized_alias) >= 3 and normalized_alias in normalized_text:
+                return user.id
+
+    return None
 
 
 def normalize_summary_text(summary: str) -> str:
@@ -310,13 +372,20 @@ def generate_tasks_from_transcripts(
     generated: list[Task] = []
     for transcript in transcripts:
         action_items = extract_action_items(transcript.content)
+        if not action_items:
+            should_try_fallback = any(keyword in transcript.content for keyword in settings.action_keyword_list)
+            if should_try_fallback:
+                fallback_items = generate_fallback_tasks(transcript.content)
+                action_items = [item["description"] for item in fallback_items if item.get("description")]
         for action in action_items:
             assignee_id = transcript.speaker_user_id
             assignee_name = infer_assignee_name(action)
             if assignee_name:
-                user = db.query(User).filter(User.full_name == assignee_name).first()
-                if user:
-                    assignee_id = user.id
+                matched_user_id = resolve_assignee_id_by_name(db, assignee_name)
+                if matched_user_id is not None:
+                    assignee_id = matched_user_id
+            if assignee_id is None:
+                assignee_id = resolve_assignee_id_from_text(db, action)
 
             task = Task(
                 meeting_id=meeting_id,
@@ -373,9 +442,14 @@ async def generate_tasks_from_transcripts_with_llm(
                 assignee_id = transcript.speaker_user_id
                 assignee_name = item["assignee_name"]
                 if assignee_name:
-                    user = db.query(User).filter(User.full_name == assignee_name).first()
-                    if user:
-                        assignee_id = user.id
+                    matched_user_id = resolve_assignee_id_by_name(db, assignee_name)
+                    if matched_user_id is not None:
+                        assignee_id = matched_user_id
+                if assignee_id is None:
+                    assignee_id = resolve_assignee_id_from_text(
+                        db,
+                        item.get("description") or item.get("title") or transcript.content,
+                    )
 
                 priority = (
                     item["priority"]
@@ -386,7 +460,11 @@ async def generate_tasks_from_transcripts_with_llm(
                     meeting_id=meeting_id,
                     transcript_id=transcript.id,
                     title=item["title"][:200],
-                    description=item["description"] or transcript.content,
+                    description=(
+                        f"负责人：{assignee_name}；{item['description'] or transcript.content}"
+                        if assignee_id is None and assignee_name
+                        else (item["description"] or transcript.content)
+                    ),
                     assignee_id=assignee_id,
                     reporter_id=None,
                     priority=priority,
@@ -397,13 +475,20 @@ async def generate_tasks_from_transcripts_with_llm(
             continue
 
         action_items = extract_action_items(transcript.content)
+        if not action_items:
+            should_try_fallback = any(keyword in transcript.content for keyword in settings.action_keyword_list)
+            if should_try_fallback:
+                fallback_items = generate_fallback_tasks(transcript.content)
+                action_items = [item["description"] for item in fallback_items if item.get("description")]
         for action in action_items:
             assignee_id = transcript.speaker_user_id
             assignee_name = infer_assignee_name(action)
             if assignee_name:
-                user = db.query(User).filter(User.full_name == assignee_name).first()
-                if user:
-                    assignee_id = user.id
+                matched_user_id = resolve_assignee_id_by_name(db, assignee_name)
+                if matched_user_id is not None:
+                    assignee_id = matched_user_id
+            if assignee_id is None:
+                assignee_id = resolve_assignee_id_from_text(db, action)
 
             task = Task(
                 meeting_id=meeting_id,
