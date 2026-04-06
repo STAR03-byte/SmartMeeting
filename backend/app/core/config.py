@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     db_auto_fallback_sqlite: bool = True
     sqlite_path: str = "backend/dev.db"
 
+    # Database Connection Pool (Production Settings)
+    db_pool_size: int = 10                      # 连接池大小（默认 10）
+    db_max_overflow: int = 20                   # 超出连接池大小时的最大连接数
+    db_pool_timeout: int = 30                   # 获取连接超时时间（秒）
+    db_pool_recycle: int = 3600                 # 连接回收时间（秒），防止 MySQL 超时断开
+
     # Task extraction keywords (fallback when LLM unavailable)
     action_keywords: str = "请,负责,需要,完成,提交,跟进"
     high_priority_keywords: str = "今天,今日,本周,尽快,立即,截止,风险"
