@@ -112,6 +112,8 @@ export default {
     deleteConfirm: '确认删除此会议？',
     workbench: '会议工作台',
     organizer: '组织者',
+    organizerColon: '组织者：',
+    statusColon: '状态：',
     organizerPlaceholder: '请选择组织者',
     organizerRequired: '请选择组织者',
     statusPlanned: '计划中',

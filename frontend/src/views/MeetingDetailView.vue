@@ -26,7 +26,7 @@
               <h2>{{ store.currentMeeting.title }}</h2>
               <p>{{ store.currentMeeting.description || $t('team.noDescription') }}</p>
               <p class="organizer-line">
-                组织者：{{ store.currentMeeting.organizer.full_name }} · 状态：{{ statusLabel(store.currentMeeting.status) }}
+                {{ $t('meeting.organizerColon') }}{{ store.currentMeeting.organizer.full_name }} · {{ $t('meeting.statusColon') }}{{ statusLabel(store.currentMeeting.status) }}
               </p>
             </div>
             <div class="summary-actions">

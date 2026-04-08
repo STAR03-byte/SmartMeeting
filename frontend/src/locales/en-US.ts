@@ -112,6 +112,8 @@ export default {
     deleteConfirm: 'Confirm delete this meeting?',
     workbench: 'Meeting Workbench',
     organizer: 'Organizer',
+    organizerColon: 'Organizer: ',
+    statusColon: 'Status: ',
     organizerPlaceholder: 'Please select an organizer',
     organizerRequired: 'Please select an organizer',
     statusPlanned: 'Planned',
