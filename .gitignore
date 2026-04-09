@@ -237,3 +237,9 @@ node_modules/
 
 # Test coverage
 frontend/coverage/
+
+# Hugging Face model cache (pyannote, whisper, etc.)
+**/hf-cache/
+**/models--pyannote/
+**/storage/models/
+backend/backend/storage/

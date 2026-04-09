@@ -110,6 +110,41 @@ class SpeakerDiarizationService:
             logger.error(f"Failed to load diarization pipeline: {e}")
             self._pipeline = None
 
+    @staticmethod
+    def _extract_tracks_with_labels(diarization_result: Any) -> list[tuple[Any, str]]:
+        """兼容 pyannote.audio 2.x/3.x 的结果结构，统一提取 (segment, speaker_label)。"""
+
+        annotation = getattr(diarization_result, "speaker_diarization", diarization_result)
+
+        tracks: list[tuple[Any, str]] = []
+
+        # 常见结构：pyannote.core.Annotation
+        if hasattr(annotation, "itertracks"):
+            for track_info in annotation.itertracks(yield_label=True):
+                if not isinstance(track_info, tuple):
+                    continue
+                if len(track_info) >= 3:
+                    segment = track_info[0]
+                    speaker = track_info[2]
+                elif len(track_info) == 2:
+                    segment, speaker = track_info
+                else:
+                    continue
+                if hasattr(segment, "start") and hasattr(segment, "end"):
+                    tracks.append((segment, str(speaker)))
+            return tracks
+
+        # 兜底：支持可迭代的 (segment, label) 结果
+        if hasattr(annotation, "__iter__"):
+            for item in annotation:
+                if not isinstance(item, tuple) or len(item) < 2:
+                    continue
+                segment, speaker = item[0], item[1]
+                if hasattr(segment, "start") and hasattr(segment, "end"):
+                    tracks.append((segment, str(speaker)))
+
+        return tracks
+
     def diarize_audio(
         self,
         audio_path: str | Path,
@@ -137,8 +172,14 @@ class SpeakerDiarizationService:
                     # 使用 librosa 加载音频，绕过 torchcodec 在 Windows 上的兼容性问题
                     librosa = importlib.import_module("librosa")
                     y, sr = librosa.load(str(audio_path), sr=None, mono=True)
+
+                    torch_module = self._torch_module
+                    if torch_module is None:
+                        logger.error("Diarization failed: torch module is unavailable")
+                        return []
+
                     # 转换为 torch tensor 格式 (1, samples)
-                    waveform = self._torch_module.from_numpy(y).unsqueeze(0).float()
+                    waveform = torch_module.from_numpy(y).unsqueeze(0).float()
                     input_audio: dict[str, Any] = {
                         "waveform": waveform,
                         "sample_rate": int(sr),
@@ -157,7 +198,7 @@ class SpeakerDiarizationService:
                 speaker_mapping = {}
                 current_id = 0
 
-                for turn, _, speaker in diarization.itertracks(yield_label=True):
+                for turn, speaker in self._extract_tracks_with_labels(diarization):
                     if speaker not in speaker_mapping:
                         speaker_mapping[speaker] = current_id
                         current_id += 1

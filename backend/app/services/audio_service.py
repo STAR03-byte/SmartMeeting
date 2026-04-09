@@ -195,7 +195,9 @@ async def transcribe_latest_audio(db: Session, meeting_id: int, user_id: int | N
         if diarization_segments:
             diarization_success = True
             for transcript in created_segments:
-                t_mid = (transcript.start_time_sec or 0) + ((transcript.end_time_sec or 0) - (transcript.start_time_sec or 0)) / 2
+                start_sec = float(transcript.start_time_sec or 0)
+                end_sec = float(transcript.end_time_sec or 0)
+                t_mid = start_sec + (end_sec - start_sec) / 2
                 best_match = None
                 for d_seg in diarization_segments:
                     if d_seg.start <= t_mid <= d_seg.end:

@@ -3,14 +3,41 @@
 import asyncio
 import importlib
 import logging
+import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import Protocol, TypedDict, cast
 
 from app.core.config import settings
+
+
+def _find_ffmpeg_executable(name: str) -> str | None:
+    if sys.platform != "win32":
+        return shutil.which(name)
+    
+    standard_path = shutil.which(name)
+    if standard_path:
+        return standard_path
+    
+    windows_installation_roots = [
+        Path(r"C:\ffmpeg\bin"),
+        Path(r"C:\Program Files\ffmpeg\bin"),
+        Path(r"C:\Program Files (x86)\ffmpeg\bin"),
+        Path(r"D:\tools\ffmpeg-8.1-full_build-shared\bin"),
+        Path.home() / "ffmpeg" / "bin",
+    ]
+    path_entries_from_env = [Path(p) for p in os.environ.get("PATH", "").split(os.pathsep) if p]
+    
+    for base_path in windows_installation_roots + path_entries_from_env:
+        candidate = base_path / f"{name}.exe"
+        if candidate.exists():
+            return str(candidate)
+    
+    return None
 
 logger = logging.getLogger(__name__)
 
@@ -166,12 +193,13 @@ class WhisperTranscriber:
         return language_code
 
     def _get_audio_duration_seconds(self, file_path: Path) -> float:
-        if shutil.which("ffprobe") is None:
+        ffprobe_path = _find_ffmpeg_executable("ffprobe")
+        if ffprobe_path is None:
             raise WhisperServiceError("ffprobe not found. Install ffmpeg or add it to PATH.")
 
         result = subprocess.run(
             [
-                "ffprobe",
+                ffprobe_path,
                 "-v",
                 "error",
                 "-show_entries",
@@ -198,12 +226,13 @@ class WhisperTranscriber:
 
     def _build_speech_ranges(self, file_path: Path) -> list[tuple[float, float]]:
         duration = self._get_audio_duration_seconds(file_path)
-        if shutil.which("ffmpeg") is None:
+        ffmpeg_path = _find_ffmpeg_executable("ffmpeg")
+        if ffmpeg_path is None:
             raise WhisperServiceError("ffmpeg not found. Install ffmpeg or add it to PATH.")
 
         result = subprocess.run(
             [
-                "ffmpeg",
+                ffmpeg_path,
                 "-hide_banner",
                 "-nostdin",
                 "-i",

@@ -2,6 +2,7 @@
 
 from pathlib import Path as FilePath
 from typing import Annotated
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, HTTPException, Path, Query, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
@@ -541,6 +542,8 @@ def stream_audio_api(
         media_type=audio.content_type,
         headers={
             "Accept-Ranges": "bytes",
-            "Content-Disposition": f'inline; filename="{audio.filename}"',
+            "Content-Disposition": (
+                f"inline; filename*=UTF-8''{quote(audio.filename)}"
+            ),
         },
     )

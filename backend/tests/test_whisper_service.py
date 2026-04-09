@@ -1,12 +1,31 @@
 from __future__ import annotations
 
 import math
+import shutil
 import subprocess
 import wave
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from app.services.whisper_service import WhisperTranscriber
+
+
+def _find_ffmpeg() -> str:
+    result = shutil.which("ffmpeg")
+    if result:
+        return result
+    common_paths = [
+        Path(r"C:\ffmpeg\bin"),
+        Path(r"C:\Program Files\ffmpeg\bin"),
+        Path(r"C:\Program Files (x86)\ffmpeg\bin"),
+        Path(r"D:\tools\ffmpeg-8.1-full_build-shared\bin"),
+        Path.home() / "ffmpeg" / "bin",
+    ]
+    for base in common_paths:
+        candidate = base / "ffmpeg.exe"
+        if candidate.exists():
+            return str(candidate)
+    return "ffmpeg"
 
 
 def _write_tone_wav(path: Path) -> None:
@@ -36,9 +55,10 @@ def _write_tone_wav(path: Path) -> None:
 
 
 def _run_silencedetect(path: Path) -> str:
+    ffmpeg_path = _find_ffmpeg()
     result = subprocess.run(
         [
-            "ffmpeg",
+            ffmpeg_path,
             "-hide_banner",
             "-nostdin",
             "-i",
