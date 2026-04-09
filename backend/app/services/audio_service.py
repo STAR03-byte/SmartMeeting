@@ -185,9 +185,15 @@ async def transcribe_latest_audio(db: Session, meeting_id: int, user_id: int | N
         db.refresh(transcript)
 
     # Diarization Logic
+    diarization_success = False
     if settings.enable_speaker_diarization:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Speaker diarization enabled, processing audio: {latest_audio.storage_path}")
         diarization_segments = diarize_audio(latest_audio.storage_path)
+        logger.info(f"Diarization returned {len(diarization_segments)} segments")
         if diarization_segments:
+            diarization_success = True
             for transcript in created_segments:
                 t_mid = (transcript.start_time_sec or 0) + ((transcript.end_time_sec or 0) - (transcript.start_time_sec or 0)) / 2
                 best_match = None
@@ -195,7 +201,7 @@ async def transcribe_latest_audio(db: Session, meeting_id: int, user_id: int | N
                     if d_seg.start <= t_mid <= d_seg.end:
                         best_match = d_seg
                         break
-                
+
                 if best_match is None:
                     # find closest
                     closest = None
@@ -210,9 +216,14 @@ async def transcribe_latest_audio(db: Session, meeting_id: int, user_id: int | N
                 if best_match:
                     transcript.speaker_id = best_match.speaker_id
                     transcript.speaker_name = best_match.speaker
+                    logger.debug(f"Assigned speaker {best_match.speaker} to segment {transcript.segment_index}")
             db.commit()
             for transcript in created_segments:
                 db.refresh(transcript)
+            logger.info(f"Speaker diarization completed for {len(created_segments)} transcripts")
 
-    participants = _fetch_meeting_participants(db, meeting_id)
-    return _assign_speaker_labels(created_segments, participants)
+    if not diarization_success:
+        participants = _fetch_meeting_participants(db, meeting_id)
+        return _assign_speaker_labels(created_segments, participants)
+
+    return created_segments
