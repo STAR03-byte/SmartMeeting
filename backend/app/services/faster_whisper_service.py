@@ -3,6 +3,7 @@
 import asyncio
 import importlib
 import logging
+import os
 import shutil
 from pathlib import Path
 from typing import Any
@@ -32,6 +33,7 @@ class FasterWhisperTranscriber:
             return
 
         try:
+            self._setup_windows_cuda_dll_search_paths()
             faster_whisper = importlib.import_module("faster_whisper")
         except ImportError as exc:
             raise WhisperServiceError("faster-whisper not installed.") from exc
@@ -124,6 +126,45 @@ class FasterWhisperTranscriber:
         except Exception as exc:
             self._disabled_reason = f"Failed to load faster-whisper model: {exc}"
             raise WhisperServiceError(self._disabled_reason) from exc
+
+    def _setup_windows_cuda_dll_search_paths(self) -> None:
+        """在 Windows 下补充 CUDA DLL 搜索路径，避免 cublas64_12.dll 找不到。"""
+        if os.name != "nt":
+            return
+        add_dll_directory = getattr(os, "add_dll_directory", None)
+        if not callable(add_dll_directory):
+            return
+
+        candidate_dirs: list[Path] = []
+
+        # 1) PyTorch 自带 CUDA 运行时目录（最常见）
+        try:
+            torch_module = importlib.import_module("torch")
+            torch_file = getattr(torch_module, "__file__", None)
+            if isinstance(torch_file, str) and torch_file:
+                torch_lib_dir = Path(torch_file).resolve().parent / "lib"
+                candidate_dirs.append(torch_lib_dir)
+        except Exception:
+            pass
+
+        # 2) 系统 CUDA 安装目录
+        cuda_path = os.environ.get("CUDA_PATH", "").strip()
+        if cuda_path:
+            candidate_dirs.append(Path(cuda_path) / "bin")
+
+        # 3) 常见默认安装目录（若环境变量缺失）
+        program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
+        nvidia_cuda = Path(program_files) / "NVIDIA GPU Computing Toolkit" / "CUDA"
+        if nvidia_cuda.exists():
+            for version_dir in sorted(nvidia_cuda.iterdir(), reverse=True):
+                candidate_dirs.append(version_dir / "bin")
+
+        for dll_dir in candidate_dirs:
+            try:
+                if dll_dir.exists():
+                    add_dll_directory(str(dll_dir))
+            except Exception:
+                continue
 
     def _build_initial_prompt(self, hotwords: tuple[str, ...] | None = None) -> str | None:
         prompt_terms = hotwords if hotwords is not None else tuple(
