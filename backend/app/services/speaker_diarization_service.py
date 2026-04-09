@@ -26,17 +26,26 @@ class SpeakerDiarizationService:
         self._torch_module: Any | None = None
         self._pyannote_available: bool | None = None
 
+    @staticmethod
+    def _suppress_pyannote_warnings() -> None:
+        warnings.filterwarnings(
+            "ignore",
+            message=r".*torchcodec is not installed correctly.*",
+            category=UserWarning,
+        )
+        warnings.filterwarnings(
+            "ignore",
+            message=r".*TensorFloat-32.*",
+            category=UserWarning,
+        )
+
     def _ensure_pyannote(self) -> bool:
         if self._pyannote_available is not None:
             return self._pyannote_available
 
         try:
             with warnings.catch_warnings():
-                warnings.filterwarnings(
-                    "ignore",
-                    message=r".*torchcodec is not installed correctly.*",
-                    category=UserWarning,
-                )
+                self._suppress_pyannote_warnings()
                 pyannote_audio = importlib.import_module("pyannote.audio")
             torch_module = importlib.import_module("torch")
             self._pipeline_cls = pyannote_audio.Pipeline
@@ -118,45 +127,46 @@ class SpeakerDiarizationService:
         pipeline = self._pipeline
 
         try:
-            if self._torch_module is not None and self._torch_module.cuda.is_available():
-                self._torch_module.cuda.empty_cache()
+            with warnings.catch_warnings():
+                self._suppress_pyannote_warnings()
 
-            try:
-                torchaudio = importlib.import_module("torchaudio")
-                waveform, sample_rate = torchaudio.load(str(audio_path))
-                input_audio: dict[str, Any] = {
-                    "waveform": waveform,
-                    "sample_rate": int(sample_rate),
-                }
-                diarization = pipeline(
-                    input_audio,
-                    min_speakers=min_speakers,
-                    max_speakers=max_speakers,
-                )
-            except Exception:
-                diarization = pipeline(
-                    str(audio_path),
-                    min_speakers=min_speakers,
-                    max_speakers=max_speakers,
-                )
-            
-            segments = []
-            speaker_mapping = {}
-            current_id = 0
-            
-            for turn, _, speaker in diarization.itertracks(yield_label=True):
-                if speaker not in speaker_mapping:
-                    speaker_mapping[speaker] = current_id
-                    current_id += 1
-                    
-                segments.append(SpeakerSegment(
-                    start=turn.start,
-                    end=turn.end,
-                    speaker=f"SPEAKER_{speaker_mapping[speaker]:02d}",
-                    speaker_id=speaker_mapping[speaker]
-                ))
-                
-            return segments
+                if self._torch_module is not None and self._torch_module.cuda.is_available():
+                    self._torch_module.cuda.empty_cache()
+
+                try:
+                    torchaudio = importlib.import_module("torchaudio")
+                    waveform, sample_rate = torchaudio.load(str(audio_path))
+                    input_audio: dict[str, Any] = {
+                        "waveform": waveform,
+                        "sample_rate": int(sample_rate),
+                    }
+                    diarization = pipeline(
+                        input_audio,
+                        min_speakers=min_speakers,
+                        max_speakers=max_speakers,
+                    )
+                except Exception as e:
+                    # 明确禁止回退到文件路径模式，避免触发 pyannote 内部 AudioDecoder 未定义错误
+                    logger.error("Diarization in-memory decode failed: %s", e)
+                    return []
+
+                segments = []
+                speaker_mapping = {}
+                current_id = 0
+
+                for turn, _, speaker in diarization.itertracks(yield_label=True):
+                    if speaker not in speaker_mapping:
+                        speaker_mapping[speaker] = current_id
+                        current_id += 1
+
+                    segments.append(SpeakerSegment(
+                        start=turn.start,
+                        end=turn.end,
+                        speaker=f"SPEAKER_{speaker_mapping[speaker]:02d}",
+                        speaker_id=speaker_mapping[speaker]
+                    ))
+
+                return segments
         except Exception as e:
             logger.error(f"Diarization failed: {e}")
             return []
