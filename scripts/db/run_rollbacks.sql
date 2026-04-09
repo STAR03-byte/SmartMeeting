@@ -2,6 +2,7 @@
 -- 用法: 按需注释不需要的回滚步骤
 
 SOURCE database/rollback/rollback_011_hotwords.sql;
+SOURCE database/rollback/rollback_019_task_reminder_at.sql;
 SOURCE database/rollback/rollback_010_speaker.sql;
 SOURCE database/rollback/rollback_009_to_008.sql;
 SOURCE database/rollback/rollback_008_to_007.sql;

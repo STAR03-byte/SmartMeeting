@@ -67,10 +67,6 @@ def _assert_task_permission(task, meeting, current_user: CurrentUserOut) -> None
         return
     if meeting.organizer_id == current_user.id:
         return
-    if task.assignee_id == current_user.id:
-        return
-    if task.reporter_id == current_user.id:
-        return
     raise HTTPException(status_code=403, detail="无权管理此任务")
 
 

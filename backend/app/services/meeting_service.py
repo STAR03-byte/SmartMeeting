@@ -1,6 +1,8 @@
 """会议服务层。"""
 
 from datetime import UTC, datetime
+import logging
+from pathlib import Path
 from secrets import token_urlsafe
 import re
 
@@ -28,6 +30,8 @@ from app.services.llm_service import (
 from app.core.config import settings
 from app.services.user_service import get_user
 from app.services.task_service import serialize_task_out
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_person_key(value: str | None) -> str:
@@ -323,6 +327,48 @@ def delete_meeting(db: Session, meeting: Meeting) -> None:
     )
     db.delete(meeting)
     db.commit()
+
+
+def clear_meeting_content(
+    db: Session,
+    meeting: Meeting,
+    *,
+    clear_transcripts: bool = True,
+    clear_tasks: bool = True,
+    clear_summary: bool = True,
+    clear_audios: bool = True,
+    reset_status: bool = True,
+) -> Meeting:
+    if clear_audios:
+        audios = db.query(MeetingAudio).filter(MeetingAudio.meeting_id == meeting.id).all()
+        for audio in audios:
+            storage_path = Path(audio.storage_path)
+            try:
+                storage_path.unlink(missing_ok=True)
+            except OSError as exc:
+                logger.warning("Failed to remove audio file when clearing meeting %s: %s", meeting.id, exc)
+        _ = db.query(MeetingAudio).filter(MeetingAudio.meeting_id == meeting.id).delete(synchronize_session=False)
+
+    if clear_tasks:
+        _ = db.query(Task).filter(Task.meeting_id == meeting.id).delete(synchronize_session=False)
+
+    if clear_transcripts:
+        _ = db.query(MeetingTranscript).filter(MeetingTranscript.meeting_id == meeting.id).delete(synchronize_session=False)
+
+    if clear_summary:
+        meeting.summary = None
+        meeting.postprocessed_at = None
+        meeting.postprocess_version = None
+
+    if reset_status:
+        meeting.actual_start_at = None
+        meeting.actual_end_at = None
+        meeting.status = "planned"
+
+    db.add(meeting)
+    db.commit()
+    db.refresh(meeting)
+    return meeting
 
 
 def build_meeting_summary(transcripts: list[MeetingTranscript]) -> str:

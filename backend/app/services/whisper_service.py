@@ -14,10 +14,11 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-_MIN_SILENCE_SECONDS = 0.5
-_SILENCE_NOISE_DB = -35.0
-_KEEP_SILENCE_SECONDS = 0.2
-_MIN_SEGMENT_SECONDS = 0.4
+# VAD参数现在从配置读取，支持动态调优
+_MIN_SILENCE_SECONDS = settings.vad_min_silence_seconds
+_SILENCE_NOISE_DB = settings.vad_silence_noise_db
+_KEEP_SILENCE_SECONDS = settings.vad_keep_silence_seconds
+_MIN_SEGMENT_SECONDS = settings.vad_min_segment_seconds
 
 _SILENCE_START_RE = re.compile(r"silence_start:\s*(?P<time>\d+(?:\.\d+)?)")
 _SILENCE_END_RE = re.compile(r"silence_end:\s*(?P<time>\d+(?:\.\d+)?)")
@@ -131,6 +132,16 @@ class WhisperTranscriber:
                 cuda = getattr(torch_module, "cuda", None)
                 is_available = getattr(cuda, "is_available", None)
                 device = "cuda" if callable(is_available) and bool(is_available()) else "cpu"
+            elif device == "cuda":
+                # 强制使用 cuda 时，检查 GPU 是否可用
+                try:
+                    torch_module = importlib.import_module("torch")
+                    if not torch_module.cuda.is_available():
+                        logger.warning("CUDA requested but GPU not available, falling back to CPU")
+                        device = "cpu"
+                except ImportError:
+                    logger.warning("PyTorch not available, falling back to CPU")
+                    device = "cpu"
             logger.info("Loading Whisper model: %s on %s", settings.whisper_model, device)
             self._model = cast(
                 WhisperModelProtocol,

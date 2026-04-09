@@ -16,9 +16,37 @@ interface AuthState {
 
 const STORAGE_KEY = "smartmeeting_access_token";
 
+function hasBrowserStorage(): boolean {
+  return typeof window !== "undefined";
+}
+
+function getStoredToken(): string | null {
+  if (!hasBrowserStorage()) {
+    return null;
+  }
+  const sessionToken = sessionStorage.getItem(STORAGE_KEY);
+  if (sessionToken) {
+    return sessionToken;
+  }
+  return localStorage.getItem(STORAGE_KEY);
+}
+
+function setStoredToken(token: string | null): void {
+  if (!hasBrowserStorage()) {
+    return;
+  }
+  if (token) {
+    sessionStorage.setItem(STORAGE_KEY, token);
+    localStorage.removeItem(STORAGE_KEY);
+    return;
+  }
+  sessionStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(STORAGE_KEY);
+}
+
 export const useAuthStore = defineStore("auth", {
   state: (): AuthState => ({
-    token: localStorage.getItem(STORAGE_KEY),
+    token: getStoredToken(),
     currentUser: null,
     loading: false,
     error: null,
@@ -26,11 +54,7 @@ export const useAuthStore = defineStore("auth", {
   actions: {
     setToken(token: string | null) {
       this.token = token;
-      if (token) {
-        localStorage.setItem(STORAGE_KEY, token);
-      } else {
-        localStorage.removeItem(STORAGE_KEY);
-      }
+      setStoredToken(token);
     },
     async signIn(username: string, password: string) {
       this.loading = true;

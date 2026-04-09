@@ -198,6 +198,34 @@ def test_update_task_rejects_invalid_status_transition(client) -> None:
         db_gen.close()
 
 
+def test_update_task_rejects_reminder_after_due(client) -> None:
+    db, db_gen = _db_from_client(client)
+    try:
+        meeting, assignee, reporter = _seed_meeting_context(db)
+        task = create_task(
+            db,
+            TaskCreate(
+                meeting_id=meeting.id,
+                title="提醒时间校验",
+                assignee_id=assignee.id,
+                reporter_id=reporter.id,
+                status="todo",
+            ),
+        )
+
+        with pytest.raises(Exception, match="reminder_at must be before due_at"):
+            update_task(
+                db,
+                task,
+                TaskUpdate(
+                    due_at=datetime.now(UTC) + timedelta(hours=1),
+                    reminder_at=datetime.now(UTC) + timedelta(hours=2),
+                ),
+            )
+    finally:
+        db_gen.close()
+
+
 def test_update_task_done_sets_naive_completed_at(client) -> None:
     db, db_gen = _db_from_client(client)
     try:

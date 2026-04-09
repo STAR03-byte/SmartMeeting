@@ -15,6 +15,11 @@ os.environ.setdefault("DB_AUTO_FALLBACK_SQLITE", "false")
 os.environ.setdefault("SQLITE_PATH", "backend/test.db")
 os.environ.setdefault("LLM_PROVIDER", "mock")
 os.environ.setdefault("LLM_FALLBACK_PROVIDER", "none")
+os.environ.setdefault("FASTER_WHISPER_REQUIRE_GPU", "false")
+os.environ.setdefault("FASTER_WHISPER_FALLBACK_TO_WHISPER", "true")
+os.environ.setdefault("FASTER_WHISPER_LOCAL_FILES_ONLY", "false")
+os.environ.setdefault("WHISPER_ALLOW_MOCK_FALLBACK", "true")
+os.environ.setdefault("ENABLE_SPEAKER_DIARIZATION", "false")
 
 import pytest
 from fastapi.testclient import TestClient

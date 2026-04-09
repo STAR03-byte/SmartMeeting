@@ -164,6 +164,7 @@ def serialize_task_out(task: Task, meeting=None) -> dict[str, object]:
         "status": task.status,
         "progress_note": task.progress_note,
         "due_at": task.due_at,
+        "reminder_at": task.reminder_at,
         "completed_at": task.completed_at,
         "is_overdue": is_overdue,
         "is_due_soon": is_due_soon,
@@ -182,6 +183,11 @@ def update_task(db: Session, task: Task, payload: TaskUpdate) -> Task:
     """更新任务。"""
 
     data = payload.model_dump(exclude_unset=True)
+
+    next_due_at = data.get("due_at", task.due_at)
+    next_reminder_at = data.get("reminder_at", task.reminder_at)
+    if next_due_at is not None and next_reminder_at is not None and next_reminder_at >= next_due_at:
+        raise HTTPException(status_code=400, detail="reminder_at must be before due_at")
 
     if "status" in data:
         next_status = data["status"]

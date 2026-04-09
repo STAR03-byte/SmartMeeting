@@ -50,6 +50,14 @@ export async function createMeeting(payload: MeetingCreatePayload): Promise<Meet
   return resp.data;
 }
 
+export interface MeetingClearContentPayload {
+  clear_transcripts?: boolean;
+  clear_tasks?: boolean;
+  clear_summary?: boolean;
+  clear_audios?: boolean;
+  reset_status?: boolean;
+}
+
 export async function updateMeeting(meetingId: number, data: MeetingUpdatePayload): Promise<Meeting> {
   const resp = await apiClient.patch<Meeting>(`/api/v1/meetings/${meetingId}`, data);
   return resp.data;
@@ -57,6 +65,14 @@ export async function updateMeeting(meetingId: number, data: MeetingUpdatePayloa
 
 export async function deleteMeeting(meetingId: number): Promise<void> {
   await apiClient.delete(`/api/v1/meetings/${meetingId}`);
+}
+
+export async function clearMeetingContent(
+  meetingId: number,
+  payload: MeetingClearContentPayload,
+): Promise<Meeting> {
+  const resp = await apiClient.post<Meeting>(`/api/v1/meetings/${meetingId}/clear-content`, payload);
+  return resp.data;
 }
 
 export async function getMeeting(meetingId: number): Promise<MeetingDetail> {

@@ -1,6 +1,7 @@
 import { ref, computed } from "vue";
 import { ElMessage } from "element-plus";
 import { useMeetingStore } from "../stores/meetingStore";
+import { updateMeeting } from "../api/meetings";
 import { notifyApiError } from "../utils/notify";
 import { buildRecordingFile, pickRecordingMimeType } from "../utils/recorder";
 
@@ -55,6 +56,13 @@ export function useRecording(meetingId: number) {
       });
 
       mediaRecorder.start();
+      await updateMeeting(meetingId, {
+        actual_start_at: new Date().toISOString(),
+        status: "ongoing",
+      });
+      if (store.currentMeeting?.id === meetingId) {
+        store.currentMeeting.status = "ongoing";
+      }
       recordingState.value = "recording";
       startRealtimePolling();
       ElMessage.success("已开始录音");
@@ -112,6 +120,12 @@ export function useRecording(meetingId: number) {
       }
       const file = buildRecordingFile(recordedChunks, recordingMimeType.value, meetingId, "online-recording");
       await store.uploadAudioAndTranscribe(meetingId, file);
+      await updateMeeting(meetingId, {
+        actual_end_at: new Date().toISOString(),
+        status: "done",
+      });
+      await store.fetchMeetingDetail(meetingId);
+      await store.fetchMeetings();
       ElMessage.success("录音上传并转写完成");
     } catch (err) {
       notifyApiError(err);

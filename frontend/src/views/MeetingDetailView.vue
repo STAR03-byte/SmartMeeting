@@ -31,6 +31,7 @@
             </div>
             <div class="summary-actions">
               <el-button @click="reloadMeeting">{{ $t('common.refresh') }}</el-button>
+              <el-button type="danger" plain @click="clearDialogVisible = true">{{ $t('meeting.clearContent') }}</el-button>
               <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="copyShareLink">{{ $t('meeting.generateShareLink') }}</el-button>
               <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="distributeByEmail">{{ $t('meeting.emailDistribute') }}</el-button>
               <el-button type="primary" @click="openTaskDialog">{{ $t('meeting.newTask') }}</el-button>
@@ -62,6 +63,20 @@
         </pane>
       </splitpanes>
     </div>
+
+    <el-dialog v-model="clearDialogVisible" :title="$t('meeting.clearContentSelectiveTitle')" width="460px">
+      <el-checkbox-group v-model="selectedClearOptions" class="clear-options">
+        <el-checkbox label="transcripts">{{ $t('meeting.clearTranscripts') }}</el-checkbox>
+        <el-checkbox label="tasks">{{ $t('meeting.clearTasks') }}</el-checkbox>
+        <el-checkbox label="summary">{{ $t('meeting.clearSummary') }}</el-checkbox>
+        <el-checkbox label="audios">{{ $t('meeting.clearAudios') }}</el-checkbox>
+        <el-checkbox label="resetStatus">{{ $t('meeting.resetStatus') }}</el-checkbox>
+      </el-checkbox-group>
+      <template #footer>
+        <el-button @click="clearDialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="danger" @click="handleClearContent">{{ $t('common.confirm') }}</el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
@@ -100,6 +115,14 @@ const meetingId = Number(route.params.id);
 
 const taskManagerRef = ref<InstanceType<typeof TaskManager> | null>(null);
 const participantManagerRef = ref<InstanceType<typeof ParticipantManager> | null>(null);
+const clearDialogVisible = ref(false);
+const selectedClearOptions = ref<Array<'transcripts' | 'tasks' | 'summary' | 'audios' | 'resetStatus'>>([
+  'transcripts',
+  'tasks',
+  'summary',
+  'audios',
+  'resetStatus',
+]);
 
 onMounted(async () => {
   if (!Number.isFinite(meetingId)) {
@@ -145,6 +168,29 @@ async function distributeByEmail() {
     });
     openEmailShareDraft(draft);
     ElMessage.success(t('meeting.emailClientOpened'));
+  } catch (err) {
+    notifyApiError(err);
+  }
+}
+
+async function handleClearContent() {
+  try {
+    if (selectedClearOptions.value.length === 0) {
+      ElMessage.warning(t('meeting.clearContentSelectAtLeastOne'));
+      return;
+    }
+
+    await store.clearMeetingContentSelective(meetingId, {
+      clear_transcripts: selectedClearOptions.value.includes('transcripts'),
+      clear_tasks: selectedClearOptions.value.includes('tasks'),
+      clear_summary: selectedClearOptions.value.includes('summary'),
+      clear_audios: selectedClearOptions.value.includes('audios'),
+      reset_status: selectedClearOptions.value.includes('resetStatus'),
+    });
+
+    await reloadMeeting();
+    clearDialogVisible.value = false;
+    ElMessage.success(t('meeting.clearContentSuccess'));
   } catch (err) {
     notifyApiError(err);
   }
@@ -215,6 +261,12 @@ function statusLabel(status: string): string {
   gap: 12px;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.clear-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .panel-container {

@@ -1,6 +1,7 @@
 import { ref, computed } from "vue";
 import { ElMessage } from "element-plus";
 import { useMeetingStore } from "../stores/meetingStore";
+import { updateMeeting } from "../api/meetings";
 import { notifyApiError } from "../utils/notify";
 
 export function useTranscription(meetingId: number) {
@@ -12,6 +13,12 @@ export function useTranscription(meetingId: number) {
     }
     try {
       await store.uploadAudioAndTranscribe(meetingId, file.raw);
+      await updateMeeting(meetingId, {
+        actual_start_at: store.currentMeeting?.actual_start_at ?? new Date().toISOString(),
+        status: "ongoing",
+      });
+      await store.fetchMeetingDetail(meetingId);
+      await store.fetchMeetings();
       ElMessage.success("音频上传并转写完成");
     } catch (err) {
       notifyApiError(err);

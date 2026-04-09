@@ -23,8 +23,11 @@ class FasterWhisperTranscriber:
         self._model: Any = None
         self._device: str | None = None
         self._compute_type: str | None = None
+        self._disabled_reason: str | None = None
 
     def preload_model(self) -> None:
+        if self._disabled_reason is not None:
+            raise WhisperServiceError(self._disabled_reason)
         if self._model is not None:
             return
 
@@ -36,13 +39,47 @@ class FasterWhisperTranscriber:
         if shutil.which("ffmpeg") is None:
             raise WhisperServiceError("ffmpeg not found.")
 
+        def _bool_setting(name: str, default: bool) -> bool:
+            value = getattr(settings, name, default)
+            if isinstance(value, bool):
+                return value
+            if isinstance(value, str):
+                return value.strip().lower() in {"1", "true", "yes", "on"}
+            return default
+
         device = settings.whisper_device
+        require_gpu = _bool_setting("faster_whisper_require_gpu", False)
+        current_python = importlib.import_module("sys").executable
         if device == "auto":
             try:
-                torch = importlib.import_module("torch")
-                device = "cuda" if torch.cuda.is_available() else "cpu"
+                torch_module = importlib.import_module("torch")
+                torch = torch_module
+                device = "cuda" if getattr(torch, "cuda").is_available() else "cpu"
             except ImportError:
                 device = "cpu"
+        elif device == "cuda":
+            try:
+                torch_module = importlib.import_module("torch")
+                torch = torch_module
+                if not getattr(torch, "cuda").is_available():
+                    if require_gpu:
+                        raise WhisperServiceError(
+                            f"CUDA requested and required, but GPU not available (python={current_python})"
+                        )
+                    logger.warning("CUDA requested but GPU not available, falling back to CPU")
+                    device = "cpu"
+            except ImportError:
+                if require_gpu:
+                    raise WhisperServiceError(
+                        f"PyTorch not available while GPU is required (python={current_python})"
+                    )
+                logger.warning("PyTorch not available, falling back to CPU")
+                device = "cpu"
+
+        if require_gpu and device != "cuda":
+            raise WhisperServiceError(
+                f"GPU is required for faster-whisper, but current device is CPU (python={current_python})"
+            )
 
         if device == "cuda":
             compute_type = settings.faster_whisper_compute_type
@@ -57,15 +94,36 @@ class FasterWhisperTranscriber:
         )
 
         try:
+            model_path_raw = getattr(settings, "faster_whisper_model_path", "")
+            model_path_value = model_path_raw.strip() if isinstance(model_path_raw, str) else ""
+            model_name_or_path = model_path_value or settings.whisper_model
+            model_path_obj = Path(model_name_or_path)
+            if model_path_obj.is_absolute():
+                resolved_model = str(model_path_obj)
+            else:
+                resolved_model = str((Path(__file__).resolve().parents[3] / model_path_obj).resolve())
+
+            local_files_only = _bool_setting("faster_whisper_local_files_only", False)
+            cache_dir_raw = getattr(settings, "faster_whisper_cache_dir", "")
+            cache_dir = cache_dir_raw if isinstance(cache_dir_raw, str) else ""
+            if local_files_only and not Path(resolved_model).exists():
+                raise WhisperServiceError(
+                    f"faster-whisper local model path not found: {resolved_model}. "
+                    f"Set FASTER_WHISPER_MODEL_PATH to an existing local model directory."
+                )
+
             self._model = faster_whisper.WhisperModel(
-                settings.whisper_model,
+                resolved_model if Path(resolved_model).exists() else model_name_or_path,
                 device=device,
                 compute_type=compute_type,
+                local_files_only=local_files_only,
+                download_root=cache_dir,
             )
             self._device = device
             self._compute_type = compute_type
         except Exception as exc:
-            raise WhisperServiceError(f"Failed to load faster-whisper model: {exc}") from exc
+            self._disabled_reason = f"Failed to load faster-whisper model: {exc}"
+            raise WhisperServiceError(self._disabled_reason) from exc
 
     def _build_initial_prompt(self, hotwords: tuple[str, ...] | None = None) -> str | None:
         prompt_terms = hotwords if hotwords is not None else tuple(
@@ -95,8 +153,10 @@ class FasterWhisperTranscriber:
         try:
             self.preload_model()
         except WhisperServiceError as exc:
-            logger.warning("faster-whisper preload failed, falling back to original whisper: %s", exc)
-            return await fallback_transcriber.transcribe_file(audio_path, language)
+            if settings.faster_whisper_fallback_to_whisper:
+                logger.warning("faster-whisper preload failed, falling back to original whisper: %s", exc)
+                return await fallback_transcriber.transcribe_file(audio_path, language)
+            raise
 
         language_code = self._normalize_language_code(language)
         initial_prompt = self._build_initial_prompt(hotwords)
@@ -128,8 +188,10 @@ class FasterWhisperTranscriber:
         try:
             return await loop.run_in_executor(None, _sync_transcribe)
         except WhisperServiceError as exc:
-            logger.warning("faster-whisper execution failed, falling back: %s", exc)
-            return await fallback_transcriber.transcribe_file(audio_path, language)
+            if settings.faster_whisper_fallback_to_whisper:
+                logger.warning("faster-whisper execution failed, falling back: %s", exc)
+                return await fallback_transcriber.transcribe_file(audio_path, language)
+            raise
 
     async def transcribe_with_timestamps(
         self,

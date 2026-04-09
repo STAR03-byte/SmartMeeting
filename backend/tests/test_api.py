@@ -726,14 +726,16 @@ def test_task_management_requires_assignee_reporter_organizer_or_admin(client) -
         json={"status": "in_progress"},
         headers=assignee_headers,
     )
-    assert assignee_update_resp.status_code == 200
+    assert assignee_update_resp.status_code == 403
+    assert assignee_update_resp.json()["detail"] == "无权管理此任务"
 
     reporter_update_resp = client.patch(
         f"/api/v1/tasks/{task_id}",
         json={"status": "done"},
         headers=reporter_headers,
     )
-    assert reporter_update_resp.status_code == 200
+    assert reporter_update_resp.status_code == 403
+    assert reporter_update_resp.json()["detail"] == "无权管理此任务"
 
     outsider_delete_resp = client.delete(f"/api/v1/tasks/{task_id}", headers=outsider_headers)
     assert outsider_delete_resp.status_code == 403

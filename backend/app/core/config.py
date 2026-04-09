@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 2000
     llm_timeout: int = 60  # seconds
     llm_fallback_provider: str = "ollama"  # ollama | mock | none
+    hf_endpoint: str = ""
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "llama3.1"
     ollama_timeout: int = 60  # seconds
@@ -55,14 +56,35 @@ class Settings(BaseSettings):
 
     # Whisper Settings
     use_faster_whisper: bool = True
-    faster_whisper_compute_type: str = "int8_float16"  # int8_float16 or int8
-    whisper_model: str = "small"  # tiny | base | small | medium | large
-    whisper_device: str = "cpu"  # cpu | cuda | auto
+    faster_whisper_compute_type: str = "float16"  # float16 | int8_float16 | int8 (float16精度最高)
+    faster_whisper_require_gpu: bool = False
+    faster_whisper_fallback_to_whisper: bool = True
+    faster_whisper_local_files_only: bool = False
+    faster_whisper_cache_dir: str = "backend/storage/models/hf-cache"
+    faster_whisper_model_path: str = ""
+    whisper_model: str = "medium"  # tiny | base | small | medium | large-v3 (medium推荐，large-v3最高质量)
+    whisper_device: str = "auto"  # cpu | cuda | auto (auto会自动检测GPU)
     whisper_language: str = "zh"
     whisper_hot_words: str = ""
     whisper_normalize_to_simplified: bool = True
+    whisper_allow_mock_fallback: bool = True
     enable_speaker_diarization: bool = False
+    pyannote_hf_token: str = ""
+    pyannote_pipeline_id: str = "pyannote/speaker-diarization-3.1"
+    pyannote_local_files_only: bool = False
+    pyannote_cache_dir: str = "backend/storage/models/hf-cache"
+    pyannote_require_gpu: bool = False
     meeting_audio_max_size_bytes: int = 100 * 1024 * 1024
+    
+    # VAD (Voice Activity Detection) Settings - 优化语音切割参数
+    vad_min_silence_seconds: float = 0.8  # 最小静音时长，低于此值的静音不分割（原0.5秒太短，导致语句被切碎）
+    vad_silence_noise_db: float = -40.0   # 静音检测阈值，会议环境噪音大时调低（原-35dB）
+    vad_min_segment_seconds: float = 1.0  # 最小语音段时长，避免过短片段（原0.4秒）
+    vad_keep_silence_seconds: float = 0.3  # 保留静音时长，让语句衔接更自然（原0.2秒）
+    
+    # LLM Enhancement Settings
+    llm_enable_post_processing: bool = True  # 启用任务后处理（去重、校验、时间标准化）
+    llm_task_similarity_threshold: float = 0.75  # 任务相似度阈值，高于此值视为重复任务
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[2] / ".env",

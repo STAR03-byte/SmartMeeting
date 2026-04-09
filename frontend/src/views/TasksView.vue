@@ -99,9 +99,11 @@
         </el-table-column>
         <el-table-column :label="$t('task.reminder')" width="120">
           <template #default="scope">
-            <el-tag v-if="scope.row.is_overdue" type="danger">{{ $t('task.overdue') }}</el-tag>
-            <el-tag v-else-if="scope.row.is_due_soon" type="warning">{{ $t('task.dueSoon') }}</el-tag>
-            <span v-else class="muted-text">-</span>
+            <div class="category-tags">
+              <span class="muted-text">{{ formatDate(scope.row.reminder_at) }}</span>
+              <el-tag v-if="scope.row.is_overdue" type="danger">{{ $t('task.overdue') }}</el-tag>
+              <el-tag v-else-if="scope.row.is_due_soon" type="warning">{{ $t('task.dueSoon') }}</el-tag>
+            </div>
           </template>
         </el-table-column>
         <el-table-column prop="status" :label="$t('common.status')" width="160">
@@ -178,6 +180,17 @@
             :placeholder="$t('task.dueDateLabel')"
           />
         </el-form-item>
+        <el-form-item :label="$t('task.reminder')">
+          <el-date-picker
+            v-model="editForm.reminder_at"
+            type="datetime"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            format="YYYY-MM-DD HH:mm:ss"
+            clearable
+            style="width: 100%"
+            :placeholder="$t('task.reminder')"
+          />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="editDialogVisible = false">{{ $t('common.cancel') }}</el-button>
@@ -222,6 +235,7 @@ const editForm = reactive<{
   priority: TaskPriority;
   status: TaskStatus;
   due_at: string | null;
+  reminder_at: string | null;
 }>({
   title: "",
   description: "",
@@ -229,6 +243,7 @@ const editForm = reactive<{
   priority: "medium",
   status: "todo",
   due_at: null,
+  reminder_at: null,
 });
 
 const currentPage = ref(1);
@@ -328,6 +343,7 @@ function openEditDialog(task: TaskItem) {
   editForm.priority = task.priority;
   editForm.status = task.status;
   editForm.due_at = task.due_at ? task.due_at.replace("T", " ").slice(0, 19) : null;
+  editForm.reminder_at = task.reminder_at ? task.reminder_at.replace("T", " ").slice(0, 19) : null;
   editDialogVisible.value = true;
 }
 
@@ -348,6 +364,7 @@ async function saveTaskEdit() {
       priority: editForm.priority,
       status: editForm.status,
       due_at: editForm.due_at,
+      reminder_at: editForm.reminder_at,
     });
     const index = taskCenterStore.tasks.findIndex((item) => item.id === updated.id);
     if (index >= 0) {

@@ -174,6 +174,7 @@ export const TaskCreateSchema = z.object({
   priority: TaskPrioritySchema.optional().default('medium'),
   status: TaskStatusSchema.optional().default('todo'),
   due_at: z.string().datetime().nullable().optional(),
+  reminder_at: z.string().datetime().nullable().optional(),
 })
 
 export const TaskUpdateSchema = z.object({
@@ -185,6 +186,7 @@ export const TaskUpdateSchema = z.object({
   status: TaskStatusSchema.optional(),
   progress_note: z.string().max(1000).nullable().optional(),
   due_at: z.string().datetime().nullable().optional(),
+  reminder_at: z.string().datetime().nullable().optional(),
 })
 
 export const TaskItemSchema = z.object({
@@ -200,6 +202,7 @@ export const TaskItemSchema = z.object({
   status: TaskStatusSchema,
   progress_note: z.string().nullable(),
   due_at: z.string().datetime().nullable(),
+  reminder_at: z.string().datetime().nullable(),
   completed_at: z.string().datetime().nullable(),
   is_overdue: z.boolean(),
   is_due_soon: z.boolean(),

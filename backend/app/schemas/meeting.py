@@ -39,6 +39,14 @@ class MeetingUpdate(BaseModel):
     status: MeetingStatus | None = None
 
 
+class MeetingClearContentRequest(BaseModel):
+    clear_transcripts: bool = True
+    clear_tasks: bool = True
+    clear_summary: bool = True
+    clear_audios: bool = True
+    reset_status: bool = True
+
+
 class MeetingOut(BaseModel):
     """会议响应。"""
 

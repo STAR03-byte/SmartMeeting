@@ -46,4 +46,21 @@ describe("tasks api module", () => {
     expect(patchSpy).toHaveBeenCalledWith("/api/v1/tasks/1", { status: "done" });
     expect(result.status).toBe("done");
   });
+
+  it("updates task with due_at and reminder_at", async () => {
+    const patchSpy = vi.spyOn(apiClient, "patch").mockResolvedValueOnce({
+      data: { id: 2, due_at: "2026-04-09T10:00:00", reminder_at: "2026-04-09T09:00:00" },
+    } as never);
+
+    const mod = await import("./tasks");
+    await mod.updateTask(2, {
+      due_at: "2026-04-09 10:00:00",
+      reminder_at: "2026-04-09 09:00:00",
+    });
+
+    expect(patchSpy).toHaveBeenCalledWith("/api/v1/tasks/2", {
+      due_at: "2026-04-09 10:00:00",
+      reminder_at: "2026-04-09 09:00:00",
+    });
+  });
 });

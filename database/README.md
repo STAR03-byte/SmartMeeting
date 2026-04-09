@@ -19,12 +19,11 @@
 4. `database/migrations/004_indexes_perf.sql`
 5. `database/migrations/005_audit_and_participants.sql`
 6. `database/migrations/006_collaboration_share_fields.sql`
-7. `database/migrations/006_meeting_share_links.sql`
-8. `database/migrations/007_fix_meeting_audio_cascade.sql`
-9. `database/migrations/008_participant_unique_guard.sql`
-10. `database/migrations/009_extend_audit_logs_for_auth_events.sql`
-11. `database/seeds/001_seed_basic_data.sql`（可选）
-12. `database/seeds/002_seed_participants.sql`（可选）
+7. `database/migrations/007_fix_meeting_audio_cascade.sql`
+8. `database/migrations/008_participant_unique_guard.sql`
+9. `database/migrations/009_extend_audit_logs_for_auth_events.sql`
+10. `database/seeds/001_seed_basic_data.sql`（可选）
+11. `database/seeds/002_seed_participants.sql`（可选）
 
 也可直接一键执行:
 
@@ -39,7 +38,6 @@ mysql -u <user> -p < database/migrations/003_sp_task_query.sql
 mysql -u <user> -p < database/migrations/004_indexes_perf.sql
 mysql -u <user> -p < database/migrations/005_audit_and_participants.sql
 mysql -u <user> -p < database/migrations/006_collaboration_share_fields.sql
-mysql -u <user> -p < database/migrations/006_meeting_share_links.sql
 mysql -u <user> -p < database/migrations/007_fix_meeting_audio_cascade.sql
 mysql -u <user> -p < database/migrations/008_participant_unique_guard.sql
 mysql -u <user> -p < database/migrations/009_extend_audit_logs_for_auth_events.sql

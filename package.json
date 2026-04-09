@@ -7,6 +7,7 @@
     "dev": "python scripts/dev/dev.py",
     "dev:backend": "python -m uvicorn backend.main:app --reload",
     "dev:frontend": "npm --prefix frontend run dev",
+    "warmup:models": "python scripts/dev/warmup_models.py",
     "smoke": "python scripts/dev/smoke.py",
     "test:backend": "python -m pytest backend/tests -v --tb=short",
     "check:frontend:type": "npm --prefix frontend run typecheck",

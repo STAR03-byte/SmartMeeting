@@ -110,6 +110,7 @@ export interface TaskItem {
   status: TaskStatus;
   progress_note: string | null;
   due_at: string | null;
+  reminder_at: string | null;
   completed_at: string | null;
   is_overdue: boolean;
   is_due_soon: boolean;
@@ -159,6 +160,7 @@ export interface TaskCreatePayload {
   priority?: TaskPriority;
   status?: TaskStatus;
   due_at?: string | null;
+  reminder_at?: string | null;
 }
 
 export interface MeetingParticipantOut {

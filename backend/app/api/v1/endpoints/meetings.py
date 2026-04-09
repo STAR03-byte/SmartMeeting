@@ -11,9 +11,11 @@ from app.core.database import get_db
 from app.schemas.auth import CurrentUserOut
 from app.schemas.meeting_audio import MeetingAudioOut
 from app.models.meeting_audio import MeetingAudio
+from app.models.meeting import Meeting
 from app.models.meeting_transcript import MeetingTranscript
 from app.schemas.meeting import (
     MeetingCreate,
+    MeetingClearContentRequest,
     MeetingDetailOut,
     MeetingExportOut,
     MeetingExportRequest,
@@ -25,9 +27,11 @@ from app.schemas.meeting import (
 from app.schemas.meeting_transcript import MeetingTranscriptOut
 from app.schemas.task import TaskOut
 from app.services.audio_service import save_meeting_audio, transcribe_latest_audio
+from app.services.whisper_service import WhisperServiceError
 from app.services.meeting_service import (
     build_meeting_summary_with_llm,
     count_meetings,
+    clear_meeting_content,
     create_meeting,
     delete_meeting,
     generate_tasks_from_transcripts_with_llm,
@@ -42,7 +46,7 @@ from .auth import get_current_user
 router = APIRouter(prefix="/meetings", tags=["meetings"], dependencies=[Depends(get_current_user)])
 
 
-def _assert_meeting_permission(meeting: MeetingOut, current_user: CurrentUserOut) -> None:
+def _assert_meeting_permission(meeting: Meeting, current_user: CurrentUserOut) -> None:
     if current_user.role == "admin":
         return
     if meeting.organizer_id != current_user.id:
@@ -147,7 +151,7 @@ def create_meeting_api(
     db.add(participant)
     db.commit()
 
-    return meeting
+    return MeetingOut.model_validate(meeting)
 
 
 @router.get("", response_model=MeetingListOut)
@@ -261,7 +265,7 @@ def update_meeting_api(
             detail="actual_end_at must be after or equal to actual_start_at",
         )
 
-    return update_meeting(db, meeting, payload)
+    return MeetingOut.model_validate(update_meeting(db, meeting, payload))
 
 
 @router.delete("/{meeting_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -277,6 +281,30 @@ def delete_meeting_api(
         raise HTTPException(status_code=404, detail="Meeting not found")
     _assert_meeting_permission(meeting, current_user)
     delete_meeting(db, meeting)
+
+
+@router.post("/{meeting_id}/clear-content", response_model=MeetingOut)
+def clear_meeting_content_api(
+    meeting_id: int,
+    payload: MeetingClearContentRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
+) -> MeetingOut:
+    meeting = get_meeting(db, meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    _assert_meeting_permission(meeting, current_user)
+    return MeetingOut.model_validate(
+        clear_meeting_content(
+            db,
+            meeting,
+            clear_transcripts=payload.clear_transcripts,
+            clear_tasks=payload.clear_tasks,
+            clear_summary=payload.clear_summary,
+            clear_audios=payload.clear_audios,
+            reset_status=payload.reset_status,
+        )
+    )
 
 
 @router.post("/{meeting_id}/postprocess", response_model=MeetingPostprocessOut)
@@ -362,7 +390,16 @@ async def transcribe_meeting_audio_api(
         raise HTTPException(status_code=404, detail="Meeting not found")
     _assert_meeting_permission(meeting, current_user)
 
-    transcripts = await transcribe_latest_audio(db, meeting_id, current_user.id)
+    try:
+        transcripts = await transcribe_latest_audio(db, meeting_id, current_user.id)
+    except WhisperServiceError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "detail": str(exc),
+                "error_code": "ASR_TRANSCRIBE_FAILED",
+            },
+        ) from exc
     if not transcripts:
         raise HTTPException(status_code=400, detail="No audio found for meeting")
     return MeetingTranscriptOut.model_validate(transcripts[0])

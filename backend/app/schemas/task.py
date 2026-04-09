@@ -22,6 +22,7 @@ class TaskCreate(BaseModel):
     status: TaskStatus = Field(default="todo")
     progress_note: str | None = None
     due_at: datetime | None = None
+    reminder_at: datetime | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -36,6 +37,7 @@ class TaskUpdate(BaseModel):
     status: TaskStatus | None = None
     progress_note: str | None = None
     due_at: datetime | None = None
+    reminder_at: datetime | None = None
     completed_at: datetime | None = None
 
 
@@ -54,6 +56,7 @@ class TaskOut(BaseModel):
     status: str
     progress_note: str | None
     due_at: datetime | None
+    reminder_at: datetime | None
     completed_at: datetime | None
     is_overdue: bool = False
     is_due_soon: bool = False

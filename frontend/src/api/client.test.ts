@@ -1,7 +1,27 @@
 import axios, { AxiosError } from "axios";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { getApiErrorMessage, type ApiErrorResponse } from "./client";
+import { apiClient, getApiErrorMessage, type ApiErrorResponse } from "./client";
+
+const fakeSessionStorage = {
+  data: new Map<string, string>(),
+  getItem(key: string) { return this.data.get(key) ?? null; },
+  setItem(key: string, val: string) { this.data.set(key, val); },
+  removeItem(key: string) { this.data.delete(key); },
+  clear() { this.data.clear(); },
+};
+
+const fakeLocalStorage = {
+  data: new Map<string, string>(),
+  getItem(key: string) { return this.data.get(key) ?? null; },
+  setItem(key: string, val: string) { this.data.set(key, val); },
+  removeItem(key: string) { this.data.delete(key); },
+  clear() { this.data.clear(); },
+};
+
+vi.stubGlobal("window", {} as Window);
+vi.stubGlobal("sessionStorage", fakeSessionStorage);
+vi.stubGlobal("localStorage", fakeLocalStorage);
 
 function buildAxiosError(data: ApiErrorResponse): AxiosError<ApiErrorResponse> {
   return new AxiosError<ApiErrorResponse>(
@@ -48,5 +68,16 @@ describe("getApiErrorMessage", () => {
     const error = buildAxiosError({ error_code: "UNKNOWN_CODE" });
 
     expect(getApiErrorMessage(error)).toBe("Request failed");
+  });
+
+  it("injects bearer token from sessionStorage first", async () => {
+    sessionStorage.setItem("smartmeeting_access_token", "session-token");
+    localStorage.setItem("smartmeeting_access_token", "local-token");
+
+    const cfg = await (apiClient.interceptors.request as any).handlers[0].fulfilled({ headers: {} });
+    expect(cfg.headers.Authorization).toBe("Bearer session-token");
+
+    sessionStorage.clear();
+    localStorage.clear();
   });
 });

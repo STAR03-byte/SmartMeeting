@@ -2,6 +2,7 @@
 import {
   createTask,
   createMeeting,
+  clearMeetingContent,
   deleteMeeting,
   getMeeting,
   getMeetings,
@@ -80,6 +81,61 @@ export const useMeetingStore = defineStore("meeting", {
       try {
         await deleteMeeting(meetingId);
         this.meetings = this.meetings.filter((m) => m.id !== meetingId);
+      } catch (error) {
+        this.error = getApiErrorMessage(error);
+        throw error;
+      }
+    },
+    async clearMeetingContent(meetingId: number) {
+      this.error = null;
+      try {
+        const meeting = await clearMeetingContent(meetingId, {
+          clear_transcripts: true,
+          clear_tasks: true,
+          clear_summary: true,
+          clear_audios: true,
+          reset_status: true,
+        });
+        this.currentMeeting = this.currentMeeting?.id === meetingId
+          ? { ...this.currentMeeting, ...meeting }
+          : this.currentMeeting;
+        this.transcripts = [];
+        this.tasks = [];
+        const idx = this.meetings.findIndex((m) => m.id === meetingId);
+        if (idx !== -1) {
+          this.meetings[idx] = { ...this.meetings[idx], ...meeting };
+        }
+        return meeting;
+      } catch (error) {
+        this.error = getApiErrorMessage(error);
+        throw error;
+      }
+    },
+    async clearMeetingContentSelective(
+      meetingId: number,
+      options: {
+        clear_transcripts: boolean;
+        clear_tasks: boolean;
+        clear_summary: boolean;
+        clear_audios: boolean;
+        reset_status: boolean;
+      }
+    ) {
+      this.error = null;
+      try {
+        const meeting = await clearMeetingContent(meetingId, options);
+        this.currentMeeting = this.currentMeeting?.id === meetingId
+          ? { ...this.currentMeeting, ...meeting }
+          : this.currentMeeting;
+
+        if (options.clear_transcripts) this.transcripts = [];
+        if (options.clear_tasks) this.tasks = [];
+
+        const idx = this.meetings.findIndex((m) => m.id === meetingId);
+        if (idx !== -1) {
+          this.meetings[idx] = { ...this.meetings[idx], ...meeting };
+        }
+        return meeting;
       } catch (error) {
         this.error = getApiErrorMessage(error);
         throw error;

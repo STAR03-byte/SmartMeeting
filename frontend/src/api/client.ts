@@ -73,7 +73,9 @@ function getErrorSuggestion(errorCode?: string): string | undefined {
 }
 
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem("smartmeeting_access_token");
+  const hasWindow = typeof window !== "undefined";
+  const sessionToken = hasWindow ? sessionStorage.getItem("smartmeeting_access_token") : null;
+  const token = hasWindow ? (sessionToken || localStorage.getItem("smartmeeting_access_token")) : null;
   if (token) {
     config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;

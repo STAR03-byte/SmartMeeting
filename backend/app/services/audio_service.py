@@ -15,7 +15,7 @@ from app.services.hotword_service import get_hotword_terms
 from app.services.meeting_participant_service import list_participants
 from app.services.meeting_service import get_meeting
 from app.services.faster_whisper_service import transcribe_audio_file
-from app.services.whisper_service import WhisperServiceError, WhisperSegment
+from app.services.whisper_service import WhisperServiceError
 from app.services.speaker_diarization_service import diarize_audio
 
 
@@ -149,6 +149,8 @@ async def transcribe_latest_audio(db: Session, meeting_id: int, user_id: int | N
         hotwords = get_hotword_terms(db, user_id)
         transcription = await transcribe_audio_file(latest_audio.storage_path, hotwords=hotwords)
     except WhisperServiceError:
+        if not settings.whisper_allow_mock_fallback:
+            raise
         segments = _generate_mock_transcripts(meeting_id, next_segment_index)
         participants = _fetch_meeting_participants(db, meeting_id)
         for segment in segments:
