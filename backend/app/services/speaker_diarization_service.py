@@ -134,11 +134,14 @@ class SpeakerDiarizationService:
                     self._torch_module.cuda.empty_cache()
 
                 try:
-                    torchaudio = importlib.import_module("torchaudio")
-                    waveform, sample_rate = torchaudio.load(str(audio_path))
+                    # 使用 librosa 加载音频，绕过 torchcodec 在 Windows 上的兼容性问题
+                    librosa = importlib.import_module("librosa")
+                    y, sr = librosa.load(str(audio_path), sr=None, mono=True)
+                    # 转换为 torch tensor 格式 (1, samples)
+                    waveform = self._torch_module.from_numpy(y).unsqueeze(0).float()
                     input_audio: dict[str, Any] = {
                         "waveform": waveform,
-                        "sample_rate": int(sample_rate),
+                        "sample_rate": int(sr),
                     }
                     diarization = pipeline(
                         input_audio,
@@ -146,8 +149,8 @@ class SpeakerDiarizationService:
                         max_speakers=max_speakers,
                     )
                 except Exception as e:
-                    # 明确禁止回退到文件路径模式，避免触发 pyannote 内部 AudioDecoder 未定义错误
-                    logger.error("Diarization in-memory decode failed: %s", e)
+                    # librosa 加载失败，记录错误并返回空列表
+                    logger.error("Diarization librosa decode failed: %s", e)
                     return []
 
                 segments = []
