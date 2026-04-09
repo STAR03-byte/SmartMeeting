@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints.auth import router as auth_router
+from app.api.v1.endpoints.health import router as health_router
 from app.api.v1.endpoints.hotwords import router as hotwords_router
 from app.api.v1.endpoints.meeting_shares import router as meeting_shares_router
 from app.api.v1.endpoints.meetings import router as meetings_router
@@ -17,6 +18,7 @@ from app.api.v1.endpoints.users import router as users_router, open_router as re
 api_router = APIRouter()
 api_router.include_router(register_router)
 api_router.include_router(auth_router)
+api_router.include_router(health_router)
 api_router.include_router(hotwords_router)
 api_router.include_router(users_router)
 api_router.include_router(meetings_router)
