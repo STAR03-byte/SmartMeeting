@@ -1,22 +1,24 @@
 """任务 REST API。"""
 
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.meeting import Meeting
 from app.models.meeting_participant import MeetingParticipant
 from app.models.team_member import TeamMember
+from app.schemas.ai_assistant import TaskDraftRequest, TaskDraftResponse
 from app.schemas.auth import CurrentUserOut
 from app.schemas.task import TaskPriority, TaskStatus
 from app.schemas.task import TaskCreate, TaskListOut, TaskOut, TaskUpdate
 from app.services.meeting_service import get_meeting
 from app.services.meeting_transcript_service import get_transcript
-from app.services.meeting_service import get_meeting
 from app.services.task_service import (
     count_tasks,
     create_task,
+    create_task_draft,
     delete_task,
     get_task,
     list_tasks,
@@ -29,14 +31,29 @@ from .auth import get_current_user
 router = APIRouter(prefix="/tasks", tags=["tasks"], dependencies=[Depends(get_current_user)])
 
 
-def _assert_meeting_task_permission(meeting, current_user: CurrentUserOut) -> None:
+def _assert_meeting_task_permission(meeting: Meeting, current_user: CurrentUserOut) -> None:
     if current_user.role == "admin":
         return
     if meeting.organizer_id != current_user.id:
         raise HTTPException(status_code=403, detail="无权管理此会议的任务")
 
 
-def _assert_assignee_permission(db: Session, meeting, assignee_id: int, current_user: CurrentUserOut) -> None:
+def _assert_meeting_draft_permission(db: Session, meeting: Meeting, current_user: CurrentUserOut) -> None:
+    if current_user.role == "admin" or meeting.organizer_id == current_user.id:
+        return
+
+    participant = (
+        db.query(MeetingParticipant)
+        .filter(MeetingParticipant.meeting_id == meeting.id, MeetingParticipant.user_id == current_user.id)
+        .first()
+    )
+    if participant:
+        return
+
+    raise HTTPException(status_code=403, detail="无权创建此会议的任务草稿")
+
+
+def _assert_assignee_permission(db: Session, meeting: Meeting, assignee_id: int, current_user: CurrentUserOut) -> None:
     if current_user.role == "admin":
         return
     if assignee_id == meeting.organizer_id:
@@ -62,7 +79,7 @@ def _assert_assignee_permission(db: Session, meeting, assignee_id: int, current_
     raise HTTPException(status_code=400, detail="任务负责人必须是会议参与者或团队成员")
 
 
-def _assert_task_permission(task, meeting, current_user: CurrentUserOut) -> None:
+def _assert_task_permission(_task: object, meeting: Meeting, current_user: CurrentUserOut) -> None:
     if current_user.role == "admin":
         return
     if meeting.organizer_id == current_user.id:
@@ -98,6 +115,38 @@ def create_task_api(
         raise HTTPException(status_code=404, detail="Reporter not found")
 
     return create_task(db, payload)
+
+
+@router.post("/draft", response_model=TaskDraftResponse, status_code=status.HTTP_201_CREATED)
+def create_task_draft_api(
+    payload: TaskDraftRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
+) -> TaskDraftResponse:
+    """创建任务草稿。"""
+
+    meeting = get_meeting(db, payload.meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+
+    _assert_meeting_draft_permission(db, meeting, current_user)
+
+    if not get_user(db, payload.assignee_id):
+        raise HTTPException(status_code=404, detail="Assignee not found")
+
+    _assert_assignee_permission(db, meeting, payload.assignee_id, current_user)
+
+    draft = create_task_draft(db, payload, reporter_id=current_user.id)
+    return TaskDraftResponse(
+        id=draft.id,
+        title=draft.title,
+        description=draft.description,
+        meeting_id=draft.meeting_id,
+        due_date=draft.due_at,
+        priority=cast(TaskPriority, draft.priority),
+        assignee_id=draft.assignee_id,
+        status=draft.status,
+    )
 
 
 @router.get("", response_model=TaskListOut)

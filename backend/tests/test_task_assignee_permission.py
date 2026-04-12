@@ -92,7 +92,7 @@ def _create_team(auth_client: TestClient, owner: UserData, name: str) -> TeamDat
         json={"name": name, "description": name, "is_public": False},
     )
     assert resp.status_code == 201
-    return resp.json()
+    return cast(TeamData, resp.json())
 
 
 def _add_team_member(auth_client: TestClient, team_id: int, user: UserData, role: str = "member") -> dict[str, object]:
@@ -128,6 +128,28 @@ def _create_task(auth_client: TestClient, meeting_id: int, title: str, reporter_
     resp = auth_client.post("/api/v1/tasks", json=payload)
     assert resp.status_code == 201
     return cast(TaskData, resp.json())
+
+
+def _create_task_draft(
+    auth_client: TestClient,
+    meeting_id: int,
+    title: str,
+    description: str,
+    assignee_id: int,
+) -> dict[str, object]:
+    resp = auth_client.post(
+        "/api/v1/tasks/draft",
+        json={
+            "meeting_id": meeting_id,
+            "title": title,
+            "description": description,
+            "due_date": "2026-12-31T12:00:00Z",
+            "priority": "medium",
+            "assignee_id": assignee_id,
+        },
+    )
+    assert resp.status_code == 201
+    return cast(dict[str, object], resp.json())
 
 
 def test_create_task_without_assignee_succeeds(auth_client: TestClient) -> None:
@@ -230,3 +252,44 @@ def test_admin_can_create_task_with_any_assignee(auth_client: TestClient) -> Non
     )
 
     assert task["assignee_id"] == assignee["id"]
+
+
+def test_create_task_draft_with_meeting_participant_succeeds(auth_client: TestClient) -> None:
+    organizer = _create_user(auth_client, "draft_org_1")
+    participant = _create_user(auth_client, "draft_participant")
+    _set_current_user(auth_client, organizer)
+    meeting = _create_meeting(auth_client, organizer, "draft_meeting_participant")
+    _ = _add_meeting_participant(auth_client, int(meeting["id"]), participant)
+
+    draft = _create_task_draft(
+        auth_client,
+        int(meeting["id"]),
+        "draft_task_participant",
+        "draft_task_participant",
+        int(participant["id"]),
+    )
+
+    assert draft["status"] == "draft"
+    assert draft["assignee_id"] == participant["id"]
+
+
+def test_create_task_draft_without_meeting_access_returns_403(auth_client: TestClient) -> None:
+    organizer = _create_user(auth_client, "draft_org_2")
+    outsider = _create_user(auth_client, "draft_outsider")
+    _set_current_user(auth_client, organizer)
+    meeting = _create_meeting(auth_client, organizer, "draft_meeting_outsider")
+
+    _set_current_user(auth_client, outsider)
+    resp = auth_client.post(
+        "/api/v1/tasks/draft",
+        json={
+            "meeting_id": int(meeting["id"]),
+            "title": "draft_task_outsider",
+            "description": "draft_task_outsider",
+            "due_date": "2026-12-31T12:00:00Z",
+            "priority": "medium",
+            "assignee_id": int(outsider["id"]),
+        },
+    )
+    assert resp.status_code == 403
+    assert resp.json()["detail"] == "无权创建此会议的任务草稿"

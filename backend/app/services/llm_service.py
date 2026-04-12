@@ -3,6 +3,7 @@
 import json
 import logging
 import re
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Literal, TypedDict, cast
 
@@ -108,6 +109,18 @@ class ExtractedTask(TypedDict):
     assignee_name: str | None
     priority: str
     due_hint: str | None
+
+
+class SuggestedRelatedTask(TypedDict):
+    id: int
+    title: str
+
+
+class TaskSuggestions(TypedDict):
+    steps: list[str]
+    risks: list[str]
+    suggested_roles: list[str]
+    related_tasks: list[SuggestedRelatedTask]
 
 
 class LLMClient:
@@ -265,6 +278,124 @@ class LLMClient:
         ]
         content, _provider = await self._call_with_fallback(messages, temperature=0.2)
         return content
+
+    async def chat_completion(
+        self,
+        messages: list[dict[str, str]],
+        context_info: dict[str, str] | None = None,
+        stream: bool = False,
+    ) -> str | AsyncGenerator[str, None]:
+        """多轮对话补全。"""
+        system_prompt = """你是 SmartMeeting 的 AI 助理，帮助用户管理会议和任务。
+
+重要提示：用户已通过界面选择了以下真实数据，这些数据来自 SmartMeeting 数据库，你有权访问并基于这些数据回答用户问题。不要说自己无法访问数据。"""
+        
+        if context_info:
+            if "meeting_title" in context_info:
+                system_prompt += f"\n\n【当前关联会议】\n标题：{context_info['meeting_title']}"
+                if "meeting_description" in context_info:
+                    system_prompt += f"\n描述：{context_info['meeting_description']}"
+            
+            if "task_title" in context_info:
+                system_prompt += f"\n\n【当前关联任务】\n标题：{context_info['task_title']}"
+                if "task_description" in context_info:
+                    system_prompt += f"\n描述：{context_info['task_description']}"
+                if "task_status" in context_info:
+                    system_prompt += f"\n状态：{context_info['task_status']}"
+                if "task_priority" in context_info:
+                    system_prompt += f"\n优先级：{context_info['task_priority']}"
+            
+            if "task_not_found" in context_info:
+                system_prompt += f"\n\n注意：{context_info['task_not_found']}"
+
+        full_messages = cast(
+            list[ChatCompletionMessageParam],
+            [{"role": "system", "content": system_prompt}] + messages,
+        )
+
+        if stream:
+            # TODO: 实现真正的流式响应（SSE/增量token）
+            async def _single_chunk_generator() -> AsyncGenerator[str, None]:
+                response, _provider = await self._call_with_fallback(
+                    messages=full_messages,
+                    temperature=0.7,
+                )
+                yield response
+
+            return _single_chunk_generator()
+
+        response, _provider = await self._call_with_fallback(
+            messages=full_messages,
+            temperature=0.7,
+        )
+        return response
+
+    async def generate_task_suggestions(
+        self,
+        title: str,
+        description: str,
+        meeting_context: str | None = None,
+    ) -> TaskSuggestions:
+        """生成任务建议。"""
+        prompt = f"""分析以下任务并提供执行建议：
+
+任务标题：{title}
+任务描述：{description}"""
+
+        if meeting_context:
+            prompt += f"\n\n会议上下文：{meeting_context}"
+
+        prompt += """\n\n请提供以下信息（JSON 格式）：
+{
+    "steps": ["步骤1", "步骤2", ...],
+    "risks": ["风险1", "风险2", ...],
+    "suggested_roles": ["角色1", "角色2", ...],
+    "related_tasks": [{"id": 1, "title": "相关任务1"}, ...]
+}"""
+
+        response, _provider = await self._call_with_fallback(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+        )
+
+        default_result: TaskSuggestions = {
+            "steps": [],
+            "risks": [],
+            "suggested_roles": [],
+            "related_tasks": [],
+        }
+
+        try:
+            parsed = cast(dict[str, object], json.loads(response))
+        except json.JSONDecodeError:
+            return default_result
+
+        steps_raw = parsed.get("steps")
+        risks_raw = parsed.get("risks")
+        roles_raw = parsed.get("suggested_roles")
+        related_raw = parsed.get("related_tasks")
+
+        steps = [item for item in steps_raw if isinstance(item, str)] if isinstance(steps_raw, list) else []
+        risks = [item for item in risks_raw if isinstance(item, str)] if isinstance(risks_raw, list) else []
+        suggested_roles = [item for item in roles_raw if isinstance(item, str)] if isinstance(roles_raw, list) else []
+
+        related_tasks: list[SuggestedRelatedTask] = []
+        if isinstance(related_raw, list):
+            for task in related_raw:
+                if not isinstance(task, dict):
+                    continue
+                task_item = cast(dict[str, object], task)
+                task_id = task_item.get("id")
+                task_title = task_item.get("title")
+                if isinstance(task_id, int) and isinstance(task_title, str):
+                    related_tasks.append({"id": task_id, "title": task_title})
+
+        return {
+            "steps": steps,
+            "risks": risks,
+            "suggested_roles": suggested_roles,
+            "related_tasks": related_tasks,
+        }
 
     async def generate_structured_summary(
         self,

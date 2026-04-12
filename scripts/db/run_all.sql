@@ -19,6 +19,8 @@ SOURCE database/migrations/016_clear_test_data.sql;
 SOURCE database/migrations/018_create_team_invite_links.sql;
 SOURCE database/migrations/019_add_task_reminder_at.sql;
 SOURCE database/migrations/020_create_team_invitations.sql;
+SOURCE database/migrations/021_create_conversations.sql;
+SOURCE database/migrations/022_create_conversation_messages.sql;
 
 SOURCE database/seeds/001_seed_basic_data.sql;
 SOURCE database/seeds/002_seed_participants.sql;

@@ -60,107 +60,24 @@
         </ul>
       </el-card>
 
-      <el-dialog v-model="editDialogVisible" title="编辑任务" width="560px">
-        <el-form ref="editFormRef" :model="editForm" label-width="92px">
-          <el-form-item label="任务标题" prop="title" :rules="[{ required: true, message: '请输入任务标题', trigger: 'blur' }]">
-            <el-input v-model="editForm.title" maxlength="200" show-word-limit />
-          </el-form-item>
-          <el-form-item label="任务描述" prop="description">
-            <el-input v-model="editForm.description" type="textarea" :rows="3" />
-          </el-form-item>
-          <el-form-item label="负责人" prop="assignee_id">
-            <el-select v-model="editForm.assignee_id" clearable placeholder="请选择负责人" style="width: 100%">
-              <el-option label="未指派" :value="null" />
-              <el-option
-                v-for="option in assigneeOptions"
-                :key="option.user_id"
-                :label="option.username"
-                :value="option.user_id"
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item :label="$t('task.dueDateLabel')" prop="due_at">
-            <el-date-picker
-              v-model="editForm.due_at"
-              type="datetime"
-              value-format="YYYY-MM-DD HH:mm:ss"
-              format="YYYY-MM-DD HH:mm:ss"
-              clearable
-              style="width: 100%"
-              :placeholder="$t('task.dueDateLabel')"
-            />
-          </el-form-item>
-          <el-form-item :label="$t('task.reminder')" prop="reminder_at">
-            <el-date-picker
-              v-model="editForm.reminder_at"
-              type="datetime"
-              value-format="YYYY-MM-DD HH:mm:ss"
-              format="YYYY-MM-DD HH:mm:ss"
-              clearable
-              style="width: 100%"
-              :placeholder="$t('task.reminder')"
-            />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <el-button @click="editDialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="savingEdit" @click="submitEdit">保存</el-button>
-        </template>
+      <el-dialog v-model="editDialogVisible" title="编辑任务" width="600px">
+        <TaskFormWithSuggestions
+          :meeting-id="meetingId"
+          :participants="assigneeOptions"
+          :initial-data="editFormData"
+          :is-edit="true"
+          @submit="handleEditFormSubmit"
+          @cancel="editDialogVisible = false"
+        />
       </el-dialog>
 
-      <el-dialog v-model="createDialogVisible" title="新建任务" width="560px" @closed="resetCreateForm">
-        <el-form ref="createFormRef" :model="createForm" label-width="92px">
-          <el-form-item label="任务标题" prop="title" :rules="[{ required: true, message: '请输入任务标题', trigger: 'blur' }]">
-            <el-input v-model="createForm.title" maxlength="200" show-word-limit />
-          </el-form-item>
-          <el-form-item label="任务描述" prop="description">
-            <el-input v-model="createForm.description" type="textarea" :rows="3" />
-          </el-form-item>
-          <el-form-item label="优先级" prop="priority">
-            <el-select v-model="createForm.priority" style="width: 100%">
-              <el-option :label="$t('task.priorityHigh')" value="high" />
-              <el-option :label="$t('task.priorityMedium')" value="medium" />
-              <el-option :label="$t('task.priorityLow')" value="low" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="负责人" prop="assignee_id">
-            <el-select v-model="createForm.assignee_id" clearable placeholder="请选择负责人" style="width: 100%">
-              <el-option label="未指派" :value="null" />
-              <el-option
-                v-for="option in assigneeOptions"
-                :key="option.user_id"
-                :label="option.username"
-                :value="option.user_id"
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item :label="$t('task.dueDateLabel')" prop="due_at">
-            <el-date-picker
-              v-model="createForm.due_at"
-              type="datetime"
-              value-format="YYYY-MM-DD HH:mm:ss"
-              format="YYYY-MM-DD HH:mm:ss"
-              clearable
-              style="width: 100%"
-              :placeholder="$t('task.dueDateLabel')"
-            />
-          </el-form-item>
-          <el-form-item :label="$t('task.reminder')" prop="reminder_at">
-            <el-date-picker
-              v-model="createForm.reminder_at"
-              type="datetime"
-              value-format="YYYY-MM-DD HH:mm:ss"
-              format="YYYY-MM-DD HH:mm:ss"
-              clearable
-              style="width: 100%"
-              :placeholder="$t('task.reminder')"
-            />
-          </el-form-item>
-        </el-form>
-        <template #footer>
-          <el-button @click="createDialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="creatingTask" @click="submitCreate">创建</el-button>
-        </template>
+      <el-dialog v-model="createDialogVisible" title="新建任务" width="600px" @closed="resetCreateForm">
+        <TaskFormWithSuggestions
+          :meeting-id="meetingId"
+          :participants="assigneeOptions"
+          @submit="handleTaskFormSubmit"
+          @cancel="createDialogVisible = false"
+        />
       </el-dialog>
     </template>
   </el-skeleton>
@@ -177,6 +94,17 @@ import { notifyApiError } from "../../utils/notify";
 import { updateTask, type TaskItem, type TaskStatus } from "../../api/tasks";
 import { getMeetingParticipants, type MeetingParticipantOut } from "../../api/participants";
 import type { TaskPriority } from "../../api/types";
+import TaskFormWithSuggestions from "./TaskFormWithSuggestions.vue";
+
+type TaskFormSubmitPayload = {
+  title: string;
+  description: string;
+  due_at: Date | null;
+  priority: TaskPriority;
+  assignee_id: number | null;
+  meeting_id: number;
+  reminder_at?: Date | null;
+};
 
 const props = defineProps<{ meetingId: number }>();
 defineEmits<{ (e: 'reload'): void }>();
@@ -205,6 +133,16 @@ const editForm = reactive({
   due_at: null as string | null,
   reminder_at: null as string | null,
 });
+
+// 转换editForm为TaskFormWithSuggestions需要的格式
+const editFormData = computed(() => ({
+  title: editForm.title,
+  description: editForm.description,
+  due_at: editForm.due_at ? new Date(editForm.due_at) : null,
+  priority: "medium" as TaskPriority,
+  assignee_id: editForm.assignee_id,
+  reminder_at: editForm.reminder_at ? new Date(editForm.reminder_at) : null,
+}));
 
 const assigneeLabelMap = computed(() => {
   const map = new Map<number, string>();
@@ -266,6 +204,34 @@ async function submitCreate() {
   }
 }
 
+async function handleTaskFormSubmit(formData: TaskFormSubmitPayload) {
+  creatingTask.value = true;
+  try {
+    await store.createMeetingTask({
+      meeting_id: props.meetingId,
+      title: formData.title.trim(),
+      description: formData.description?.trim() || null,
+      assignee_id: formData.assignee_id,
+      priority: formData.priority,
+      due_at: formData.due_at ? formatDateToString(formData.due_at) : null,
+      reminder_at: null,
+    });
+    ElMessage.success("任务创建成功");
+    createDialogVisible.value = false;
+    window.dispatchEvent(new Event('tasks-updated'));
+  } catch (err) {
+    notifyApiError(err);
+  } finally {
+    creatingTask.value = false;
+  }
+}
+
+function formatDateToString(date: Date | string): string {
+  if (typeof date === 'string') return date;
+  const d = new Date(date);
+  return d.toISOString().slice(0, 19).replace('T', ' ');
+}
+
 function openEditDialog(task: TaskItem) {
   editingTaskId.value = task.id;
   editForm.title = task.title;
@@ -290,6 +256,31 @@ async function submitEdit() {
       assignee_id: editForm.assignee_id,
       due_at: editForm.due_at,
       reminder_at: editForm.reminder_at,
+    });
+    const index = store.tasks.findIndex((item) => item.id === updated.id);
+    if (index >= 0) {
+      store.tasks[index] = updated;
+    }
+    ElMessage.success("任务已更新");
+    editDialogVisible.value = false;
+    window.dispatchEvent(new Event('tasks-updated'));
+  } catch (err) {
+    notifyApiError(err);
+  } finally {
+    savingEdit.value = false;
+  }
+}
+
+async function handleEditFormSubmit(formData: TaskFormSubmitPayload) {
+  if (!editingTaskId.value) return;
+  savingEdit.value = true;
+  try {
+    const updated = await updateTask(editingTaskId.value, {
+      title: formData.title.trim(),
+      description: formData.description?.trim() || null,
+      assignee_id: formData.assignee_id,
+      due_at: formData.due_at ? formatDateToString(formData.due_at) : null,
+      reminder_at: formData.reminder_at ? formatDateToString(formData.reminder_at) : null,
     });
     const index = store.tasks.findIndex((item) => item.id === updated.id);
     if (index >= 0) {

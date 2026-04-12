@@ -12,6 +12,7 @@ from app.models.meeting import Meeting
 from app.models.meeting_participant import MeetingParticipant
 from app.models.task import Task
 from app.models.team_member import TeamMember
+from app.schemas.ai_assistant import TaskDraftRequest
 from app.schemas.task import TaskCreate, TaskUpdate
 
 
@@ -27,6 +28,29 @@ def create_task(db: Session, payload: TaskCreate) -> Task:
     """创建任务。"""
 
     task = Task(**payload.model_dump())
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return task
+
+
+def create_task_draft(
+    db: Session,
+    payload: TaskDraftRequest,
+    reporter_id: int | None = None,
+) -> Task:
+    """创建任务草稿。"""
+
+    task = Task(
+        meeting_id=payload.meeting_id,
+        title=payload.title,
+        description=payload.description,
+        assignee_id=payload.assignee_id,
+        reporter_id=reporter_id,
+        priority=payload.priority,
+        status="draft",
+        due_at=payload.due_date,
+    )
     db.add(task)
     db.commit()
     db.refresh(task)
@@ -136,7 +160,7 @@ def count_tasks(
     return int(result or 0)
 
 
-def serialize_task_out(task: Task, meeting=None) -> dict[str, object]:
+def serialize_task_out(task: Task, meeting: Meeting | None = None) -> dict[str, object]:
     meeting_title = meeting.title if meeting else None
     now = datetime.now(UTC)
     due_soon_deadline = now + timedelta(hours=48)

@@ -5,6 +5,7 @@ const DashboardView = () => import("../views/DashboardView.vue");
 const MeetingDetailView = () => import("../views/MeetingDetailView.vue");
 const MeetingListView = () => import("../views/MeetingListView.vue");
 const SharedMeetingView = () => import("../views/SharedMeetingView.vue");
+const AIAssistantView = () => import("../views/AIAssistantView.vue");
 const HotwordsView = () => import("../views/HotwordsView.vue");
 const TasksView = () => import("../views/TasksView.vue");
 const LoginView = () => import("../views/LoginView.vue");
@@ -48,6 +49,12 @@ const router = createRouter({
       path: "/tasks",
       name: "tasks",
       component: TasksView,
+    },
+    {
+      path: "/ai-assistant",
+      name: "ai-assistant",
+      component: AIAssistantView,
+      meta: { requiresAuth: true },
     },
     {
       path: "/hotwords",

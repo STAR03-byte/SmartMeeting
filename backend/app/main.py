@@ -15,6 +15,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 
 from app.api.v1.router import api_router
+from app.api.v1.endpoints import ai
 from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.errors import AppError, ErrorCode
@@ -39,6 +40,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
                 raise
     elif engine.dialect.name == "mysql":
         _ensure_mysql_team_features()
+        _ensure_mysql_ai_assistant_features()
     yield
 
 
@@ -174,9 +176,66 @@ def _ensure_mysql_team_features() -> None:
             )
 
 
+def _ensure_mysql_ai_assistant_features() -> None:
+    with engine.begin() as connection:
+        user_id_raw_type = connection.execute(
+            text(
+                """
+                SELECT COLUMN_TYPE
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'users'
+                  AND column_name = 'id'
+                LIMIT 1
+                """
+            )
+        ).scalar_one_or_none()
+        user_id_sql_type = _normalize_mysql_id_type(user_id_raw_type)
+
+        if not re.fullmatch(r"[A-Z ]+", user_id_sql_type):
+            raise RuntimeError("Invalid MySQL users.id type while ensuring AI assistant features")
+
+        connection.execute(
+            text(
+                f"""
+                CREATE TABLE IF NOT EXISTS conversations (
+                    id {user_id_sql_type} NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    user_id {user_id_sql_type} NOT NULL,
+                    title VARCHAR(255) DEFAULT '新对话',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    INDEX idx_user_id (user_id),
+                    INDEX idx_created_at (created_at),
+                    INDEX idx_updated_at (updated_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            )
+        )
+
+        connection.execute(
+            text(
+                f"""
+                CREATE TABLE IF NOT EXISTS conversation_messages (
+                    id {user_id_sql_type} NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    conversation_id {user_id_sql_type} NOT NULL,
+                    role ENUM('user', 'assistant') NOT NULL,
+                    content TEXT NOT NULL,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+                    INDEX idx_conversation_id (conversation_id),
+                    INDEX idx_created_at (created_at),
+                    INDEX idx_conversation_created (conversation_id, created_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            )
+        )
+
+
 app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
+app.include_router(ai.router, prefix="/api/v1")
 app.include_router(api_router, prefix="/api/v1")
 
 

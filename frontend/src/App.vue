@@ -19,6 +19,10 @@
         <RouterLink to="/meetings" class="nav-link">{{ $t('app.navMeetings') }}</RouterLink>
         <RouterLink to="/tasks" class="nav-link">{{ $t('app.navTasks') }}</RouterLink>
         <RouterLink to="/teams" class="nav-link">{{ $t('app.navTeams') }}</RouterLink>
+        <RouterLink to="/ai-assistant" class="nav-link nav-link-inline">
+          <el-icon><Cpu /></el-icon>
+          <span>AI 助理</span>
+        </RouterLink>
         <RouterLink to="/invitations" class="nav-link nav-link-badge">
           <span>{{ $t('app.navInvitations') }}</span>
           <el-badge v-if="pendingInvitationCount > 0" :value="pendingInvitationCount" class="ml-2" />
@@ -45,6 +49,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import { Cpu } from "@element-plus/icons-vue";
 import { useAuthStore } from "./stores/authStore";
 import { getMyInvitations } from './api/teamInvitations';
 
@@ -126,6 +131,8 @@ function handleLogout() {
   color: var(--el-color-primary);
   font-weight: 600;
 }
+
+.nav-link-inline { display: flex; align-items: center; gap: 8px; }
 
 .nav-link-badge { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 </style>

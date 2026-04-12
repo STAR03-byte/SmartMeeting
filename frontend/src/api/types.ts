@@ -241,3 +241,107 @@ export interface MeetingStructuredSummaryResult {
   structured_summary: StructuredSummary;
   has_structured_data: boolean;
 }
+
+// AI 助理相关类型
+
+export type TaskPriorityLevel = "high" | "medium" | "low";
+export type ChatChunkType = "chunk" | "end" | "error";
+export type ConversationRole = "user" | "assistant";
+
+export interface SuggestedTask {
+  title: string;
+  description?: string | null;
+  assigneeName?: string | null;
+  priority?: TaskPriorityLevel;
+  dueHint?: string | null;
+}
+
+export interface RelatedTaskInfo {
+  id: number;
+  title: string;
+}
+
+export interface TaskSuggestions {
+  steps: string[];
+  risks: string[];
+  suggestedRoles: string[];
+  relatedTasks: RelatedTaskInfo[];
+}
+
+export interface TaskSuggestionRequest {
+  title: string;
+  description?: string;
+  meetingId?: number;
+  meeting_id?: number;
+}
+
+export interface Conversation {
+  id: number;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ConversationMessage {
+  id: number;
+  conversationId: number;
+  role: ConversationRole;
+  content: string;
+  createdAt: string;
+  taskId?: number;
+  conversation_id?: number;
+  created_at?: string;
+}
+
+export interface ChatContext {
+  meetingId?: number;
+  taskId?: number;
+  taskIds?: number[];
+  meeting_id?: number;
+  task_ids?: number[];
+}
+
+export interface ChatChunk {
+  type: ChatChunkType;
+  content?: string;
+  taskDraft?: TaskDraft;
+  task_draft?: TaskDraft;
+}
+
+export interface TaskDraft {
+  id: number;
+  title: string;
+  description?: string | null;
+  meetingId: number;
+  dueDate?: string | null;
+  priority: TaskPriorityLevel;
+  assigneeId?: number | null;
+  status: string;
+  meeting_id?: number;
+  due_date?: string | null;
+  assignee_id?: number | null;
+}
+
+export interface CreateConversationRequest {
+  title?: string;
+}
+
+export interface SendMessageRequest {
+  conversationId?: number;
+  conversation_id?: number;
+  message: string;
+  context?: ChatContext;
+}
+
+export type TaskSuggestionResponse = TaskSuggestions;
+export type ChatStreamContext = ChatContext;
+export type CreateTaskDraftPayload = {
+  meeting_id: number;
+  title: string;
+  description: string;
+  due_date: string | Date;
+  priority?: TaskPriorityLevel;
+  assignee_id: number;
+};
