@@ -1,0 +1,15 @@
+wing: SmartMeeting
+rooms:
+  - name: backend
+    description: Backend API and services
+  - name: frontend
+    description: Frontend Vue.js application
+  - name: database
+    description: Database schemas and migrations
+  - name: docs
+    description: Project documentation
+  - name: infrastructure
+    description: Docker and deployment configs
+  - name: scripts
+    description: Utility scripts
+description: SmartMeeting - AI-powered meeting management system
