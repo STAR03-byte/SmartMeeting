@@ -15,19 +15,37 @@
       </div>
 
       <nav v-if="authStore.token" class="flex flex-col gap-2 max-[900px]:flex-row max-[900px]:flex-wrap">
-        <RouterLink to="/" class="nav-link">{{ $t('app.navDashboard') }}</RouterLink>
-        <RouterLink to="/meetings" class="nav-link">{{ $t('app.navMeetings') }}</RouterLink>
-        <RouterLink to="/tasks" class="nav-link">{{ $t('app.navTasks') }}</RouterLink>
-        <RouterLink to="/teams" class="nav-link">{{ $t('app.navTeams') }}</RouterLink>
+        <RouterLink to="/" class="nav-link nav-link-inline">
+          <el-icon><House /></el-icon>
+          <span>{{ $t('app.navDashboard') }}</span>
+        </RouterLink>
+        <RouterLink to="/meetings" class="nav-link nav-link-inline">
+          <el-icon><Calendar /></el-icon>
+          <span>{{ $t('app.navMeetings') }}</span>
+        </RouterLink>
+        <RouterLink to="/tasks" class="nav-link nav-link-inline">
+          <el-icon><List /></el-icon>
+          <span>{{ $t('app.navTasks') }}</span>
+        </RouterLink>
+        <RouterLink to="/teams" class="nav-link nav-link-inline">
+          <el-icon><UserFilled /></el-icon>
+          <span>{{ $t('app.navTeams') }}</span>
+        </RouterLink>
         <RouterLink to="/ai-assistant" class="nav-link nav-link-inline">
           <el-icon><Cpu /></el-icon>
           <span>AI 助理</span>
         </RouterLink>
         <RouterLink to="/invitations" class="nav-link nav-link-badge">
-          <span>{{ $t('app.navInvitations') }}</span>
+          <div class="nav-link-inline">
+            <el-icon><Bell /></el-icon>
+            <span>{{ $t('app.navInvitations') }}</span>
+          </div>
           <el-badge v-if="pendingInvitationCount > 0" :value="pendingInvitationCount" class="ml-2" />
         </RouterLink>
-        <RouterLink to="/hotwords" class="nav-link">{{ $t('app.navHotwords') }}</RouterLink>
+        <RouterLink to="/hotwords" class="nav-link nav-link-inline">
+          <el-icon><ChatDotRound /></el-icon>
+          <span>{{ $t('app.navHotwords') }}</span>
+        </RouterLink>
       </nav>
 
       <div class="mt-auto pt-6 border-t-1 border-t-solid border-border-lighter max-[900px]:mt-0 max-[900px]:border-t-0 max-[900px]:pt-0 flex flex-col gap-3">
@@ -49,7 +67,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { Cpu } from "@element-plus/icons-vue";
+import { Bell, Calendar, ChatDotRound, Cpu, House, List, UserFilled } from "@element-plus/icons-vue";
 import { useAuthStore } from "./stores/authStore";
 import { getMyInvitations } from './api/teamInvitations';
 
