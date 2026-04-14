@@ -330,6 +330,30 @@ class LLMClient:
         )
         return response
 
+    def _extract_json_from_response(self, response: str) -> dict[str, object] | None:
+        response = response.strip()
+        
+        try:
+            return cast(dict[str, object], json.loads(response))
+        except json.JSONDecodeError:
+            pass
+        
+        json_patterns = [
+            r'```json\s*(.*?)\s*```',
+            r'```\s*(.*?)\s*```',
+            r'\{.*\}',
+        ]
+        
+        for pattern in json_patterns:
+            matches = re.findall(pattern, response, re.DOTALL)
+            for match in matches:
+                try:
+                    return cast(dict[str, object], json.loads(match.strip()))
+                except json.JSONDecodeError:
+                    continue
+        
+        return None
+
     async def generate_task_suggestions(
         self,
         title: str,
@@ -351,9 +375,11 @@ class LLMClient:
     "risks": ["风险1", "风险2", ...],
     "suggested_roles": ["角色1", "角色2", ...],
     "related_tasks": [{"id": 1, "title": "相关任务1"}, ...]
-}"""
+}
 
-        response, _provider = await self._call_with_fallback(
+注意：直接返回JSON对象，不要添加markdown代码块标记或其他说明文字。"""
+
+        response, provider = await self._call_with_fallback(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
         )
@@ -365,10 +391,17 @@ class LLMClient:
             "related_tasks": [],
         }
 
-        try:
-            parsed = cast(dict[str, object], json.loads(response))
-        except json.JSONDecodeError:
-            return default_result
+        parsed = self._extract_json_from_response(response)
+        
+        if parsed is None:
+            logger.warning(
+                f"Failed to parse task suggestions JSON from {provider} response. "
+                f"Task title: {title[:50]}... Response preview: {response[:200]}..."
+            )
+            return {
+                **default_result,
+                "steps": ["AI建议生成失败，请稍后重试或手动填写任务信息"],
+            }
 
         steps_raw = parsed.get("steps")
         risks_raw = parsed.get("risks")
