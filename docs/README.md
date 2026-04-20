@@ -8,6 +8,11 @@
 - `frontend-runbook.md`：前端启动与联调手册
 - `database-design.md`：数据库设计说明
 - `deployment/production-deployment.md`：生产部署说明
+- `SmartMeeting软件使用说明书.md`：软件使用说明书
+- `SmartMeeting软件使用说明书（图文版）.md`：可直接交作业的图文占位版使用说明书
+- `SmartMeeting答辩PPT与演示说明.md`：6 分钟答辩场景下的 PPT 结构、讲稿与演示路线说明
+- `SmartMeeting核心技术细节与架构复盘.md`：项目架构与核心代码实现细节（适合答辩被问时参考）
+- `testing/SmartMeeting软件测试报告.md`：软件测试报告
 
 ## 过程文档
 
@@ -32,3 +37,7 @@
 3. `database-design.md`
 4. `backend-api.md`
 5. `frontend-runbook.md`
+6. `SmartMeeting软件使用说明书.md`
+7. `SmartMeeting软件使用说明书（图文版）.md`
+8. `SmartMeeting答辩PPT与演示说明.md`
+9. `SmartMeeting核心技术细节与架构复盘.md`
