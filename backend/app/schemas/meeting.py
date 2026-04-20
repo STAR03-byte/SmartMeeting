@@ -1,9 +1,9 @@
 """会议 Schema 定义。"""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import ClassVar, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from pydantic.config import ConfigDict
 
 from app.schemas.meeting_transcript import MeetingTranscriptOut
@@ -12,6 +12,12 @@ from app.schemas.task import TaskOut
 from app.schemas.user import UserOut
 
 MeetingStatus = Literal["planned", "ongoing", "done", "cancelled"]
+
+
+def _normalize_naive_utc(value: datetime | None) -> datetime | None:
+    if value is None or value.tzinfo is None:
+        return value
+    return value.astimezone(UTC).replace(tzinfo=None)
 
 
 class MeetingCreate(BaseModel):
@@ -25,6 +31,11 @@ class MeetingCreate(BaseModel):
     scheduled_end_at: datetime | None = None
     location: str | None = Field(default=None, max_length=255)
 
+    @field_validator("scheduled_start_at", "scheduled_end_at")
+    @classmethod
+    def normalize_schedule_datetimes(cls, value: datetime | None) -> datetime | None:
+        return _normalize_naive_utc(value)
+
 
 class MeetingUpdate(BaseModel):
     """更新会议请求。"""
@@ -37,6 +48,11 @@ class MeetingUpdate(BaseModel):
     actual_end_at: datetime | None = None
     location: str | None = Field(default=None, max_length=255)
     status: MeetingStatus | None = None
+
+    @field_validator("scheduled_start_at", "scheduled_end_at", "actual_start_at", "actual_end_at")
+    @classmethod
+    def normalize_meeting_datetimes(cls, value: datetime | None) -> datetime | None:
+        return _normalize_naive_utc(value)
 
 
 class MeetingClearContentRequest(BaseModel):

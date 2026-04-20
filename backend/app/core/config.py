@@ -65,7 +65,12 @@ class Settings(BaseSettings):
     whisper_model: str = "medium"  # tiny | base | small | medium | large-v3 (medium推荐，large-v3最高质量)
     whisper_device: str = "auto"  # cpu | cuda | auto (auto会自动检测GPU)
     whisper_language: str = "zh"
-    whisper_hot_words: str = ""
+    whisper_hot_words: str = (
+        "SmartMeeting,Whisper,WhisperX,faster-whisper,FastAPI,Vue3,TypeScript,Pinia,"
+        "Vite,MySQL,Docker,JWT,FFmpeg,PyTorch,CUDA,会议纪要,行动项,待办事项,项目推进,"
+        "接口联调,需求评审,版本发布,任务拆解,进度同步,语音识别,转写结果,摘要生成,"
+        "热词管理,参与者,截止时间,优先级"
+    )
     whisper_normalize_to_simplified: bool = True
     whisper_allow_mock_fallback: bool = True
     enable_speaker_diarization: bool = False

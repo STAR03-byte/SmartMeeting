@@ -1,5 +1,6 @@
 """会议 REST API。"""
 
+from datetime import UTC, datetime
 from pathlib import Path as FilePath
 from typing import Annotated
 from urllib.parse import quote
@@ -45,6 +46,12 @@ from app.services.user_service import get_user
 from .auth import get_current_user
 
 router = APIRouter(prefix="/meetings", tags=["meetings"], dependencies=[Depends(get_current_user)])
+
+
+def _normalize_naive_utc(value: datetime | None) -> datetime | None:
+    if value is None or value.tzinfo is None:
+        return value
+    return value.astimezone(UTC).replace(tzinfo=None)
 
 
 def _assert_meeting_permission(meeting: Meeting, current_user: CurrentUserOut) -> None:
@@ -240,6 +247,8 @@ def update_meeting_api(
         scheduled_start_at = meeting.scheduled_start_at
     if scheduled_end_at is None:
         scheduled_end_at = meeting.scheduled_end_at
+    scheduled_start_at = _normalize_naive_utc(scheduled_start_at)
+    scheduled_end_at = _normalize_naive_utc(scheduled_end_at)
     if (
         scheduled_start_at is not None
         and scheduled_end_at is not None
@@ -256,6 +265,8 @@ def update_meeting_api(
         actual_start_at = meeting.actual_start_at
     if actual_end_at is None:
         actual_end_at = meeting.actual_end_at
+    actual_start_at = _normalize_naive_utc(actual_start_at)
+    actual_end_at = _normalize_naive_utc(actual_end_at)
     if (
         actual_start_at is not None
         and actual_end_at is not None

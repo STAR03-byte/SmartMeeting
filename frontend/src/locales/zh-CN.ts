@@ -257,7 +257,7 @@ export default {
     addSuccess: '参与者已添加',
     roleUpdateSuccess: '参与者角色已更新',
     removeSuccess: '参与者已移除',
-    statusInvited: '待确认',
+    statusInvited: '已邀请',
     statusAccepted: '已接受',
     statusDeclined: '已拒绝',
     statusAttended: '已参加',

@@ -2331,6 +2331,51 @@ def test_update_meeting_rejects_invalid_actual_range(auth_client) -> None:
     assert patch_resp.json()["detail"] == "actual_end_at must be after or equal to actual_start_at"
 
 
+def test_update_meeting_accepts_timezone_aware_actual_end_with_existing_naive_start(auth_client) -> None:
+    user_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "meeting_patch_timezone_mix",
+            "email": "meeting_patch_timezone_mix@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Meeting Patch Timezone Mix",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "Patch Actual 时区兼容",
+            "organizer_id": organizer_id,
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    first_patch_resp = auth_client.patch(
+        f"/api/v1/meetings/{meeting_id}",
+        json={
+            "actual_start_at": "2026-03-14T10:00:00",
+        },
+    )
+    assert first_patch_resp.status_code == 200
+
+    patch_resp = auth_client.patch(
+        f"/api/v1/meetings/{meeting_id}",
+        json={
+            "actual_end_at": "2026-03-14T10:30:00Z",
+        },
+    )
+
+    assert patch_resp.status_code == 200
+    body = patch_resp.json()
+    assert body["actual_start_at"] == "2026-03-14T10:00:00"
+    assert body["actual_end_at"] == "2026-03-14T10:30:00"
+
+
 def test_create_transcript_rejects_nonexistent_meeting(auth_client) -> None:
     transcript_resp = auth_client.post(
         "/api/v1/transcripts",
