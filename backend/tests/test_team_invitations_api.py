@@ -83,6 +83,8 @@ def test_pending_invitations_only_for_me(auth_client: TestClient) -> None:
     items = cast(list[dict[str, Any]], list_resp.json())
     assert len(items) == 1
     assert items[0]["invitee_id"] == invitee_id
+    assert items[0]["team_name"] == "Invites Team"
+    assert items[0]["inviter_name"] == "Invite User"
 
 
 def test_accept_and_reject_invitation(auth_client: TestClient) -> None:

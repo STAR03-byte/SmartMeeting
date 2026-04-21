@@ -12,6 +12,7 @@ from openai.types.chat import ChatCompletionMessageParam
 
 from app.core.config import settings
 from app.schemas.structured_summary import AgendaItem, Resolution, StructuredSummary, TodoItem
+from app.services.task_service import is_actionable_task_text
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +112,10 @@ class ExtractedTask(TypedDict):
     due_hint: str | None
 
 
+class BatchedExtractedTask(ExtractedTask):
+    segment_index: int
+
+
 class SuggestedRelatedTask(TypedDict):
     id: int
     title: str
@@ -183,6 +188,45 @@ class LLMClient:
             raise LLMServiceError(f"LLM transient error: {last_error}") from last_error
         raise LLMServiceError("LLM request failed")
 
+    async def _call_chat_stream(
+        self,
+        messages: list[ChatCompletionMessageParam],
+        provider: LLMProviderConfig,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> AsyncGenerator[str, None]:
+        if provider.name == "mock":
+            raise LLMServiceError("Mock provider uses rule fallback")
+        client = self._ensure_client(provider)
+        last_error: Exception | None = None
+        for attempt in range(3):
+            try:
+                stream = await client.chat.completions.create(
+                    model=provider.model,
+                    messages=messages,
+                    temperature=temperature if temperature is not None else provider.temperature,
+                    max_tokens=max_tokens if max_tokens is not None else provider.max_tokens,
+                    stream=True,
+                )
+                async for chunk in stream:
+                    for choice in chunk.choices:
+                        delta = choice.delta.content
+                        if delta:
+                            yield delta
+                return
+            except (APIConnectionError, RateLimitError) as exc:
+                last_error = exc
+                if attempt == 2:
+                    logger.error("LLM stream transient error after retries: %s", exc)
+                    raise LLMServiceError(f"LLM transient error: {exc}") from exc
+            except APIError as exc:
+                logger.error("LLM stream API error: %s", exc)
+                raise LLMServiceError(f"LLM API error: {exc}") from exc
+
+        if last_error is not None:
+            raise LLMServiceError(f"LLM transient error: {last_error}") from last_error
+        raise LLMServiceError("LLM request failed")
+
     async def _call_with_fallback(
         self,
         messages: list[ChatCompletionMessageParam],
@@ -204,6 +248,29 @@ class LLMClient:
             except LLMServiceError as exc:
                 errors.append(f"{provider.name}: {exc}")
                 logger.warning("LLM provider failed, trying fallback: %s", exc)
+
+        raise LLMServiceError("; ".join(errors) if errors else "LLM request failed")
+
+    async def _call_with_fallback_stream(
+        self,
+        messages: list[ChatCompletionMessageParam],
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> AsyncGenerator[str, None]:
+        errors: list[str] = []
+        for provider in _build_provider_chain():
+            try:
+                async for chunk in self._call_chat_stream(
+                    messages,
+                    provider=provider,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                ):
+                    yield chunk
+                return
+            except LLMServiceError as exc:
+                errors.append(f"{provider.name}: {exc}")
+                logger.warning("LLM stream provider failed, trying fallback: %s", exc)
 
         raise LLMServiceError("; ".join(errors) if errors else "LLM request failed")
 
@@ -308,21 +375,53 @@ class LLMClient:
             if "task_not_found" in context_info:
                 system_prompt += f"\n\n注意：{context_info['task_not_found']}"
 
+            if "assistant_intent" in context_info:
+                system_prompt += f"\n\n【当前问题类型】\n{context_info['assistant_intent']}"
+            if "my_tasks" in context_info:
+                system_prompt += f"\n\n【我的任务查询结果】\n{context_info['my_tasks']}"
+            if "recent_meetings" in context_info:
+                system_prompt += f"\n\n【最近相关会议】\n{context_info['recent_meetings']}"
+            if "meeting_summary" in context_info:
+                system_prompt += f"\n\n【会议摘要】\n{context_info['meeting_summary']}"
+            if "meeting_summary_missing" in context_info:
+                system_prompt += f"\n\n【会议摘要】\n{context_info['meeting_summary_missing']}"
+            if "meeting_tasks" in context_info:
+                system_prompt += f"\n\n【会议任务】\n{context_info['meeting_tasks']}"
+            if "meeting_tasks_missing" in context_info:
+                system_prompt += f"\n\n【会议任务】\n{context_info['meeting_tasks_missing']}"
+            if "meeting_participants" in context_info:
+                system_prompt += f"\n\n【参会人员】\n{context_info['meeting_participants']}"
+            if "meeting_participants_missing" in context_info:
+                system_prompt += f"\n\n【参会人员】\n{context_info['meeting_participants_missing']}"
+            if "meeting_transcript_preview" in context_info:
+                system_prompt += f"\n\n【会议转写片段】\n{context_info['meeting_transcript_preview']}"
+            if "meeting_transcript_missing" in context_info:
+                system_prompt += f"\n\n【会议转写】\n{context_info['meeting_transcript_missing']}"
+            if "meeting_not_found" in context_info:
+                system_prompt += f"\n\n注意：{context_info['meeting_not_found']}"
+            if "meeting_description_missing" in context_info:
+                system_prompt += f"\n\n【会议描述】\n{context_info['meeting_description_missing']}"
+
+        system_prompt += (
+            "\n\n回答要求："
+            "\n1. 先基于真实结构化数据回答，不要空泛。"
+            "\n2. 如果已经有任务/会议数据，就直接引用，不要要求用户重复说明。"
+            "\n3. 如果用户问执行建议，请结合会议摘要、任务状态和上下文给出下一步动作。"
+            "\n4. 严禁补充数据库中不存在的议程、参会人、决议、任务、时间和地点。"
+            "\n5. 如果某字段缺失，必须明确说“当前没有记录到”，不要自行推断或编造。"
+            "\n6. 回答尽量简洁、明确、可执行。"
+        )
+
         full_messages = cast(
             list[ChatCompletionMessageParam],
             [{"role": "system", "content": system_prompt}] + messages,
         )
 
         if stream:
-            # TODO: 实现真正的流式响应（SSE/增量token）
-            async def _single_chunk_generator() -> AsyncGenerator[str, None]:
-                response, _provider = await self._call_with_fallback(
-                    messages=full_messages,
-                    temperature=0.7,
-                )
-                yield response
-
-            return _single_chunk_generator()
+            return self._call_with_fallback_stream(
+                messages=full_messages,
+                temperature=0.7,
+            )
 
         response, _provider = await self._call_with_fallback(
             messages=full_messages,
@@ -637,6 +736,8 @@ Few-shot示例：
             # 确保title不为空且长度合理
             if not todo.title or len(todo.title.strip()) < 3:
                 continue
+            if not is_actionable_task_text(todo.title):
+                continue
             # 清理description（如果与title重复）
             description = todo.description
             if description and description.strip() == todo.title.strip():
@@ -744,6 +845,8 @@ Few-shot示例：
         )
         system_prompt = (
             "你是一个任务提取助手。从会议转写中提取行动项/任务。\n\n"
+            "只提取明确、可执行、可落地的任务，不要把讨论语气、模糊建议、时间判断、口语化表达当成任务。\n"
+            "像‘后天完成也可以’、‘那这个事情明天完成也可以’、‘我觉得可以’这类句子不是任务，必须忽略。\n\n"
             "输出格式：JSON数组，每个任务包含：\n"
             "- title: 任务标题（简洁，不超过50字）\n"
             "- description: 任务详细描述\n"
@@ -797,6 +900,80 @@ Few-shot示例：
             )
         return tasks
 
+    async def extract_action_items_for_batch(
+        self,
+        transcript_contents: list[str],
+        participants: list[str] | None = None,
+    ) -> list[BatchedExtractedTask]:
+        if not transcript_contents:
+            return []
+
+        numbered_transcripts = [
+            f"[{index}] {content.strip()}" for index, content in enumerate(transcript_contents) if content.strip()
+        ]
+        if not numbered_transcripts:
+            return []
+
+        participants_context = (
+            f"\n\n会议参与者：{', '.join(participants)}" if participants else ""
+        )
+        system_prompt = (
+            "你是一个任务提取助手。从多段会议转写中提取行动项/任务。\n\n"
+            "只提取明确、可执行、可落地的任务，不要把讨论语气、模糊建议、时间判断、口语化表达当成任务。\n"
+            "输出格式：JSON数组，每个任务包含：\n"
+            "- segment_index: 任务来源的转写序号（必须对应输入中的 [0]、[1]...）\n"
+            "- title: 任务标题（简洁，不超过50字）\n"
+            "- description: 任务详细描述\n"
+            "- assignee_name: 负责人姓名（如果能从内容推断，否则为null）\n"
+            "- priority: 优先级（high/medium/low）\n"
+            "- due_hint: 截止时间提示（如果提到，否则为null）\n\n"
+            "示例输出：\n"
+            "[{\"segment_index\": 0, \"title\": \"完成项目报告\", \"description\": \"下周一前提交项目进度报告\", "
+            "\"assignee_name\": \"张三\", \"priority\": \"high\", \"due_hint\": \"下周一\"}]\n\n"
+            f"只输出JSON数组，不要其他内容。{participants_context}"
+        )
+        user_prompt = "从以下多段会议转写中提取所有行动项：\n\n" + "\n\n".join(numbered_transcripts) + "\n\n输出JSON数组："
+
+        messages: list[ChatCompletionMessageParam] = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+
+        try:
+            response, _provider = await self._call_with_fallback(messages, temperature=0.1)
+            parsed = cast(object, json.loads(response))
+        except json.JSONDecodeError as exc:
+            logger.warning("Failed to parse batched LLM response as JSON: %s", exc)
+            return []
+
+        if not isinstance(parsed, list):
+            return []
+
+        tasks: list[BatchedExtractedTask] = []
+        for item in parsed:
+            if not isinstance(item, dict):
+                continue
+            normalized_item = cast(dict[str, object], item)
+            title = normalized_item.get("title")
+            segment_index = normalized_item.get("segment_index")
+            if not isinstance(title, str) or not title.strip() or not isinstance(segment_index, int):
+                continue
+            description = normalized_item.get("description")
+            assignee_name = normalized_item.get("assignee_name")
+            priority = normalized_item.get("priority")
+            due_hint = normalized_item.get("due_hint")
+            tasks.append(
+                {
+                    "segment_index": segment_index,
+                    "title": title.strip(),
+                    "description": description if isinstance(description, str) else title.strip(),
+                    "assignee_name": assignee_name if isinstance(assignee_name, str) else None,
+                    "priority": priority if isinstance(priority, str) else "medium",
+                    "due_hint": due_hint if isinstance(due_hint, str) else None,
+                }
+            )
+        return tasks
+
     async def health_check(self) -> bool:
         try:
             response = await self._call_with_fallback(
@@ -832,6 +1009,13 @@ async def extract_action_items(
     participants: list[str] | None = None,
 ) -> list[ExtractedTask]:
     return await llm_client.extract_action_items(transcript_content, participants)
+
+
+async def extract_action_items_for_batch(
+    transcript_contents: list[str],
+    participants: list[str] | None = None,
+) -> list[BatchedExtractedTask]:
+    return await llm_client.extract_action_items_for_batch(transcript_contents, participants)
 
 
 def generate_fallback_summary(transcript_contents: list[str], meeting_title: str | None) -> str:

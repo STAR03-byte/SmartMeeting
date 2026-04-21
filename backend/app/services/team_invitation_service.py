@@ -3,7 +3,7 @@ from secrets import token_urlsafe
 
 from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.team import Team
 from app.models.team_invite_link import TeamInviteLink
@@ -115,6 +115,7 @@ def create_invite_link(db: Session, team_id: int, inviter_id: int, expires_in_ho
 def get_user_invitations(db: Session, user_id: int) -> list[TeamInvitation]:
     return (
         db.query(TeamInvitation)
+        .options(joinedload(TeamInvitation.team), joinedload(TeamInvitation.inviter))
         .filter(TeamInvitation.invitee_id == user_id, TeamInvitation.status == "pending")
         .order_by(TeamInvitation.created_at.desc())
         .all()

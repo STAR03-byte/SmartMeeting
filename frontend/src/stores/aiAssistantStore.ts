@@ -182,9 +182,36 @@ export const useAiAssistantStore = defineStore("aiAssistant", () => {
           stream.close();
         };
 
+        let chunkBuffer = "";
+        let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+        const flushBufferedChunks = () => {
+          if (!chunkBuffer) return;
+          const nextContent = `${messages.value[assistantIndex]?.content ?? ""}${chunkBuffer}`;
+          messages.value[assistantIndex] = {
+            ...messages.value[assistantIndex],
+            content: nextContent,
+          };
+          assistantMessage.content = nextContent;
+          chunkBuffer = "";
+        };
+
+        const scheduleFlush = () => {
+          if (flushTimer !== null) return;
+          flushTimer = setTimeout(() => {
+            flushTimer = null;
+            flushBufferedChunks();
+          }, 60);
+        };
+
         const finish = () => {
           if (settled) return;
           settled = true;
+          if (flushTimer !== null) {
+            clearTimeout(flushTimer);
+            flushTimer = null;
+          }
+          flushBufferedChunks();
           cleanup();
           currentConversation.value = currentConversation.value
             ? { ...currentConversation.value, updatedAt: new Date().toISOString(), updated_at: new Date().toISOString() }
@@ -202,6 +229,11 @@ export const useAiAssistantStore = defineStore("aiAssistant", () => {
         const fail = (rawError: unknown) => {
           if (settled) return;
           settled = true;
+          if (flushTimer !== null) {
+            clearTimeout(flushTimer);
+            flushTimer = null;
+          }
+          flushBufferedChunks();
           cleanup();
           reject(rawError instanceof Error ? rawError : new Error(getApiErrorMessage(rawError)));
         };
@@ -225,16 +257,17 @@ export const useAiAssistantStore = defineStore("aiAssistant", () => {
           }
 
           if (chunk.type === "chunk" && typeof chunk.content === "string") {
-            const nextContent = `${messages.value[assistantIndex]?.content ?? ""}${chunk.content}`;
-            messages.value[assistantIndex] = {
-              ...messages.value[assistantIndex],
-              content: nextContent,
-            };
-            assistantMessage.content = nextContent;
+            chunkBuffer += chunk.content;
+            scheduleFlush();
             return;
           }
 
           if (chunk.type === "end") {
+            if (flushTimer !== null) {
+              clearTimeout(flushTimer);
+              flushTimer = null;
+            }
+            flushBufferedChunks();
             if (typeof chunk.content === "string" && chunk.content.length > 0) {
               const nextContent = `${messages.value[assistantIndex]?.content ?? ""}${chunk.content}`;
               messages.value[assistantIndex] = {

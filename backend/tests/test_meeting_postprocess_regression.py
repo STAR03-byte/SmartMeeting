@@ -309,6 +309,45 @@ def test_generate_tasks_from_transcripts_with_llm_uses_llm_result() -> None:
         db.close()
 
 
+def test_generate_tasks_from_transcripts_with_llm_filters_colloquial_titles() -> None:
+    db = make_session()
+    try:
+        organizer, _, _, meeting = seed_meeting(db)
+        transcript = MeetingTranscript(
+            meeting_id=meeting.id,
+            speaker_user_id=organizer.id,
+            speaker_name="Owner",
+            segment_index=1,
+            content="那会变成这个事明天完成也可以，后天完成也可以。",
+        )
+        db.add(transcript)
+        db.commit()
+        db.refresh(transcript)
+
+        async def run() -> tuple[list[Task], str]:
+            with patch(
+                "app.services.meeting_service.llm_extract_action_items",
+                new_callable=AsyncMock,
+                return_value=[
+                    {
+                        "title": "后天完成也可以",
+                        "description": "那会变成这个事明天完成也可以，后天完成也可以。",
+                        "assignee_name": None,
+                        "priority": "medium",
+                        "due_hint": "后天",
+                    }
+                ],
+            ):
+                return await generate_tasks_from_transcripts_with_llm(db, meeting.id, [transcript])
+
+        tasks, version = asyncio.run(run())
+
+        assert tasks == []
+        assert version == "llm-task-v1"
+    finally:
+        db.close()
+
+
 def test_generate_tasks_from_transcripts_with_llm_falls_back_when_llm_returns_empty() -> None:
     db = make_session()
     try:
@@ -385,6 +424,77 @@ def test_generate_tasks_from_transcripts_with_llm_reuses_existing_tasks() -> Non
         assert len(reused_tasks) == 1
         assert reused_tasks[0].id == seeded_tasks[0].id
         assert reused_version == "existing-v1"
+    finally:
+        db.close()
+
+
+def test_generate_tasks_from_transcripts_with_llm_uses_batched_extraction() -> None:
+    db = make_session()
+    try:
+        organizer, zhangsan, lisi, meeting = seed_meeting(db)
+        transcripts = [
+            MeetingTranscript(
+                meeting_id=meeting.id,
+                speaker_user_id=organizer.id,
+                speaker_name="Owner",
+                segment_index=1,
+                content="请张三完成接口联调。",
+            ),
+            MeetingTranscript(
+                meeting_id=meeting.id,
+                speaker_user_id=organizer.id,
+                speaker_name="Owner",
+                segment_index=2,
+                content="请李四提交测试报告。",
+            ),
+        ]
+        db.add_all(transcripts)
+        db.commit()
+        for transcript in transcripts:
+            db.refresh(transcript)
+
+        async def run() -> tuple[list[Task], str]:
+            with patch(
+                "app.services.meeting_service.llm_extract_action_items_for_batch",
+                new_callable=AsyncMock,
+                return_value=[
+                    {
+                        "segment_index": 0,
+                        "title": "完成接口联调",
+                        "description": "请张三完成接口联调。",
+                        "assignee_name": "张三",
+                        "priority": "high",
+                        "due_hint": None,
+                    },
+                    {
+                        "segment_index": 1,
+                        "title": "提交测试报告",
+                        "description": "请李四提交测试报告。",
+                        "assignee_name": "李四",
+                        "priority": "medium",
+                        "due_hint": None,
+                    },
+                ],
+            ) as batched_mock, patch(
+                "app.services.meeting_service.llm_extract_action_items",
+                new_callable=AsyncMock,
+                return_value=[],
+            ) as single_mock:
+                tasks, version = await generate_tasks_from_transcripts_with_llm(db, meeting.id, transcripts)
+                assert batched_mock.await_count == 1
+                assert single_mock.await_count == 0
+                return tasks, version
+
+        tasks, version = asyncio.run(run())
+
+        assert len(tasks) == 2
+        assert tasks[0].transcript_id == transcripts[0].id
+        assert tasks[0].title == "完成接口联调"
+        assert tasks[0].assignee_id == zhangsan.id
+        assert tasks[1].transcript_id == transcripts[1].id
+        assert tasks[1].title == "提交测试报告"
+        assert tasks[1].assignee_id == lisi.id
+        assert version == "llm-task-v1"
     finally:
         db.close()
 

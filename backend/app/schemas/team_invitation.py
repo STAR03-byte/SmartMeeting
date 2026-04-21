@@ -17,6 +17,8 @@ class TeamInvitationOut(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    team_name: str | None = None
+    inviter_name: str | None = None
 
     model_config: ClassVar[ConfigDict] = ConfigDict(from_attributes=True)
 

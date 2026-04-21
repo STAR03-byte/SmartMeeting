@@ -15,6 +15,7 @@ from app.services.task_service import (
     extract_action_items,
     infer_assignee_name,
     infer_task_priority,
+    is_actionable_task_text,
     list_tasks,
     update_task,
 )
@@ -288,3 +289,10 @@ def test_task_rule_helpers_extract_priority_and_assignee() -> None:
     assert items
     assert infer_task_priority(content) == "high"
     assert infer_assignee_name(content) in {"王伟", "王伟今天"}
+
+
+def test_is_actionable_task_text_rejects_colloquial_discussion() -> None:
+    assert is_actionable_task_text("后天完成也可以") is False
+    assert is_actionable_task_text("那会变成这个事明天完成也可以") is False
+    assert is_actionable_task_text("我觉得这个应该问题不大") is False
+    assert is_actionable_task_text("请张三完成接口联调") is True

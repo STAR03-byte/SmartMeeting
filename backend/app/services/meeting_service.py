@@ -20,10 +20,12 @@ from app.schemas.meeting import MeetingCreate, MeetingDetailOut, MeetingShareOut
 from app.schemas.meeting_transcript import MeetingTranscriptOut
 from app.schemas.task import TaskOut
 from app.services.task_service import extract_action_items, infer_assignee_name, infer_task_priority
+from app.services.task_service import is_actionable_task_text
 from app.services.llm_service import (
     ExtractedTask,
     LLMServiceError,
     extract_action_items as llm_extract_action_items,
+    extract_action_items_for_batch as llm_extract_action_items_for_batch,
     generate_fallback_tasks,
     generate_meeting_summary as llm_generate_meeting_summary,
 )
@@ -32,6 +34,8 @@ from app.services.user_service import get_user
 from app.services.task_service import serialize_task_out
 
 logger = logging.getLogger(__name__)
+
+TASK_EXTRACTION_BATCH_SIZE = 4
 
 
 def normalize_person_key(value: str | None) -> str:
@@ -475,16 +479,47 @@ async def generate_tasks_from_transcripts_with_llm(
         if getattr(user, "full_name", None)
     ]
 
-    for transcript in transcripts:
-        llm_items: list[ExtractedTask] = []
+    transcript_batches = [
+        transcripts[index : index + TASK_EXTRACTION_BATCH_SIZE]
+        for index in range(0, len(transcripts), TASK_EXTRACTION_BATCH_SIZE)
+    ]
+    llm_items_by_transcript: dict[int, list[ExtractedTask]] = {}
+
+    for batch in transcript_batches:
+        batch_contents = [transcript.content for transcript in batch]
         try:
-            llm_items = await llm_extract_action_items(transcript.content, participants)
+            batch_items = await llm_extract_action_items_for_batch(batch_contents, participants)
         except LLMServiceError:
-            llm_items = []
+            batch_items = []
+
+        for item in batch_items:
+            segment_index = item.get("segment_index")
+            if not isinstance(segment_index, int) or segment_index < 0 or segment_index >= len(batch):
+                continue
+            target_transcript = batch[segment_index]
+            llm_items_by_transcript.setdefault(target_transcript.id, []).append(
+                {
+                    "title": item["title"],
+                    "description": item["description"],
+                    "assignee_name": item["assignee_name"],
+                    "priority": item["priority"],
+                    "due_hint": item["due_hint"],
+                }
+            )
+
+    for transcript in transcripts:
+        llm_items = llm_items_by_transcript.get(transcript.id, [])
+        if not llm_items:
+            try:
+                llm_items = await llm_extract_action_items(transcript.content, participants)
+            except LLMServiceError:
+                llm_items = []
 
         if llm_items:
             used_llm = True
             for item in llm_items:
+                if not is_actionable_task_text(item["title"]):
+                    continue
                 assignee_id = transcript.speaker_user_id
                 assignee_name = item["assignee_name"]
                 if assignee_name:
@@ -527,6 +562,8 @@ async def generate_tasks_from_transcripts_with_llm(
                 fallback_items = generate_fallback_tasks(transcript.content)
                 action_items = [item["description"] for item in fallback_items if item.get("description")]
         for action in action_items:
+            if not is_actionable_task_text(action):
+                continue
             assignee_id = transcript.speaker_user_id
             assignee_name = infer_assignee_name(action)
             if assignee_name:

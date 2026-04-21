@@ -3,16 +3,29 @@
 import logging
 import re
 from collections.abc import AsyncGenerator
-from datetime import datetime
-from typing import Protocol
+from datetime import UTC, datetime, timedelta
+from typing import Literal, Protocol
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.conversation import Conversation, ConversationMessage
 from app.models.meeting import Meeting
+from app.models.meeting_participant import MeetingParticipant
+from app.models.meeting_transcript import MeetingTranscript
+from app.models.team_member import TeamMember
 from app.models.task import Task
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
+
+AssistantIntent = Literal[
+    "my_tasks",
+    "meeting_tasks",
+    "meeting_summary",
+    "execution_advice",
+    "general_chat",
+]
 
 
 class LLMService(Protocol):
@@ -32,6 +45,302 @@ class AIAssistantService:
 
     def __init__(self, llm_service: LLMService):
         self.llm_service: LLMService = llm_service
+
+    def classify_intent(self, message: str, context: dict[str, object] | None = None) -> AssistantIntent:
+        normalized = message.strip().lower()
+        has_meeting_context = isinstance(context, dict) and isinstance(context.get("meeting_id"), int)
+
+        if any(keyword in normalized for keyword in ("快到期", "即将到期", "近期截止")) and "任务" in normalized:
+            return "my_tasks"
+        if ("会议" in normalized or "会" in normalized) and any(keyword in normalized for keyword in ("任务", "行动项", "todo", "待办")):
+            return "meeting_tasks"
+        if any(keyword in normalized for keyword in ("我的任务", "我有哪些任务", "任务有什么", "待办", "进行中", "已完成")):
+            return "my_tasks"
+        if has_meeting_context and any(keyword in normalized for keyword in ("任务", "行动项", "todo", "待办")):
+            return "meeting_tasks"
+        if has_meeting_context and any(keyword in normalized for keyword in ("总结", "摘要", "讲了什么", "会议内容", "决议")):
+            return "meeting_summary"
+        if any(keyword in normalized for keyword in ("怎么做", "如何推进", "下一步", "执行", "推进")):
+            return "execution_advice"
+        return "general_chat"
+
+    def _resolve_meeting_id_from_message(self, db: Session, user_id: int, message: str) -> int | None:
+        normalized = message.strip()
+        if not normalized:
+            return None
+
+        meetings = self._query_recent_meetings(db, user_id, limit=20)
+        for meeting in meetings:
+            title = (meeting.title or "").strip()
+            if title and title in normalized:
+                return meeting.id
+
+        extracted_candidates = [segment.strip("“”\"'《》[]（）() ") for segment in re.split(r"[，。！？?\n]", normalized) if segment.strip()]
+        for candidate in extracted_candidates:
+            if len(candidate) < 2:
+                continue
+            meeting = (
+                db.query(Meeting)
+                .outerjoin(TeamMember, TeamMember.team_id == Meeting.team_id)
+                .filter(
+                    or_(Meeting.organizer_id == user_id, TeamMember.user_id == user_id),
+                    Meeting.title.ilike(f"%{candidate}%"),
+                )
+                .order_by(Meeting.updated_at.desc(), Meeting.id.desc())
+                .first()
+            )
+            if meeting:
+                return meeting.id
+        return None
+
+    def _query_user_tasks(self, db: Session, user_id: int, limit: int = 8) -> list[Task]:
+        return (
+            db.query(Task)
+            .join(Meeting, Meeting.id == Task.meeting_id)
+            .outerjoin(TeamMember, TeamMember.team_id == Meeting.team_id)
+            .filter(
+                or_(
+                    Meeting.organizer_id == user_id,
+                    Task.assignee_id == user_id,
+                    Task.reporter_id == user_id,
+                    TeamMember.user_id == user_id,
+                )
+            )
+            .order_by(Task.updated_at.desc(), Task.id.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def _query_user_tasks_by_status(
+        self,
+        db: Session,
+        user_id: int,
+        status: str,
+        limit: int = 8,
+    ) -> list[Task]:
+        return (
+            db.query(Task)
+            .join(Meeting, Meeting.id == Task.meeting_id)
+            .outerjoin(TeamMember, TeamMember.team_id == Meeting.team_id)
+            .filter(
+                or_(
+                    Meeting.organizer_id == user_id,
+                    Task.assignee_id == user_id,
+                    Task.reporter_id == user_id,
+                    TeamMember.user_id == user_id,
+                ),
+                Task.status == status,
+            )
+            .order_by(Task.updated_at.desc(), Task.id.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def _query_due_soon_tasks(self, db: Session, user_id: int, limit: int = 5) -> list[Task]:
+        now = datetime.now(UTC).replace(tzinfo=None)
+        deadline = now + timedelta(days=3)
+        return (
+            db.query(Task)
+            .join(Meeting, Meeting.id == Task.meeting_id)
+            .outerjoin(TeamMember, TeamMember.team_id == Meeting.team_id)
+            .filter(
+                or_(
+                    Meeting.organizer_id == user_id,
+                    Task.assignee_id == user_id,
+                    Task.reporter_id == user_id,
+                    TeamMember.user_id == user_id,
+                ),
+                Task.status != "done",
+                Task.due_at.isnot(None),
+                Task.due_at <= deadline,
+            )
+            .order_by(Task.due_at.asc(), Task.id.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def _query_meeting_tasks(self, db: Session, meeting_id: int, limit: int = 8) -> list[Task]:
+        return (
+            db.query(Task)
+            .filter(Task.meeting_id == meeting_id)
+            .order_by(Task.updated_at.desc(), Task.id.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def _query_recent_meetings(self, db: Session, user_id: int, limit: int = 5) -> list[Meeting]:
+        return (
+            db.query(Meeting)
+            .outerjoin(TeamMember, TeamMember.team_id == Meeting.team_id)
+            .filter(or_(Meeting.organizer_id == user_id, TeamMember.user_id == user_id))
+            .order_by(Meeting.updated_at.desc(), Meeting.id.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def _query_meeting_transcript_preview(self, db: Session, meeting_id: int, limit: int = 3) -> list[MeetingTranscript]:
+        return (
+            db.query(MeetingTranscript)
+            .filter(MeetingTranscript.meeting_id == meeting_id)
+            .order_by(MeetingTranscript.segment_index.asc())
+            .limit(limit)
+            .all()
+        )
+
+    def _format_task_list(self, tasks: list[Task]) -> str:
+        if not tasks:
+            return "当前没有查询到相关任务。"
+        lines: list[str] = []
+        for index, task in enumerate(tasks, start=1):
+            due = task.due_at.strftime("%Y-%m-%d") if task.due_at else "无截止时间"
+            lines.append(f"{index}. {task.title}｜状态：{task.status}｜优先级：{task.priority}｜截止：{due}")
+        return "\n".join(lines)
+
+    def _format_task_overview(self, tasks: list[Task]) -> str:
+        if not tasks:
+            return "当前没有查询到相关任务。"
+        counts = {"todo": 0, "in_progress": 0, "done": 0}
+        for task in tasks:
+            if task.status in counts:
+                counts[task.status] += 1
+        return (
+            f"共 {len(tasks)} 条任务，其中待办 {counts['todo']} 条，"
+            f"进行中 {counts['in_progress']} 条，已完成 {counts['done']} 条。"
+        )
+
+    def _build_meeting_summary_context(self, db: Session, meeting_id: int) -> dict[str, str]:
+        context_info: dict[str, str] = {}
+        meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+        if not meeting:
+            context_info["meeting_not_found"] = f"会议 #{meeting_id} 不存在或无权访问"
+            return context_info
+        context_info["meeting_id"] = str(meeting.id)
+        context_info["meeting_title"] = meeting.title
+        if meeting.description:
+            context_info["meeting_description"] = meeting.description
+        else:
+            context_info["meeting_description_missing"] = "当前没有记录会议描述"
+        if meeting.summary:
+            context_info["meeting_summary"] = meeting.summary
+        else:
+            context_info["meeting_summary_missing"] = "当前没有记录会议摘要"
+        tasks = self._query_meeting_tasks(db, meeting.id)
+        context_info["meeting_tasks"] = self._format_task_list(tasks)
+        if not tasks:
+            context_info["meeting_tasks_missing"] = "当前没有记录该会议的任务"
+        participants = (
+            db.query(User.full_name)
+            .join(MeetingParticipant, MeetingParticipant.user_id == User.id)
+            .filter(MeetingParticipant.meeting_id == meeting.id)
+            .order_by(MeetingParticipant.id.asc())
+            .all()
+        )
+        participant_names = [name for (name,) in participants if name]
+        if participant_names:
+            context_info["meeting_participants"] = "、".join(participant_names)
+        else:
+            context_info["meeting_participants_missing"] = "当前没有记录参会人员"
+        transcripts = self._query_meeting_transcript_preview(db, meeting.id)
+        if transcripts:
+            context_info["meeting_transcript_preview"] = "\n".join(
+                f"- {item.speaker_name or '未知'}：{item.content}" for item in transcripts
+            )
+        else:
+            context_info["meeting_transcript_missing"] = "当前没有记录会议转写内容"
+        return context_info
+
+    async def _build_dynamic_context_info(
+        self,
+        db: Session,
+        user_id: int,
+        message: str,
+        context: dict[str, object] | None,
+    ) -> dict[str, str]:
+        effective_context = dict(context) if isinstance(context, dict) else {}
+        if "meeting_id" not in effective_context:
+            matched_meeting_id = self._resolve_meeting_id_from_message(db, user_id, message)
+            if matched_meeting_id is not None:
+                effective_context["meeting_id"] = matched_meeting_id
+
+        context_info = await self.build_context_info(effective_context, db, user_id=user_id)
+        intent = self.classify_intent(message, context)
+        context_info["assistant_intent"] = intent
+
+        if intent == "my_tasks":
+            tasks = self._query_user_tasks(db, user_id)
+            context_info["my_tasks_overview"] = self._format_task_overview(tasks)
+            context_info["my_tasks"] = self._format_task_list(tasks)
+            meetings = self._query_recent_meetings(db, user_id)
+            if meetings:
+                context_info["recent_meetings"] = "；".join(meeting.title for meeting in meetings)
+            return context_info
+
+        meeting_id_raw = context.get("meeting_id") if isinstance(context, dict) else None
+        if isinstance(meeting_id_raw, int) and intent in {"meeting_tasks", "meeting_summary", "execution_advice"}:
+            context_info.update(self._build_meeting_summary_context(db, meeting_id_raw))
+
+        if intent == "execution_advice":
+            tasks = self._query_user_tasks(db, user_id)
+            context_info["my_tasks_overview"] = self._format_task_overview(tasks)
+            context_info["my_tasks"] = self._format_task_list(tasks)
+            due_soon_tasks = self._query_due_soon_tasks(db, user_id)
+            if due_soon_tasks:
+                context_info["due_soon_tasks"] = self._format_task_list(due_soon_tasks)
+
+        return context_info
+
+    async def _try_handle_direct_query(
+        self,
+        db: Session,
+        user_id: int,
+        message: str,
+        context: dict[str, object] | None,
+    ) -> str | None:
+        intent = self.classify_intent(message, context)
+        if intent == "my_tasks":
+            normalized = message.strip().lower()
+            if any(keyword in normalized for keyword in ("待办", "todo")):
+                tasks = self._query_user_tasks_by_status(db, user_id, "todo")
+                if not tasks:
+                    return "你当前没有待办任务。"
+                return "这是你当前的待办任务：\n" + self._format_task_list(tasks)
+            if any(keyword in normalized for keyword in ("进行中", "in_progress")):
+                tasks = self._query_user_tasks_by_status(db, user_id, "in_progress")
+                if not tasks:
+                    return "你当前没有进行中的任务。"
+                return "这是你当前进行中的任务：\n" + self._format_task_list(tasks)
+            if any(keyword in normalized for keyword in ("已完成", "完成了")):
+                tasks = self._query_user_tasks_by_status(db, user_id, "done")
+                if not tasks:
+                    return "你当前没有已完成任务。"
+                return "这是你当前已完成的任务：\n" + self._format_task_list(tasks)
+            if any(keyword in normalized for keyword in ("快到期", "即将到期", "近期截止")):
+                tasks = self._query_due_soon_tasks(db, user_id)
+                if not tasks:
+                    return "你当前没有 3 天内到期的任务。"
+                return "这是你近期快到期的任务：\n" + self._format_task_list(tasks)
+
+            tasks = self._query_user_tasks(db, user_id)
+            if not tasks:
+                return "你当前没有查询到任务数据。可以先去会议中生成行动项，或手动创建任务。"
+            return self._format_task_overview(tasks) + "\n这是你当前最相关的任务：\n" + self._format_task_list(tasks)
+
+        if intent == "meeting_tasks":
+            effective_context = dict(context) if isinstance(context, dict) else {}
+            if "meeting_id" not in effective_context:
+                matched_meeting_id = self._resolve_meeting_id_from_message(db, user_id, message)
+                if matched_meeting_id is not None:
+                    effective_context["meeting_id"] = matched_meeting_id
+            meeting_id_raw = effective_context.get("meeting_id")
+            if isinstance(meeting_id_raw, int):
+                tasks = self._query_meeting_tasks(db, meeting_id_raw)
+                meeting = db.query(Meeting).filter(Meeting.id == meeting_id_raw).first()
+                meeting_title = meeting.title if meeting else f"#{meeting_id_raw}"
+                if not tasks:
+                    return f"当前会议“{meeting_title}”还没有生成任务。你可以先执行会议后处理，或手动新建任务。"
+                return f"这是会议“{meeting_title}”的任务：\n" + self._format_task_list(tasks)
+
+        return None
 
     async def create_conversation(
         self, db: Session, user_id: int, title: str = "新对话"
@@ -145,8 +454,30 @@ class AIAssistantService:
         # 3. 解析 @任务123 提及
         mentioned_tasks = await self.parse_task_mentions(user_message_text, db)
 
+        direct_answer = await self._try_handle_direct_query(db, user_id, user_message_text, context)
+        if direct_answer:
+            yield direct_answer
+            try:
+                db.add(
+                    ConversationMessage(
+                        conversation_id=conversation.id,
+                        role="assistant",
+                        content=direct_answer,
+                    )
+                )
+                conversation.updated_at = datetime.now()
+                db.add(conversation)
+                db.commit()
+            except Exception:
+                db.rollback()
+                logger.exception(
+                    "Failed to persist assistant direct answer, conversation_id=%s",
+                    conversation.id,
+                )
+            return
+
         # 4. 构建上下文信息
-        context_info = await self.build_context_info(context, db)
+        context_info = await self._build_dynamic_context_info(db, user_id, user_message_text, context)
         if mentioned_tasks:
             context_info["mentioned_tasks"] = "；".join(
                 f"#{task.id} {task.title}" for task in mentioned_tasks

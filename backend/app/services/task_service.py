@@ -17,6 +17,37 @@ from app.schemas.task import TaskCreate, TaskUpdate
 
 
 ASSIGNEE_MARKERS = ("请", "由", "让")
+TASK_ACTION_HINTS = (
+    "完成",
+    "提交",
+    "跟进",
+    "整理",
+    "输出",
+    "编写",
+    "更新",
+    "确认",
+    "推进",
+    "安排",
+    "排期",
+    "处理",
+    "修复",
+    "联调",
+    "测试",
+    "发布",
+    "对接",
+)
+TASK_EXCLUDE_PATTERNS = (
+    "可以",
+    "是不是",
+    "感觉",
+    "我觉得",
+    "那会变成",
+    "要不",
+    "行不行",
+    "能不能",
+    "应该",
+    "可能",
+)
 ALLOWED_STATUS_TRANSITIONS: dict[str, set[str]] = {
     "todo": {"in_progress"},
     "in_progress": {"done", "todo"},
@@ -256,9 +287,24 @@ def extract_action_items(content: str) -> list[str]:
     for clause in clauses:
         if not clause:
             continue
-        if any(keyword in clause for keyword in settings.action_keyword_list):
+        if is_actionable_task_text(clause):
             items.append(clause)
     return items
+
+
+def is_actionable_task_text(text: str) -> bool:
+    """判断一句话是否像一个可执行任务，而不是口语化讨论。"""
+
+    normalized = text.strip(" ，。；;：:")
+    if len(normalized) < 4:
+        return False
+    if any(pattern in normalized for pattern in TASK_EXCLUDE_PATTERNS):
+        return False
+    has_action_keyword = any(keyword in normalized for keyword in settings.action_keyword_list)
+    has_task_hint = any(hint in normalized for hint in TASK_ACTION_HINTS)
+    if not (has_action_keyword or has_task_hint):
+        return False
+    return True
 
 
 def infer_task_priority(content: str) -> str:
