@@ -4,14 +4,12 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.meeting import Meeting
-from app.models.meeting_participant import MeetingParticipant
 from app.models.task import Task
-from app.models.team_member import TeamMember
 from app.schemas.ai_assistant import TaskDraftRequest
 from app.schemas.task import TaskCreate, TaskUpdate
 
@@ -53,6 +51,27 @@ ALLOWED_STATUS_TRANSITIONS: dict[str, set[str]] = {
     "in_progress": {"done", "todo"},
     "done": {"todo"},
 }
+
+
+def can_manage_task(task: Task, meeting: Meeting, current_user_id: int | None, is_admin: bool = False) -> bool:
+    """判断当前用户是否可以管理任务。"""
+
+    if is_admin:
+        return True
+    if current_user_id is None:
+        return False
+    return meeting.organizer_id == current_user_id or task.assignee_id == current_user_id
+
+
+def _apply_task_visibility_scope(query, current_user_id: int | None, is_admin: bool):
+    """给任务查询附加个性化可见性范围。"""
+
+    if is_admin or current_user_id is None:
+        return query
+
+    return query.join(Meeting, Meeting.id == Task.meeting_id).filter(
+        ((Meeting.organizer_id == current_user_id) | (Task.assignee_id == current_user_id)),
+    )
 
 
 def create_task(db: Session, payload: TaskCreate) -> Task:
@@ -104,21 +123,7 @@ def list_tasks(
     """查询任务列表，可按执行人筛选。"""
 
     query = db.query(Task)
-
-    if not is_admin and current_user_id is not None:
-        participant_meeting_ids = db.query(MeetingParticipant.meeting_id).filter(
-            MeetingParticipant.user_id == current_user_id
-        )
-        user_team_ids = db.query(TeamMember.team_id).filter(TeamMember.user_id == current_user_id)
-        query = query.join(Meeting, Meeting.id == Task.meeting_id).filter(
-            or_(
-                Meeting.organizer_id == current_user_id,
-                Task.assignee_id == current_user_id,
-                Task.reporter_id == current_user_id,
-                Task.meeting_id.in_(participant_meeting_ids),
-                Meeting.team_id.in_(user_team_ids),
-            )
-        )
+    query = _apply_task_visibility_scope(query, current_user_id, is_admin)
     if assignee_id is not None:
         query = query.filter(Task.assignee_id == assignee_id)
     if meeting_id is not None:
@@ -161,20 +166,7 @@ def count_tasks(
     is_admin: bool = False,
 ) -> int:
     query = db.query(func.count(Task.id))
-    if not is_admin and current_user_id is not None:
-        participant_meeting_ids = db.query(MeetingParticipant.meeting_id).filter(
-            MeetingParticipant.user_id == current_user_id
-        )
-        user_team_ids = db.query(TeamMember.team_id).filter(TeamMember.user_id == current_user_id)
-        query = query.join(Meeting, Meeting.id == Task.meeting_id).filter(
-            or_(
-                Meeting.organizer_id == current_user_id,
-                Task.assignee_id == current_user_id,
-                Task.reporter_id == current_user_id,
-                Task.meeting_id.in_(participant_meeting_ids),
-                Meeting.team_id.in_(user_team_ids),
-            )
-        )
+    query = _apply_task_visibility_scope(query, current_user_id, is_admin)
     if assignee_id is not None:
         query = query.filter(Task.assignee_id == assignee_id)
     if meeting_id is not None:
@@ -191,7 +183,12 @@ def count_tasks(
     return int(result or 0)
 
 
-def serialize_task_out(task: Task, meeting: Meeting | None = None) -> dict[str, object]:
+def serialize_task_out(
+    task: Task,
+    meeting: Meeting | None = None,
+    current_user_id: int | None = None,
+    is_admin: bool = False,
+) -> dict[str, object]:
     meeting_title = meeting.title if meeting else None
     now = datetime.now(UTC)
     due_soon_deadline = now + timedelta(hours=48)
@@ -218,6 +215,7 @@ def serialize_task_out(task: Task, meeting: Meeting | None = None) -> dict[str, 
         "priority": task.priority,
         "status": task.status,
         "progress_note": task.progress_note,
+        "can_manage": can_manage_task(task, meeting, current_user_id, is_admin) if meeting else False,
         "due_at": task.due_at,
         "reminder_at": task.reminder_at,
         "completed_at": task.completed_at,

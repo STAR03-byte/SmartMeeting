@@ -10,6 +10,7 @@ from app.models.task import Task
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services.task_service import (
+    can_manage_task,
     count_tasks,
     create_task,
     extract_action_items,
@@ -142,6 +143,93 @@ def test_count_tasks_with_filters(client) -> None:
 
         total = count_tasks(db, meeting_id=meeting.id, assignee_id=assignee.id, keyword="任务")
         assert total == 2
+    finally:
+        db_gen.close()
+
+
+def test_list_tasks_visibility_only_keeps_organizer_all_and_assignee_self(client) -> None:
+    db, db_gen = _db_from_client(client)
+    try:
+        meeting, assignee, reporter = _seed_meeting_context(db)
+        outsider = User(
+            username="svc_outsider",
+            email="svc_outsider@example.com",
+            password_hash="hashed",
+            full_name="Svc Outsider",
+            role="member",
+        )
+        db.add(outsider)
+        db.commit()
+        db.refresh(outsider)
+
+        organizer_task = Task(
+            meeting_id=meeting.id,
+            title="组织者查看全部任务",
+            assignee_id=None,
+            reporter_id=reporter.id,
+            priority="medium",
+            status="todo",
+        )
+        assignee_task = Task(
+            meeting_id=meeting.id,
+            title="负责人只能看自己",
+            assignee_id=assignee.id,
+            reporter_id=reporter.id,
+            priority="medium",
+            status="todo",
+        )
+        reporter_only_task = Task(
+            meeting_id=meeting.id,
+            title="报告人不再自动可见",
+            assignee_id=None,
+            reporter_id=reporter.id,
+            priority="medium",
+            status="todo",
+        )
+        db.add_all([organizer_task, assignee_task, reporter_only_task])
+        db.commit()
+
+        organizer_visible = list_tasks(db, current_user_id=meeting.organizer_id, is_admin=False)
+        assert {task.title for task in organizer_visible} == {
+            "组织者查看全部任务",
+            "负责人只能看自己",
+            "报告人不再自动可见",
+        }
+
+        assignee_visible = list_tasks(db, current_user_id=assignee.id, is_admin=False)
+        assert [task.title for task in assignee_visible] == ["负责人只能看自己"]
+        assert count_tasks(db, current_user_id=assignee.id, is_admin=False) == 1
+
+        reporter_visible = list_tasks(db, current_user_id=reporter.id, is_admin=False)
+        assert reporter_visible == []
+        assert count_tasks(db, current_user_id=reporter.id, is_admin=False) == 0
+
+        outsider_visible = list_tasks(db, current_user_id=outsider.id, is_admin=False)
+        assert outsider_visible == []
+    finally:
+        db_gen.close()
+
+
+def test_can_manage_task_allows_organizer_and_assignee(client) -> None:
+    db, db_gen = _db_from_client(client)
+    try:
+        meeting, assignee, reporter = _seed_meeting_context(db)
+        task = Task(
+            meeting_id=meeting.id,
+            title="权限检查",
+            assignee_id=assignee.id,
+            reporter_id=reporter.id,
+            priority="medium",
+            status="todo",
+        )
+        db.add(task)
+        db.commit()
+        db.refresh(task)
+
+        assert can_manage_task(task, meeting, current_user_id=meeting.organizer_id, is_admin=False) is True
+        assert can_manage_task(task, meeting, current_user_id=assignee.id, is_admin=False) is True
+        assert can_manage_task(task, meeting, current_user_id=reporter.id, is_admin=False) is False
+        assert can_manage_task(task, meeting, current_user_id=None, is_admin=False) is False
     finally:
         db_gen.close()
 

@@ -84,6 +84,8 @@ def _assert_task_permission(_task: object, meeting: Meeting, current_user: Curre
         return
     if meeting.organizer_id == current_user.id:
         return
+    if getattr(_task, "assignee_id", None) == current_user.id:
+        return
     raise HTTPException(status_code=403, detail="无权管理此任务")
 
 
@@ -114,7 +116,15 @@ def create_task_api(
     if payload.reporter_id is not None and not get_user(db, payload.reporter_id):
         raise HTTPException(status_code=404, detail="Reporter not found")
 
-    return create_task(db, payload)
+    task = create_task(db, payload)
+    return TaskOut.model_validate(
+        serialize_task_out(
+            task,
+            meeting,
+            current_user_id=current_user.id,
+            is_admin=(current_user.role == "admin"),
+        )
+    )
 
 
 @router.post("/draft", response_model=TaskDraftResponse, status_code=status.HTTP_201_CREATED)
@@ -193,7 +203,17 @@ def list_tasks_api(
     meetings = {m.id: m for m in [get_meeting(db, mid) for mid in meeting_ids] if m}
     
     return TaskListOut(
-        items=[TaskOut.model_validate(serialize_task_out(task, meetings.get(task.meeting_id, None))) for task in tasks],
+        items=[
+            TaskOut.model_validate(
+                serialize_task_out(
+                    task,
+                    meetings.get(task.meeting_id, None),
+                    current_user_id=current_user.id,
+                    is_admin=(current_user.role == "admin"),
+                )
+            )
+            for task in tasks
+        ],
         total=total,
     )
 
@@ -213,7 +233,14 @@ def get_task_api(
     if not meeting:
         raise HTTPException(status_code=404, detail="Meeting not found")
     _assert_task_permission(task, meeting, current_user)
-    return TaskOut.model_validate(serialize_task_out(task, meeting))
+    return TaskOut.model_validate(
+        serialize_task_out(
+            task,
+            meeting,
+            current_user_id=current_user.id,
+            is_admin=(current_user.role == "admin"),
+        )
+    )
 
 
 @router.patch("/{task_id}", response_model=TaskOut)
@@ -233,7 +260,14 @@ def update_task_api(
         raise HTTPException(status_code=404, detail="Meeting not found")
     _assert_task_permission(task, meeting, current_user)
     updated_task = update_task(db, task, payload)
-    return TaskOut.model_validate(serialize_task_out(updated_task))
+    return TaskOut.model_validate(
+        serialize_task_out(
+            updated_task,
+            meeting,
+            current_user_id=current_user.id,
+            is_admin=(current_user.role == "admin"),
+        )
+    )
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)

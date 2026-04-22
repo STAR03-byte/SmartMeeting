@@ -137,11 +137,12 @@ describe("meetings api module", () => {
             description: null,
             assignee_id: 1,
             reporter_id: null,
-            priority: "medium",
-            status: "todo",
-             progress_note: null,
-             due_at: null,
-             reminder_at: null,
+             priority: "medium",
+             status: "todo",
+             can_manage: true,
+              progress_note: null,
+              due_at: null,
+              reminder_at: null,
              completed_at: null,
             is_overdue: false,
             is_due_soon: false,
@@ -161,6 +162,7 @@ describe("meetings api module", () => {
     });
     expect(result.total).toBe(1);
     expect(result.items[0].meeting_id).toBe(3);
+    expect(result.items[0].can_manage).toBe(true);
   });
 
   it("fetches tasks by assignee", async () => {

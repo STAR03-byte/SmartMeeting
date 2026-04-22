@@ -34,7 +34,7 @@
               <el-button type="danger" plain @click="clearDialogVisible = true">{{ $t('meeting.clearContent') }}</el-button>
               <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="copyShareLink">{{ $t('meeting.generateShareLink') }}</el-button>
               <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="distributeByEmail">{{ $t('meeting.emailDistribute') }}</el-button>
-              <el-button type="primary" @click="openTaskDialog">{{ $t('meeting.newTask') }}</el-button>
+              <el-button v-if="canCreateTask" type="primary" @click="openTaskDialog">{{ $t('meeting.newTask') }}</el-button>
             </div>
           </div>
 
@@ -83,7 +83,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 const { t } = useI18n();
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import type { FormInstance, FormRules } from "element-plus";
 import { ElMessage } from "element-plus";
 import { useRoute, useRouter } from "vue-router";
@@ -109,6 +109,7 @@ import { buildEmailShareDraft, openEmailShareDraft } from "../utils/email-share"
 import { notifyApiError } from "../utils/notify";
 
 const store = useMeetingStore();
+const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const meetingId = Number(route.params.id);
@@ -123,6 +124,15 @@ const selectedClearOptions = ref<Array<'transcripts' | 'tasks' | 'summary' | 'au
   'audios',
   'resetStatus',
 ]);
+
+const canCreateTask = computed(() => {
+  const currentUser = authStore.currentUser;
+  const meeting = store.currentMeeting;
+  if (!currentUser || !meeting) {
+    return false;
+  }
+  return currentUser.role === "admin" || currentUser.id === meeting.organizer_id;
+});
 
 onMounted(async () => {
   if (!Number.isFinite(meetingId)) {

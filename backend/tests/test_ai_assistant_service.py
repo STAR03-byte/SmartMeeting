@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime, timedelta
 
 from app.models.meeting import Meeting
+from app.models.meeting_transcript import MeetingTranscript
 from app.models.task import Task
 from app.models.user import User
 from app.services.ai_assistant_service import AIAssistantService
@@ -216,6 +217,197 @@ def test_ai_assistant_meeting_context_marks_missing_fields_for_grounding(auth_cl
         assert context_info["meeting_participants_missing"] == "当前没有记录参会人员"
         assert context_info["meeting_tasks_missing"] == "当前没有记录该会议的任务"
         assert context_info["meeting_transcript_missing"] == "当前没有记录会议转写内容"
+    finally:
+        db.close()
+        db_gen.close()
+
+
+def test_ai_assistant_answers_meeting_minutes_directly_from_summary(auth_client) -> None:
+    db, db_gen = _make_db(auth_client)
+    try:
+        user = User(
+            username="ai_minutes_owner",
+            email="ai_minutes_owner@example.com",
+            password_hash="hashed",
+            full_name="AI Minutes Owner",
+            role="admin",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        meeting = Meeting(
+            title="纪要测试会议",
+            organizer_id=user.id,
+            summary="会议纪要：已确认本周完成接口联调，并同步风险处理方案。",
+        )
+        db.add(meeting)
+        db.commit()
+        db.refresh(meeting)
+
+        llm = DummyLLMService()
+        service = AIAssistantService(llm)
+
+        async def run():
+            chunks = []
+            async for chunk in service.chat(db, user.id, "纪要测试会议的会议纪要是什么"):
+                chunks.append(chunk)
+            return "".join(chunks)
+
+        result = asyncio.run(run())
+
+        assert "会议纪要" in result
+        assert "接口联调" in result
+        assert llm.called is False
+    finally:
+        db.close()
+        db_gen.close()
+
+
+def test_ai_assistant_answers_meeting_summary_directly(auth_client) -> None:
+    db, db_gen = _make_db(auth_client)
+    try:
+        user = User(
+            username="ai_summary_owner",
+            email="ai_summary_owner@example.com",
+            password_hash="hashed",
+            full_name="AI Summary Owner",
+            role="admin",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        meeting = Meeting(
+            title="总结测试会议",
+            organizer_id=user.id,
+            summary="本次会议总结：确定周五上线检查，测试环境扩容由运维支持。",
+        )
+        db.add(meeting)
+        db.commit()
+        db.refresh(meeting)
+
+        llm = DummyLLMService()
+        service = AIAssistantService(llm)
+
+        async def run():
+            chunks = []
+            async for chunk in service.chat(db, user.id, "总结测试会议讲了什么"):
+                chunks.append(chunk)
+            return "".join(chunks)
+
+        result = asyncio.run(run())
+
+        assert "本次会议总结" in result or "总结" in result
+        assert "周五上线检查" in result
+        assert llm.called is False
+    finally:
+        db.close()
+        db_gen.close()
+
+
+def test_ai_assistant_answers_meeting_resolutions_from_transcripts(auth_client) -> None:
+    db, db_gen = _make_db(auth_client)
+    try:
+        user = User(
+            username="ai_resolution_owner",
+            email="ai_resolution_owner@example.com",
+            password_hash="hashed",
+            full_name="AI Resolution Owner",
+            role="admin",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        meeting = Meeting(title="决议测试会议", organizer_id=user.id)
+        db.add(meeting)
+        db.commit()
+        db.refresh(meeting)
+
+        transcripts = [
+            MeetingTranscript(
+                meeting_id=meeting.id,
+                speaker_user_id=user.id,
+                speaker_name="AI Resolution Owner",
+                segment_index=1,
+                content="今天会议决定本周五完成接口联调，并确定下周一前补齐测试环境扩容。",
+            ),
+            MeetingTranscript(
+                meeting_id=meeting.id,
+                speaker_user_id=user.id,
+                speaker_name="AI Resolution Owner",
+                segment_index=2,
+                content="最终决定由运维支持扩容，产品负责跟进上线节奏。",
+            ),
+        ]
+        db.add_all(transcripts)
+        db.commit()
+
+        llm = DummyLLMService()
+        service = AIAssistantService(llm)
+
+        async def run():
+            chunks = []
+            async for chunk in service.chat(db, user.id, "决议测试会议有哪些决议"):
+                chunks.append(chunk)
+            return "".join(chunks)
+
+        result = asyncio.run(run())
+
+        assert "决定" in result or "决议" in result
+        assert "接口联调" in result
+        assert llm.called is False
+    finally:
+        db.close()
+        db_gen.close()
+
+
+def test_ai_assistant_answers_meeting_action_items_directly(auth_client) -> None:
+    db, db_gen = _make_db(auth_client)
+    try:
+        user = User(
+            username="ai_todo_owner",
+            email="ai_todo_owner@example.com",
+            password_hash="hashed",
+            full_name="AI Todo Owner",
+            role="admin",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        meeting = Meeting(title="行动项测试会议", organizer_id=user.id)
+        db.add(meeting)
+        db.commit()
+        db.refresh(meeting)
+
+        task = Task(
+            meeting_id=meeting.id,
+            title="提交接口文档",
+            description="张三本周五前提交接口文档",
+            assignee_id=user.id,
+            reporter_id=user.id,
+            priority="high",
+            status="todo",
+        )
+        db.add(task)
+        db.commit()
+
+        llm = DummyLLMService()
+        service = AIAssistantService(llm)
+
+        async def run():
+            chunks = []
+            async for chunk in service.chat(db, user.id, "行动项测试会议有哪些行动项"):
+                chunks.append(chunk)
+            return "".join(chunks)
+
+        result = asyncio.run(run())
+
+        assert "行动项" in result or "任务" in result
+        assert "提交接口文档" in result
+        assert llm.called is False
     finally:
         db.close()
         db_gen.close()

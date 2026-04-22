@@ -48,13 +48,14 @@
                 :model-value="task.status"
                 size="small"
                 style="width: 110px"
+                :disabled="!task.can_manage"
                 @change="(val: string) => handleStatusChange(task.id, val as TaskStatus)"
               >
                 <el-option :label="$t('task.statusTodo')" value="todo" />
                 <el-option :label="$t('task.statusInProgress')" value="in_progress" />
                 <el-option :label="$t('task.statusDone')" value="done" />
               </el-select>
-              <el-button size="small" @click="openEditDialog(task)">编辑</el-button>
+              <el-button size="small" :disabled="!task.can_manage" @click="openEditDialog(task)">编辑</el-button>
             </div>
           </li>
         </ul>

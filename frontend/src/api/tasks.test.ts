@@ -5,7 +5,7 @@ import { apiClient } from "./client";
 describe("tasks api module", () => {
   it("fetches tasks with filters", async () => {
     const getSpy = vi.spyOn(apiClient, "get").mockResolvedValueOnce({
-      data: { items: [{ id: 1, title: "Task 1", status: "todo" }], total: 1 },
+      data: { items: [{ id: 1, title: "Task 1", status: "todo", can_manage: true }], total: 1 },
     } as never);
 
     const mod = await import("./tasks");
@@ -14,6 +14,7 @@ describe("tasks api module", () => {
     expect(getSpy).toHaveBeenCalledWith("/api/v1/tasks?status=todo&priority=high");
     expect(result.items).toHaveLength(1);
     expect(result.total).toBe(1);
+    expect(result.items[0].can_manage).toBe(true);
   });
 
   it("serializes pagination and sort params", async () => {

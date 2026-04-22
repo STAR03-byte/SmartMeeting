@@ -119,3 +119,112 @@ def test_assignee_can_list_assigned_task_even_if_not_organizer(auth_client: Test
     assert data["total"] == 1
     assert len(data["items"]) == 1
     assert int(data["items"][0]["id"]) == task_id
+    assert data["items"][0]["can_manage"] is True
+
+
+def test_reporter_without_assignment_cannot_list_task(auth_client: TestClient) -> None:
+    owner = _create_user(auth_client, "task_owner_reporter")
+    assignee = _create_user(auth_client, "task_assignee_reporter")
+    reporter = _create_user(auth_client, "task_reporter_only")
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "reporter hidden meeting",
+            "description": "reporter should not see task",
+            "organizer_id": int(owner["id"]),
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = int(meeting_resp.json()["id"])
+
+    task_resp = auth_client.post(
+        "/api/v1/tasks",
+        json={
+            "meeting_id": meeting_id,
+            "title": "reporter hidden task",
+            "description": "reporter hidden task",
+            "assignee_id": int(assignee["id"]),
+            "reporter_id": int(reporter["id"]),
+            "priority": "medium",
+            "status": "todo",
+        },
+    )
+    assert task_resp.status_code == 201
+
+    _as_user(auth_client, reporter)
+    list_resp = auth_client.get("/api/v1/tasks")
+    assert list_resp.status_code == 200
+    assert list_resp.json()["total"] == 0
+    assert list_resp.json()["items"] == []
+
+
+def test_assignee_can_update_assigned_task(auth_client: TestClient) -> None:
+    owner = _create_user(auth_client, "task_owner_update")
+    assignee = _create_user(auth_client, "task_assignee_update")
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "assignee update meeting",
+            "description": "assignee can manage own task",
+            "organizer_id": int(owner["id"]),
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = int(meeting_resp.json()["id"])
+
+    task_resp = auth_client.post(
+        "/api/v1/tasks",
+        json={
+            "meeting_id": meeting_id,
+            "title": "assigned update task",
+            "description": "before update",
+            "assignee_id": int(assignee["id"]),
+            "reporter_id": int(owner["id"]),
+            "priority": "medium",
+            "status": "todo",
+        },
+    )
+    assert task_resp.status_code == 201
+    task_id = int(task_resp.json()["id"])
+
+    _as_user(auth_client, assignee)
+    patch_resp = auth_client.patch(
+        f"/api/v1/tasks/{task_id}",
+        json={"status": "in_progress", "description": "after update"},
+    )
+    assert patch_resp.status_code == 200
+    body = patch_resp.json()
+    assert body["status"] == "in_progress"
+    assert body["description"] == "after update"
+    assert body["can_manage"] is True
+
+
+def test_organizer_created_task_response_marks_can_manage_true(auth_client: TestClient) -> None:
+    owner = _create_user(auth_client, "task_owner_create_resp")
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "create response meeting",
+            "description": "organizer create response",
+            "organizer_id": int(owner["id"]),
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = int(meeting_resp.json()["id"])
+
+    task_resp = auth_client.post(
+        "/api/v1/tasks",
+        json={
+            "meeting_id": meeting_id,
+            "title": "create response task",
+            "description": "create response task",
+            "reporter_id": int(owner["id"]),
+            "priority": "medium",
+            "status": "todo",
+        },
+    )
+    assert task_resp.status_code == 201
+    assert task_resp.json()["can_manage"] is True

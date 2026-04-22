@@ -55,6 +55,7 @@ class TaskOut(BaseModel):
     priority: str
     status: str
     progress_note: str | None
+    can_manage: bool = False
     due_at: datetime | None
     reminder_at: datetime | None
     completed_at: datetime | None

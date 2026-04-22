@@ -111,6 +111,7 @@
             <el-select
               :model-value="scope.row.status"
               size="small"
+              :disabled="!scope.row.can_manage"
               @change="(value: TaskStatus) => changeStatus(scope.row.id, value)"
             >
               <el-option :label="$t('task.statusTodo')" value="todo" />
@@ -121,7 +122,7 @@
         </el-table-column>
         <el-table-column :label="$t('common.operations')" width="100">
           <template #default="scope">
-            <el-button size="small" @click="openEditDialog(scope.row)">{{ $t('common.edit') }}</el-button>
+            <el-button size="small" :disabled="!scope.row.can_manage" @click="openEditDialog(scope.row)">{{ $t('common.edit') }}</el-button>
           </template>
         </el-table-column>
       </el-table>

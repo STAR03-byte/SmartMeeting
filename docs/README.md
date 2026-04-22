@@ -19,6 +19,7 @@
 - `master-execution-plan-2026-03-17.md`
 - `development-log-2026-03-12.md`
 - `pr-description-2026-03-14.md`
+- `superpowers/specs/2026-04-22-task-fine-grained-permission-design.md`：任务细粒度权限设计（负责人仅更新状态/进度，组织者保留核心编辑与删除）
 
 ## 目录
 

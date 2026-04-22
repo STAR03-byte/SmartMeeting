@@ -49,6 +49,10 @@ class AIAssistantService:
     def classify_intent(self, message: str, context: dict[str, object] | None = None) -> AssistantIntent:
         normalized = message.strip().lower()
         has_meeting_context = isinstance(context, dict) and isinstance(context.get("meeting_id"), int)
+        asks_for_meeting_summary = any(
+            keyword in normalized
+            for keyword in ("纪要", "总结", "摘要", "讲了什么", "会议内容", "决议", "决定")
+        )
 
         if any(keyword in normalized for keyword in ("快到期", "即将到期", "近期截止")) and "任务" in normalized:
             return "my_tasks"
@@ -58,11 +62,27 @@ class AIAssistantService:
             return "my_tasks"
         if has_meeting_context and any(keyword in normalized for keyword in ("任务", "行动项", "todo", "待办")):
             return "meeting_tasks"
-        if has_meeting_context and any(keyword in normalized for keyword in ("总结", "摘要", "讲了什么", "会议内容", "决议")):
+        if has_meeting_context and asks_for_meeting_summary:
             return "meeting_summary"
         if any(keyword in normalized for keyword in ("怎么做", "如何推进", "下一步", "执行", "推进")):
             return "execution_advice"
+        if asks_for_meeting_summary:
+            return "meeting_summary"
         return "general_chat"
+
+    def _resolve_effective_context(
+        self,
+        db: Session,
+        user_id: int,
+        message: str,
+        context: dict[str, object] | None,
+    ) -> dict[str, object]:
+        effective_context = dict(context) if isinstance(context, dict) else {}
+        if "meeting_id" not in effective_context:
+            matched_meeting_id = self._resolve_meeting_id_from_message(db, user_id, message)
+            if matched_meeting_id is not None:
+                effective_context["meeting_id"] = matched_meeting_id
+        return effective_context
 
     def _resolve_meeting_id_from_message(self, db: Session, user_id: int, message: str) -> int | None:
         normalized = message.strip()
@@ -208,6 +228,57 @@ class AIAssistantService:
             f"进行中 {counts['in_progress']} 条，已完成 {counts['done']} 条。"
         )
 
+    def _extract_resolution_lines(self, transcripts: list[MeetingTranscript], limit: int = 3) -> list[str]:
+        resolution_keywords = ("决定", "确定", "通过", "定为", "最终决定", "结论")
+        lines: list[str] = []
+        seen: set[str] = set()
+
+        for transcript in transcripts:
+            content = transcript.content.strip()
+            if not content:
+                continue
+            if not any(keyword in content for keyword in resolution_keywords):
+                continue
+            if content in seen:
+                continue
+            seen.add(content)
+            lines.append(content)
+            if len(lines) >= limit:
+                break
+
+        return lines
+
+    def _build_meeting_summary_direct_answer(
+        self,
+        meeting: Meeting,
+        transcripts: list[MeetingTranscript],
+        message: str,
+    ) -> str:
+        normalized = message.strip().lower()
+
+        if any(keyword in normalized for keyword in ("决议", "决定")):
+            resolution_lines = self._extract_resolution_lines(transcripts)
+            if resolution_lines:
+                return f"会议“{meeting.title}”当前记录到的决议如下：\n" + "\n".join(
+                    f"- {line}" for line in resolution_lines
+                )
+            if meeting.summary:
+                return f"会议“{meeting.title}”当前没有单独整理出的决议列表，这是现有会议纪要：\n{meeting.summary}"
+            return f"会议“{meeting.title}”当前没有记录到明确决议。"
+
+        if meeting.summary:
+            if any(keyword in normalized for keyword in ("纪要", "摘要", "总结")):
+                return f"会议“{meeting.title}”的会议纪要如下：\n{meeting.summary}"
+            return f"会议“{meeting.title}”当前记录到的主要内容如下：\n{meeting.summary}"
+
+        preview_lines = [item.content.strip() for item in transcripts if item.content.strip()][:5]
+        if preview_lines:
+            return f"会议“{meeting.title}”当前还没有整理好的会议纪要，但已有转写内容如下：\n" + "\n".join(
+                f"- {line}" for line in preview_lines
+            )
+
+        return f"会议“{meeting.title}”当前没有记录到会议纪要或转写内容。"
+
     def _build_meeting_summary_context(self, db: Session, meeting_id: int) -> dict[str, str]:
         context_info: dict[str, str] = {}
         meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
@@ -245,6 +316,9 @@ class AIAssistantService:
             context_info["meeting_transcript_preview"] = "\n".join(
                 f"- {item.speaker_name or '未知'}：{item.content}" for item in transcripts
             )
+            resolution_lines = self._extract_resolution_lines(transcripts)
+            if resolution_lines:
+                context_info["meeting_resolution_preview"] = "\n".join(f"- {line}" for line in resolution_lines)
         else:
             context_info["meeting_transcript_missing"] = "当前没有记录会议转写内容"
         return context_info
@@ -256,14 +330,10 @@ class AIAssistantService:
         message: str,
         context: dict[str, object] | None,
     ) -> dict[str, str]:
-        effective_context = dict(context) if isinstance(context, dict) else {}
-        if "meeting_id" not in effective_context:
-            matched_meeting_id = self._resolve_meeting_id_from_message(db, user_id, message)
-            if matched_meeting_id is not None:
-                effective_context["meeting_id"] = matched_meeting_id
+        effective_context = self._resolve_effective_context(db, user_id, message, context)
 
         context_info = await self.build_context_info(effective_context, db, user_id=user_id)
-        intent = self.classify_intent(message, context)
+        intent = self.classify_intent(message, effective_context)
         context_info["assistant_intent"] = intent
 
         if intent == "my_tasks":
@@ -275,7 +345,7 @@ class AIAssistantService:
                 context_info["recent_meetings"] = "；".join(meeting.title for meeting in meetings)
             return context_info
 
-        meeting_id_raw = context.get("meeting_id") if isinstance(context, dict) else None
+        meeting_id_raw = effective_context.get("meeting_id")
         if isinstance(meeting_id_raw, int) and intent in {"meeting_tasks", "meeting_summary", "execution_advice"}:
             context_info.update(self._build_meeting_summary_context(db, meeting_id_raw))
 
@@ -296,7 +366,8 @@ class AIAssistantService:
         message: str,
         context: dict[str, object] | None,
     ) -> str | None:
-        intent = self.classify_intent(message, context)
+        effective_context = self._resolve_effective_context(db, user_id, message, context)
+        intent = self.classify_intent(message, effective_context)
         if intent == "my_tasks":
             normalized = message.strip().lower()
             if any(keyword in normalized for keyword in ("待办", "todo")):
@@ -326,11 +397,6 @@ class AIAssistantService:
             return self._format_task_overview(tasks) + "\n这是你当前最相关的任务：\n" + self._format_task_list(tasks)
 
         if intent == "meeting_tasks":
-            effective_context = dict(context) if isinstance(context, dict) else {}
-            if "meeting_id" not in effective_context:
-                matched_meeting_id = self._resolve_meeting_id_from_message(db, user_id, message)
-                if matched_meeting_id is not None:
-                    effective_context["meeting_id"] = matched_meeting_id
             meeting_id_raw = effective_context.get("meeting_id")
             if isinstance(meeting_id_raw, int):
                 tasks = self._query_meeting_tasks(db, meeting_id_raw)
@@ -339,6 +405,20 @@ class AIAssistantService:
                 if not tasks:
                     return f"当前会议“{meeting_title}”还没有生成任务。你可以先执行会议后处理，或手动新建任务。"
                 return f"这是会议“{meeting_title}”的任务：\n" + self._format_task_list(tasks)
+
+        if intent == "meeting_summary":
+            meeting_id_raw = effective_context.get("meeting_id")
+            if isinstance(meeting_id_raw, int):
+                meeting = db.query(Meeting).filter(Meeting.id == meeting_id_raw).first()
+                if not meeting:
+                    return f"会议 #{meeting_id_raw} 不存在或无权访问。"
+                transcripts = (
+                    db.query(MeetingTranscript)
+                    .filter(MeetingTranscript.meeting_id == meeting_id_raw)
+                    .order_by(MeetingTranscript.segment_index.asc(), MeetingTranscript.id.asc())
+                    .all()
+                )
+                return self._build_meeting_summary_direct_answer(meeting, transcripts, message)
 
         return None
 
