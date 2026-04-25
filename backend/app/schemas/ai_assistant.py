@@ -11,6 +11,32 @@ ChatMessageRole = Literal["user", "assistant"]
 ChatChunkType = Literal["chunk", "end", "error"]
 
 
+class KnowledgeSource(BaseModel):
+    """A source item used by meeting knowledge answers."""
+
+    meeting_id: int
+    meeting_title: str
+    source_type: Literal["meeting", "summary", "transcript", "task", "participant"]
+    snippet: str
+    created_at: Optional[datetime] = None
+
+
+class KnowledgeQueryRequest(BaseModel):
+    """Query the user's accessible meeting knowledge base."""
+
+    question: str = Field(..., min_length=1, max_length=500)
+    team_id: Optional[int] = None
+    limit: int = Field(default=5, ge=1, le=20)
+
+
+class KnowledgeQueryResponse(BaseModel):
+    """Grounded meeting knowledge answer with citations."""
+
+    answer: str
+    sources: list[KnowledgeSource] = Field(default_factory=list)
+    used_llm: bool = False
+
+
 class SuggestedRelatedTask(BaseModel):
     """建议关联任务。"""
 
@@ -283,6 +309,9 @@ __all__ = [
     "TaskPriority",
     "ChatMessageRole",
     "ChatChunkType",
+    "KnowledgeSource",
+    "KnowledgeQueryRequest",
+    "KnowledgeQueryResponse",
     "SuggestedRelatedTask",
     "SuggestedTask",
     "TaskSuggestionsRequest",

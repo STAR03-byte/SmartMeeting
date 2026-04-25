@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.meeting import Meeting
+from app.models.team_member import TeamMember
 from app.models.task import Task
 from app.schemas.ai_assistant import TaskDraftRequest
 from app.schemas.task import TaskCreate, TaskUpdate
@@ -47,9 +48,11 @@ TASK_EXCLUDE_PATTERNS = (
     "可能",
 )
 ALLOWED_STATUS_TRANSITIONS: dict[str, set[str]] = {
+    "draft": {"todo", "cancelled"},
     "todo": {"in_progress"},
-    "in_progress": {"done", "todo"},
+    "in_progress": {"done", "todo", "cancelled"},
     "done": {"todo"},
+    "cancelled": {"todo"},
 }
 
 
@@ -69,8 +72,15 @@ def _apply_task_visibility_scope(query, current_user_id: int | None, is_admin: b
     if is_admin or current_user_id is None:
         return query
 
-    return query.join(Meeting, Meeting.id == Task.meeting_id).filter(
-        ((Meeting.organizer_id == current_user_id) | (Task.assignee_id == current_user_id)),
+    return query.join(Meeting, Meeting.id == Task.meeting_id).outerjoin(
+        TeamMember, TeamMember.team_id == Meeting.team_id
+    ).filter(
+        (
+            (Meeting.organizer_id == current_user_id)
+            | (Task.assignee_id == current_user_id)
+            | (Task.reporter_id == current_user_id)
+            | (TeamMember.user_id == current_user_id)
+        ),
     )
 
 
@@ -111,7 +121,8 @@ def list_tasks(
     db: Session,
     assignee_id: int | None = None,
     meeting_id: int | None = None,
-    status: Literal["todo", "in_progress", "done"] | None = None,
+    team_id: int | None = None,
+    status: Literal["draft", "todo", "in_progress", "done", "cancelled"] | None = None,
     priority: Literal["high", "medium", "low"] | None = None,
     keyword: str | None = None,
     sort_by: str | None = None,
@@ -124,10 +135,16 @@ def list_tasks(
 
     query = db.query(Task)
     query = _apply_task_visibility_scope(query, current_user_id, is_admin)
+    has_meeting_join = not (is_admin or current_user_id is None)
     if assignee_id is not None:
         query = query.filter(Task.assignee_id == assignee_id)
     if meeting_id is not None:
         query = query.filter(Task.meeting_id == meeting_id)
+    if team_id is not None:
+        if not has_meeting_join:
+            query = query.join(Meeting, Meeting.id == Task.meeting_id)
+            has_meeting_join = True
+        query = query.filter(Meeting.team_id == team_id)
     if status is not None:
         query = query.filter(Task.status == status)
     if priority is not None:
@@ -159,7 +176,8 @@ def count_tasks(
     db: Session,
     assignee_id: int | None = None,
     meeting_id: int | None = None,
-    status: Literal["todo", "in_progress", "done"] | None = None,
+    team_id: int | None = None,
+    status: Literal["draft", "todo", "in_progress", "done", "cancelled"] | None = None,
     priority: Literal["high", "medium", "low"] | None = None,
     keyword: str | None = None,
     current_user_id: int | None = None,
@@ -167,10 +185,16 @@ def count_tasks(
 ) -> int:
     query = db.query(func.count(Task.id))
     query = _apply_task_visibility_scope(query, current_user_id, is_admin)
+    has_meeting_join = not (is_admin or current_user_id is None)
     if assignee_id is not None:
         query = query.filter(Task.assignee_id == assignee_id)
     if meeting_id is not None:
         query = query.filter(Task.meeting_id == meeting_id)
+    if team_id is not None:
+        if not has_meeting_join:
+            query = query.join(Meeting, Meeting.id == Task.meeting_id)
+            has_meeting_join = True
+        query = query.filter(Meeting.team_id == team_id)
     if status is not None:
         query = query.filter(Task.status == status)
     if priority is not None:

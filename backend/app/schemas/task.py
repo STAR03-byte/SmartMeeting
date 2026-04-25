@@ -6,7 +6,7 @@ from typing import ClassVar, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 TaskPriority = Literal["high", "medium", "low"]
-TaskStatus = Literal["todo", "in_progress", "done"]
+TaskStatus = Literal["draft", "todo", "in_progress", "done", "cancelled"]
 
 
 class TaskCreate(BaseModel):

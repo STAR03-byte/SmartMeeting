@@ -1,6 +1,7 @@
 """系统健康自检端点 - 提供运行时状态检查。"""
 
 import os
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -126,6 +127,23 @@ def _check_database(db: Session) -> dict[str, Any]:
         return {"connected": False, "error": str(e)}
 
 
+def _check_private_deployment() -> dict[str, Any]:
+    """Check private deployment prerequisites without loading heavy models."""
+    storage_path = Path("backend/storage/audio")
+    jwt_is_default = settings.jwt_secret_key in {"change-me-in-production", "dev-secret-key"}
+    return {
+        "jwt_secret_configured": bool(settings.jwt_secret_key.strip()) and not jwt_is_default,
+        "jwt_secret_uses_default": jwt_is_default,
+        "ffmpeg_available": shutil.which("ffmpeg") is not None,
+        "storage_dir": str(storage_path),
+        "storage_dir_exists": storage_path.exists(),
+        "storage_dir_writable": os.access(storage_path, os.W_OK) if storage_path.exists() else False,
+        "llm_provider": settings.llm_provider,
+        "llm_configured": bool(settings.llm_api_key.strip()) or settings.llm_provider in {"mock", "none"},
+        "whisper_allow_mock_fallback": settings.whisper_allow_mock_fallback,
+    }
+
+
 @router.get("/status")
 def health_status(db: Session = Depends(get_db)) -> dict[str, Any]:
     """系统整体健康状态检查。"""
@@ -136,6 +154,7 @@ def health_status(db: Session = Depends(get_db)) -> dict[str, Any]:
         "faster_whisper": _check_faster_whisper(),
         "pyannote": _check_pyannote(),
         "database": _check_database(db),
+        "private_deployment": _check_private_deployment(),
         "config": {
             "whisper_device": settings.whisper_device,
             "enable_speaker_diarization": settings.enable_speaker_diarization,
@@ -154,3 +173,22 @@ def readiness_check() -> dict[str, str]:
 def liveness_check() -> dict[str, str]:
     """Kubernetes风格存活检查。"""
     return {"status": "alive"}
+
+
+@router.get("/preflight")
+def preflight_check(db: Session = Depends(get_db)) -> dict[str, Any]:
+    """Lightweight deployment readiness check for self-hosted installs."""
+    database = _check_database(db)
+    deployment = _check_private_deployment()
+    checks = {
+        "database": bool(database.get("connected")),
+        "jwt_secret": bool(deployment.get("jwt_secret_configured")),
+        "ffmpeg": bool(deployment.get("ffmpeg_available")),
+        "storage": bool(deployment.get("storage_dir_exists")) and bool(deployment.get("storage_dir_writable")),
+    }
+    return {
+        "status": "ok" if all(checks.values()) else "degraded",
+        "checks": checks,
+        "database": database,
+        "private_deployment": deployment,
+    }

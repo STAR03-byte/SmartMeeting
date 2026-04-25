@@ -30,12 +30,12 @@ export interface MeetingUpdatePayload {
 }
 
 export interface MeetingExportPayload {
-  format?: "txt" | "pdf" | "docx";
+  format?: "txt" | "md";
 }
 
 export interface MeetingExportResult {
   meeting_id: number;
-  format: "txt" | "pdf" | "docx";
+  format: "txt" | "md";
   filename: string;
   content: string;
 }

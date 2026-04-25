@@ -18,6 +18,8 @@ from app.schemas.ai_assistant import (
     ConversationCreateRequest,
     ConversationMessageResponse,
     ConversationResponse,
+    KnowledgeQueryRequest,
+    KnowledgeQueryResponse,
     TaskSuggestionsRequest,
     TaskSuggestionsResponse,
 )
@@ -84,6 +86,21 @@ async def _require_conversation_owner(
         raise HTTPException(status_code=404, detail="Conversation not found")
 
 
+def _require_ai_context_access(
+    db: Session,
+    current_user: CurrentUserOut,
+    *,
+    meeting_id: int | None = None,
+    task_id: int | None = None,
+) -> None:
+    if current_user.role == "admin":
+        return
+    if meeting_id is not None and not ai_service.user_can_access_meeting(db, current_user.id, meeting_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if task_id is not None and not ai_service.user_can_access_task(db, current_user.id, task_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
 @router.post("/task-suggestions", response_model=TaskSuggestionsResponse)
 async def get_task_suggestions(
     payload: TaskSuggestionsRequest,
@@ -112,6 +129,25 @@ async def get_task_suggestions(
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail="Failed to generate suggestions") from exc
+
+
+@router.post("/knowledge/query", response_model=KnowledgeQueryResponse)
+async def query_meeting_knowledge(
+    payload: KnowledgeQueryRequest,
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
+) -> KnowledgeQueryResponse:
+    """Query accessible meeting knowledge with grounded sources."""
+
+    result = await ai_service.query_meeting_knowledge(
+        db,
+        current_user.id,
+        payload.question,
+        team_id=payload.team_id,
+        limit=payload.limit,
+        is_admin=(current_user.role == "admin"),
+    )
+    return KnowledgeQueryResponse.model_validate(result)
 
 
 @router.get("/conversations", response_model=list[ConversationResponse])
@@ -182,6 +218,7 @@ async def chat(
 
     meeting_id = payload.context.meeting_id if payload.context is not None else None
     task_id = payload.context.task_ids[0] if payload.context is not None and payload.context.task_ids else None
+    _require_ai_context_access(db, current_user, meeting_id=meeting_id, task_id=task_id)
 
     return _build_chat_stream(
         db=db,
@@ -205,6 +242,7 @@ async def chat_get(
     """兼容 EventSource 的 GET SSE 聊天入口。"""
     if conversation_id is not None:
         await _require_conversation_owner(db, conversation_id, current_user)
+    _require_ai_context_access(db, current_user, meeting_id=meeting_id, task_id=task_id)
 
     return _build_chat_stream(
         db=db,

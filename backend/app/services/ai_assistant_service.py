@@ -23,6 +23,7 @@ AssistantIntent = Literal[
     "my_tasks",
     "meeting_tasks",
     "meeting_summary",
+    "knowledge_query",
     "execution_advice",
     "general_chat",
 ]
@@ -46,6 +47,259 @@ class AIAssistantService:
     def __init__(self, llm_service: LLMService):
         self.llm_service: LLMService = llm_service
 
+    def user_can_access_meeting(self, db: Session, user_id: int, meeting_id: int) -> bool:
+        meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+        if meeting is None:
+            return False
+        if meeting.organizer_id == user_id:
+            return True
+        participant = (
+            db.query(MeetingParticipant.id)
+            .filter(MeetingParticipant.meeting_id == meeting_id, MeetingParticipant.user_id == user_id)
+            .first()
+        )
+        if participant is not None:
+            return True
+        if meeting.team_id is None:
+            return False
+        member = (
+            db.query(TeamMember.id)
+            .filter(TeamMember.team_id == meeting.team_id, TeamMember.user_id == user_id)
+            .first()
+        )
+        return member is not None
+
+    def user_can_access_task(self, db: Session, user_id: int, task_id: int) -> bool:
+        task = db.query(Task).filter(Task.id == task_id).first()
+        if task is None:
+            return False
+        if task.assignee_id == user_id or task.reporter_id == user_id:
+            return True
+        return self.user_can_access_meeting(db, user_id, task.meeting_id)
+
+    def _visible_meeting_query(self, db: Session, user_id: int, is_admin: bool = False):
+        if is_admin:
+            return db.query(Meeting)
+        return (
+            db.query(Meeting)
+            .outerjoin(MeetingParticipant, MeetingParticipant.meeting_id == Meeting.id)
+            .outerjoin(TeamMember, TeamMember.team_id == Meeting.team_id)
+            .filter(
+                or_(
+                    Meeting.organizer_id == user_id,
+                    MeetingParticipant.user_id == user_id,
+                    TeamMember.user_id == user_id,
+                )
+            )
+        )
+
+    def _knowledge_terms(self, question: str) -> list[str]:
+        tokens = [item.strip() for item in re.split(r"[\s,.;:!?，。；：！？、]+", question) if item.strip()]
+        terms = [item for item in tokens if len(item) >= 2]
+        if not terms and question.strip():
+            terms = [question.strip()]
+        return terms[:6]
+
+    def _clip_snippet(self, text: str | None, limit: int = 220) -> str:
+        normalized = re.sub(r"\s+", " ", (text or "").strip())
+        if len(normalized) <= limit:
+            return normalized
+        return f"{normalized[:limit].rstrip()}..."
+
+    def _append_source(
+        self,
+        sources: list[dict[str, object]],
+        seen: set[tuple[int, str, str]],
+        *,
+        meeting: Meeting,
+        source_type: str,
+        snippet: str | None,
+    ) -> None:
+        clipped = self._clip_snippet(snippet)
+        if not clipped:
+            return
+        key = (meeting.id, source_type, clipped)
+        if key in seen:
+            return
+        seen.add(key)
+        sources.append(
+            {
+                "meeting_id": meeting.id,
+                "meeting_title": meeting.title,
+                "source_type": source_type,
+                "snippet": clipped,
+                "created_at": meeting.created_at,
+            }
+        )
+
+    async def query_meeting_knowledge(
+        self,
+        db: Session,
+        user_id: int,
+        question: str,
+        *,
+        team_id: int | None = None,
+        limit: int = 5,
+        is_admin: bool = False,
+    ) -> dict[str, object]:
+        """Search accessible meetings and build a grounded answer."""
+
+        terms = self._knowledge_terms(question)
+        sources: list[dict[str, object]] = []
+        seen: set[tuple[int, str, str]] = set()
+
+        meeting_query = self._visible_meeting_query(db, user_id, is_admin=is_admin)
+        if team_id is not None:
+            meeting_query = meeting_query.filter(Meeting.team_id == team_id)
+
+        if terms:
+            text_filters = []
+            for term in terms:
+                like = f"%{term}%"
+                text_filters.extend(
+                    [
+                        Meeting.title.ilike(like),
+                        Meeting.description.ilike(like),
+                        Meeting.summary.ilike(like),
+                    ]
+                )
+            matching_meetings = (
+                meeting_query.filter(or_(*text_filters))
+                .order_by(Meeting.updated_at.desc(), Meeting.id.desc())
+                .limit(limit)
+                .all()
+            )
+        else:
+            matching_meetings = meeting_query.order_by(Meeting.updated_at.desc(), Meeting.id.desc()).limit(limit).all()
+
+        for meeting in matching_meetings:
+            self._append_source(
+                sources,
+                seen,
+                meeting=meeting,
+                source_type="meeting",
+                snippet=f"{meeting.title}\n{meeting.description or ''}",
+            )
+            self._append_source(sources, seen, meeting=meeting, source_type="summary", snippet=meeting.summary)
+            if len(sources) >= limit:
+                break
+
+        if len(sources) < limit:
+            transcript_query = (
+                db.query(MeetingTranscript, Meeting)
+                .join(Meeting, Meeting.id == MeetingTranscript.meeting_id)
+                .outerjoin(MeetingParticipant, MeetingParticipant.meeting_id == Meeting.id)
+                .outerjoin(TeamMember, TeamMember.team_id == Meeting.team_id)
+            )
+            if not is_admin:
+                transcript_query = transcript_query.filter(
+                    or_(
+                        Meeting.organizer_id == user_id,
+                        MeetingParticipant.user_id == user_id,
+                        TeamMember.user_id == user_id,
+                    )
+                )
+            if team_id is not None:
+                transcript_query = transcript_query.filter(Meeting.team_id == team_id)
+            if terms:
+                transcript_query = transcript_query.filter(
+                    or_(*(MeetingTranscript.content.ilike(f"%{term}%") for term in terms))
+                )
+            transcript_rows = (
+                transcript_query.order_by(Meeting.updated_at.desc(), MeetingTranscript.segment_index.asc())
+                .limit(limit * 2)
+                .all()
+            )
+            for transcript, meeting in transcript_rows:
+                self._append_source(
+                    sources,
+                    seen,
+                    meeting=meeting,
+                    source_type="transcript",
+                    snippet=transcript.content,
+                )
+                if len(sources) >= limit:
+                    break
+
+        if len(sources) < limit:
+            task_query = (
+                db.query(Task, Meeting)
+                .join(Meeting, Meeting.id == Task.meeting_id)
+                .outerjoin(MeetingParticipant, MeetingParticipant.meeting_id == Meeting.id)
+                .outerjoin(TeamMember, TeamMember.team_id == Meeting.team_id)
+            )
+            if not is_admin:
+                task_query = task_query.filter(
+                    or_(
+                        Meeting.organizer_id == user_id,
+                        MeetingParticipant.user_id == user_id,
+                        TeamMember.user_id == user_id,
+                    )
+                )
+            if team_id is not None:
+                task_query = task_query.filter(Meeting.team_id == team_id)
+            if terms:
+                task_query = task_query.filter(
+                    or_(
+                        *(
+                            field.ilike(f"%{term}%")
+                            for term in terms
+                            for field in (Task.title, Task.description, Task.progress_note)
+                        )
+                    )
+                )
+            task_rows = task_query.order_by(Task.updated_at.desc(), Task.id.desc()).limit(limit * 2).all()
+            for task, meeting in task_rows:
+                self._append_source(
+                    sources,
+                    seen,
+                    meeting=meeting,
+                    source_type="task",
+                    snippet=f"{task.title}: {task.description or ''}",
+                )
+                if len(sources) >= limit:
+                    break
+
+        if not sources:
+            return {
+                "answer": "没有在你有权限访问的会议知识库中找到相关内容。",
+                "sources": [],
+                "used_llm": False,
+            }
+
+        context_text = "\n".join(
+            f"[{index}] {item['meeting_title']} / {item['source_type']}: {item['snippet']}"
+            for index, item in enumerate(sources, start=1)
+        )
+        fallback_answer = (
+            "根据你有权限访问的会议知识库，找到以下相关线索：\n"
+            + "\n".join(
+                f"{index}. {item['meeting_title']}：{item['snippet']}"
+                for index, item in enumerate(sources, start=1)
+            )
+        )
+
+        try:
+            llm_result = await self.llm_service.chat_completion(
+                messages=[
+                    {
+                        "role": "user",
+                        "content": (
+                            "请只基于给定会议知识库片段回答问题；无法确定时说明证据不足。"
+                            f"\n问题：{question}\n片段：\n{context_text}"
+                        ),
+                    }
+                ],
+                context_info={"source_count": str(len(sources)), "answer_policy": "cite-meeting-sources"},
+                stream=False,
+            )
+            if isinstance(llm_result, str) and llm_result.strip():
+                return {"answer": llm_result.strip(), "sources": sources, "used_llm": True}
+        except Exception:
+            logger.exception("Meeting knowledge LLM answer failed; falling back to snippets")
+
+        return {"answer": fallback_answer, "sources": sources, "used_llm": False}
+
     def classify_intent(self, message: str, context: dict[str, object] | None = None) -> AssistantIntent:
         normalized = message.strip().lower()
         has_meeting_context = isinstance(context, dict) and isinstance(context.get("meeting_id"), int)
@@ -68,6 +322,26 @@ class AIAssistantService:
             return "execution_advice"
         if asks_for_meeting_summary:
             return "meeting_summary"
+        if any(
+            keyword in normalized
+            for keyword in (
+                "knowledge",
+                "history",
+                "project",
+                "risk",
+                "decision",
+                "customer",
+                "meeting",
+                "会议",
+                "项目",
+                "风险",
+                "决策",
+                "决定",
+                "客户",
+                "历史",
+            )
+        ):
+            return "knowledge_query"
         return "general_chat"
 
     def _resolve_effective_context(
@@ -111,6 +385,18 @@ class AIAssistantService:
             )
             if meeting:
                 return meeting.id
+        if intent == "knowledge_query":
+            result = await self.query_meeting_knowledge(db, user_id, message, limit=5)
+            sources = result.get("sources")
+            if isinstance(sources, list) and sources:
+                answer = str(result.get("answer") or "")
+                source_lines = [
+                    f"- {item.get('meeting_title')} ({item.get('source_type')}): {item.get('snippet')}"
+                    for item in sources
+                    if isinstance(item, dict)
+                ]
+                return answer + "\n\n来源：\n" + "\n".join(source_lines)
+
         return None
 
     def _query_user_tasks(self, db: Session, user_id: int, limit: int = 8) -> list[Task]:

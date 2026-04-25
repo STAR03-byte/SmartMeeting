@@ -1,6 +1,6 @@
 export type UserRole = "admin" | "member";
 export type TaskPriority = "high" | "medium" | "low";
-export type TaskStatus = "todo" | "in_progress" | "done";
+export type TaskStatus = "draft" | "todo" | "in_progress" | "done" | "cancelled";
 export type MeetingStatus = "planned" | "ongoing" | "done" | "cancelled";
 
 export interface UserItem {
@@ -122,6 +122,7 @@ export interface TaskItem {
 export interface TaskListParams {
   assignee_id?: number;
   meeting_id?: number;
+  team_id?: number;
   status?: TaskStatus;
   priority?: TaskPriority;
   keyword?: string;
@@ -346,3 +347,23 @@ export type CreateTaskDraftPayload = {
   priority?: TaskPriorityLevel;
   assignee_id: number;
 };
+
+export interface KnowledgeSource {
+  meeting_id: number;
+  meeting_title: string;
+  source_type: "meeting" | "summary" | "transcript" | "task" | "participant";
+  snippet: string;
+  created_at: string | null;
+}
+
+export interface KnowledgeQueryRequest {
+  question: string;
+  team_id?: number | null;
+  limit?: number;
+}
+
+export interface KnowledgeQueryResponse {
+  answer: string;
+  sources: KnowledgeSource[];
+  used_llm: boolean;
+}

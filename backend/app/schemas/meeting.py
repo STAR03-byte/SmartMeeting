@@ -129,7 +129,7 @@ class MeetingStructuredSummaryOut(BaseModel):
 class MeetingExportRequest(BaseModel):
     """会议导出请求。"""
 
-    format: str = Field(default="txt", pattern="^txt$")
+    format: str = Field(default="txt", pattern="^(txt|md)$")
 
 
 class MeetingExportOut(BaseModel):

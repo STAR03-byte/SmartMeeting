@@ -34,6 +34,7 @@
               <el-button type="danger" plain @click="clearDialogVisible = true">{{ $t('meeting.clearContent') }}</el-button>
               <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="copyShareLink">{{ $t('meeting.generateShareLink') }}</el-button>
               <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="distributeByEmail">{{ $t('meeting.emailDistribute') }}</el-button>
+              <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="exportMarkdown">导出 MD</el-button>
               <el-button v-if="canCreateTask" type="primary" @click="openTaskDialog">{{ $t('meeting.newTask') }}</el-button>
             </div>
           </div>
@@ -99,7 +100,7 @@ import TranscriptPanel from "../components/meeting/TranscriptPanel.vue";
 import TaskManager from "../components/meeting/TaskManager.vue";
 import ParticipantManager from "../components/meeting/ParticipantManager.vue";
 
-import { createMeetingShareLink } from "../api/meetings";
+import { createMeetingShareLink, exportMeetingSummary } from "../api/meetings";
 import { getMeetingParticipants } from "../api/participants";
 import { useAuthStore } from "../stores/authStore";
 import { useMeetingStore } from "../stores/meetingStore";
@@ -178,6 +179,24 @@ async function distributeByEmail() {
     });
     openEmailShareDraft(draft);
     ElMessage.success(t('meeting.emailClientOpened'));
+  } catch (err) {
+    notifyApiError(err);
+  }
+}
+
+async function exportMarkdown() {
+  try {
+    const result = await exportMeetingSummary(meetingId, { format: "md" });
+    const blob = new Blob([result.content], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = result.filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    ElMessage.success("Markdown 已导出");
   } catch (err) {
     notifyApiError(err);
   }

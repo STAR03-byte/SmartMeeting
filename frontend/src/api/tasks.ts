@@ -7,6 +7,7 @@ export async function getTasks(params: TaskListParams = {}): Promise<TaskListRes
   const searchParams = new URLSearchParams();
   if (typeof params.assignee_id === "number") searchParams.set("assignee_id", String(params.assignee_id));
   if (typeof params.meeting_id === "number") searchParams.set("meeting_id", String(params.meeting_id));
+  if (typeof params.team_id === "number") searchParams.set("team_id", String(params.team_id));
   if (typeof params.status === "string") {
     searchParams.set("status", params.status);
   }

@@ -15,6 +15,7 @@ from app.schemas.meeting_audio import MeetingAudioOut
 from app.models.meeting_audio import MeetingAudio
 from app.models.meeting import Meeting
 from app.models.meeting_transcript import MeetingTranscript
+from app.models.task import Task
 from app.schemas.meeting import (
     MeetingCreate,
     MeetingClearContentRequest,
@@ -435,11 +436,39 @@ def export_meeting_api(
 
     title = meeting.title or "未命名会议"
     filename = f"{title}.{payload.format}"
-    content = (
-        f"title={title}\n"
-        f"summary=\n{meeting.summary}\n"
-        f"format={payload.format}"
+    transcripts = (
+        db.query(MeetingTranscript)
+        .filter(MeetingTranscript.meeting_id == meeting_id)
+        .order_by(MeetingTranscript.segment_index.asc(), MeetingTranscript.id.asc())
+        .all()
     )
+    tasks = db.query(Task).filter(Task.meeting_id == meeting_id).order_by(Task.id.asc()).all()
+    if payload.format == "md":
+        task_lines = [f"- [{task.status}] {task.title} ({task.priority})" for task in tasks]
+        transcript_lines = [
+            f"- {item.speaker_name or 'Unknown'}: {item.content}" for item in transcripts if item.content
+        ]
+        content = "\n".join(
+            [
+                f"# {title}",
+                "",
+                "## Summary",
+                meeting.summary or "",
+                "",
+                "## Action Items",
+                "\n".join(task_lines) if task_lines else "No action items.",
+                "",
+                "## Transcript",
+                "\n".join(transcript_lines) if transcript_lines else "No transcript.",
+                "",
+            ]
+        )
+    else:
+        content = (
+            f"title={title}\n"
+            f"summary=\n{meeting.summary}\n"
+            f"format={payload.format}"
+        )
     return MeetingExportOut(
         meeting_id=meeting_id,
         format=payload.format,

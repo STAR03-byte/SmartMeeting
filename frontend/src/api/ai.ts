@@ -6,6 +6,8 @@ import type {
   Conversation,
   ConversationMessage,
   CreateTaskDraftPayload,
+  KnowledgeQueryRequest,
+  KnowledgeQueryResponse,
   TaskDraft,
   TaskSuggestionRequest,
   TaskSuggestionResponse,
@@ -18,6 +20,8 @@ export type {
   Conversation,
   ConversationMessage,
   CreateTaskDraftPayload,
+  KnowledgeQueryRequest,
+  KnowledgeQueryResponse,
   TaskDraft,
   TaskSuggestionRequest,
   TaskSuggestionResponse,
@@ -176,6 +180,19 @@ export async function createTaskDraft(data: CreateTaskDraftPayload): Promise<Tas
       due_date: data.due_date instanceof Date ? data.due_date.toISOString() : data.due_date,
       priority: data.priority ?? "medium",
       assignee_id: data.assignee_id,
+    });
+    return resp.data;
+  } catch (error: unknown) {
+    rethrowApiError(error);
+  }
+}
+
+export async function queryMeetingKnowledge(data: KnowledgeQueryRequest): Promise<KnowledgeQueryResponse> {
+  try {
+    const resp = await apiClient.post<KnowledgeQueryResponse>("/api/v1/ai/knowledge/query", {
+      question: data.question.trim(),
+      team_id: data.team_id ?? undefined,
+      limit: data.limit ?? 5,
     });
     return resp.data;
   } catch (error: unknown) {
