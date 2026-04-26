@@ -120,6 +120,13 @@ def test_create_team_meeting_with_valid_team_member(auth_client: TestClient) -> 
     assert participants[0]["user_id"] == organizer_id
     assert participants[0]["role"] == "organizer"
 
+    list_resp = auth_client.get(f"/api/v1/meetings?team_id={team_id}")
+    assert list_resp.status_code == 200
+    list_body = list_resp.json()
+    assert list_body["total"] == 1
+    assert list_body["items"][0]["id"] == meeting_data["id"]
+    assert list_body["items"][0]["team_id"] == team_id
+
 
 def test_create_team_meeting_rejects_non_team_member(auth_client: TestClient) -> None:
     """测试非团队成员无法创建团队会议。"""

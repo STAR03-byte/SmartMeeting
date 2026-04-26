@@ -155,6 +155,7 @@ def list_meetings(
     db: Session,
     status: str | None = None,
     organizer_id: int | None = None,
+    team_id: int | None = None,
     keyword: str | None = None,
     sort_by: str | None = None,
     limit: int | None = None,
@@ -185,6 +186,9 @@ def list_meetings(
     if organizer_id is not None:
         query = query.filter(Meeting.organizer_id == organizer_id)
 
+    if team_id is not None:
+        query = query.filter(Meeting.team_id == team_id)
+
     if keyword:
         normalized_keyword = keyword.strip()
         if normalized_keyword:
@@ -210,6 +214,7 @@ def count_meetings(
     db: Session,
     status: str | None = None,
     organizer_id: int | None = None,
+    team_id: int | None = None,
     keyword: str | None = None,
     current_user_id: int | None = None,
     is_admin: bool = False,
@@ -234,6 +239,9 @@ def count_meetings(
 
     if organizer_id is not None:
         query = query.filter(Meeting.organizer_id == organizer_id)
+
+    if team_id is not None:
+        query = query.filter(Meeting.team_id == team_id)
 
     if keyword:
         normalized_keyword = keyword.strip()

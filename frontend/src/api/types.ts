@@ -26,6 +26,7 @@ export interface Meeting {
   title: string;
   description: string | null;
   organizer_id: number;
+  team_id: number | null;
   scheduled_start_at: string | null;
   scheduled_end_at: string | null;
   actual_start_at: string | null;
@@ -56,6 +57,7 @@ export interface MeetingCreatePayload {
 export interface MeetingListParams {
   status?: MeetingStatus;
   organizer_id?: number;
+  team_id?: number;
   keyword?: string;
   sort_by?: string;
   limit?: number;

@@ -97,6 +97,7 @@ export const MeetingSchema = z.object({
   title: z.string(),
   description: z.string().nullable(),
   organizer_id: z.number(),
+  team_id: z.number().nullable(),
   scheduled_start_at: z.string().datetime().nullable(),
   scheduled_end_at: z.string().datetime().nullable(),
   actual_start_at: z.string().datetime().nullable(),

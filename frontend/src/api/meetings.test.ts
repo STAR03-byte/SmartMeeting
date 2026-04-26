@@ -9,10 +9,10 @@ describe("meetings api module", () => {
     } as never);
 
     const mod = await import("./meetings");
-    const result = await mod.getMeetings({ status: "planned", limit: 10 });
+    const result = await mod.getMeetings({ status: "planned", team_id: 3, limit: 10 });
 
     expect(getSpy).toHaveBeenCalledWith("/api/v1/meetings", {
-      params: { status: "planned", limit: 10 },
+      params: { status: "planned", team_id: 3, limit: 10 },
     });
     expect(result.items).toHaveLength(1);
     expect(result.items[0].title).toBe("Test Meeting");
@@ -122,6 +122,7 @@ describe("meetings api module", () => {
           title: "Share",
           description: null,
           organizer_id: 1,
+          team_id: null,
           scheduled_start_at: null,
           scheduled_end_at: null,
           actual_start_at: null,

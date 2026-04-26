@@ -171,6 +171,12 @@ const router = useRouter();
 
 const filterStatus = ref<MeetingStatus | "">("");
 const filterKeyword = ref("");
+const filterTeamId = computed(() => {
+  const raw = route.query.team_id;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : undefined;
+});
 const currentPage = ref(1);
 const pageSize = 20;
 const totalCount = ref(0);
@@ -218,6 +224,7 @@ async function loadMeetings() {
     limit: pageSize,
     offset: (currentPage.value - 1) * pageSize,
   };
+  if (filterTeamId.value) params.team_id = filterTeamId.value;
   if (filterStatus.value) params.status = filterStatus.value;
   if (filterKeyword.value) params.keyword = filterKeyword.value;
   await store.fetchMeetings(params);

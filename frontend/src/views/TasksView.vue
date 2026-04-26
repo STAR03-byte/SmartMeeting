@@ -205,6 +205,7 @@
 import { useI18n } from 'vue-i18n';
 const { t } = useI18n();
 import { onMounted, onUnmounted, reactive, ref, computed } from "vue";
+import { useRoute } from "vue-router";
 import { ElMessage } from "element-plus";
 
 import AppErrorAlert from "../components/AppErrorAlert.vue";
@@ -221,6 +222,7 @@ import { getUsers, type UserItem } from "../api/users";
 import { useTaskCenterStore } from "../stores/taskCenterStore";
 
 const taskCenterStore = useTaskCenterStore();
+const route = useRoute();
 const tasks = computed(() => taskCenterStore.tasks);
 const users = ref<UserItem[]>([]);
 const loading = computed(() => taskCenterStore.loading);
@@ -262,6 +264,13 @@ const filters = reactive<{
   keyword: "",
 });
 
+const routeTeamId = computed(() => {
+  const raw = route.query.team_id;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0 ? numeric : undefined;
+});
+
 function applyFiltersAndRefresh() {
   currentPage.value = 1;
   refreshTasks();
@@ -274,6 +283,9 @@ async function refreshTasks() {
       offset: (currentPage.value - 1) * pageSize,
       sort_by: sortBy.value,
     };
+    if (routeTeamId.value) {
+      params.team_id = routeTeamId.value;
+    }
     if (filters.status) {
       params.status = filters.status;
     }

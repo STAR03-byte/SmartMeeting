@@ -48,6 +48,41 @@
         </div>
       </el-card>
 
+      <el-card class="team-meetings-card mb-4">
+        <template #header>
+          <div class="card-header">
+            <span>团队会议</span>
+            <div class="header-tags">
+              <router-link :to="`/meetings?team_id=${teamId}`">
+                <el-button size="small" type="primary" plain>查看全部会议</el-button>
+              </router-link>
+              <router-link :to="`/tasks?team_id=${teamId}`">
+                <el-button size="small" plain>团队任务</el-button>
+              </router-link>
+            </div>
+          </div>
+        </template>
+        <el-skeleton v-if="meetingsLoading" rows="3" animated />
+        <el-empty v-else-if="teamMeetings.length === 0" description="暂无团队会议" />
+        <el-table v-else :data="teamMeetings" style="width: 100%">
+          <el-table-column prop="title" label="会议标题" min-width="180">
+            <template #default="{ row }">
+              <router-link :to="`/meetings/${row.id}`" class="meeting-link">{{ row.title }}</router-link>
+            </template>
+          </el-table-column>
+          <el-table-column prop="status" label="状态" width="110">
+            <template #default="{ row }">
+              <el-tag :type="getMeetingStatusTag(row.status)">{{ getMeetingStatusLabel(row.status) }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="计划开始" width="180">
+            <template #default="{ row }">
+              {{ formatDate(row.scheduled_start_at) }}
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-card>
+
       <!-- Member List (Visible to all, but actions restricted) -->
       <el-card class="team-members-card">
         <template #header>
@@ -169,8 +204,9 @@ import { ElMessage } from 'element-plus';
 import type { FormInstance } from 'element-plus';
 import { getTeam, getTeamMembers, removeTeamMember, updateMemberRole, deleteTeam } from '../api/teams';
 import type { Team, TeamMember } from '../api/teams';
+import { getMeetings } from '../api/meetings';
 import { searchInvitableUsers } from '../api/users';
-import type { UserItem } from '../api/types';
+import type { Meeting, MeetingStatus, UserItem } from '../api/types';
 import { useAuthStore } from '../stores/authStore';
 import { getApiErrorMessage } from '../api/client';
 import { sendInvitation } from '../api/teamInvitations';
@@ -186,6 +222,8 @@ const team = ref<Team | null>(null);
 
 const members = ref<TeamMember[]>([]);
 const membersLoading = ref(false);
+const teamMeetings = ref<Meeting[]>([]);
+const meetingsLoading = ref(false);
 
 const updatingRole = ref<number | null>(null);
 const deletingTeam = ref(false);
@@ -265,12 +303,31 @@ const getInvitationTagType = (status: string) => {
   }
 };
 
+const getMeetingStatusLabel = (status: MeetingStatus) => {
+  switch (status) {
+    case 'planned': return t('meeting.statusPlanned');
+    case 'ongoing': return t('meeting.statusOngoing');
+    case 'done': return t('meeting.statusDone');
+    case 'cancelled': return t('meeting.statusCancelled');
+    default: return status;
+  }
+};
+
+const getMeetingStatusTag = (status: MeetingStatus) => {
+  switch (status) {
+    case 'ongoing': return 'success';
+    case 'done': return 'info';
+    case 'cancelled': return 'danger';
+    default: return '';
+  }
+};
+
 const loadData = async () => {
   loading.value = true;
   error.value = '';
   try {
     team.value = await getTeam(teamId);
-    await loadMembers();
+    await Promise.all([loadMembers(), loadTeamMeetings()]);
   } catch (err: any) {
     error.value = getApiErrorMessage(err) || t('team.loadTeamFailed');
   } finally {
@@ -294,6 +351,18 @@ const loadMembers = async () => {
     ElMessage.error(getApiErrorMessage(err) || t('team.loadMemberFailed'));
   } finally {
     membersLoading.value = false;
+  }
+};
+
+const loadTeamMeetings = async () => {
+  meetingsLoading.value = true;
+  try {
+    const result = await getMeetings({ team_id: teamId, limit: 5, offset: 0 });
+    teamMeetings.value = result.items;
+  } catch (err: any) {
+    ElMessage.error(getApiErrorMessage(err) || '加载团队会议失败');
+  } finally {
+    meetingsLoading.value = false;
   }
 };
 
@@ -431,6 +500,16 @@ onMounted(() => {
 
 .invite-link-block {
   margin-top: 12px;
+}
+
+.meeting-link {
+  color: var(--el-color-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.meeting-link:hover {
+  color: var(--el-color-primary-dark-2);
 }
 
 /* Mobile Adjustments */
