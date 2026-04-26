@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Literal, Protocol
 
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.models.conversation import Conversation, ConversationMessage
 from app.models.meeting import Meeting
@@ -260,6 +260,56 @@ class AIAssistantService:
                 if len(sources) >= limit:
                     break
 
+        if len(sources) < limit:
+            participant_match = aliased(MeetingParticipant)
+            participant_access = aliased(MeetingParticipant)
+            participant_query = (
+                db.query(User, Meeting, participant_match)
+                .join(participant_match, participant_match.user_id == User.id)
+                .join(Meeting, Meeting.id == participant_match.meeting_id)
+                .outerjoin(participant_access, participant_access.meeting_id == Meeting.id)
+                .outerjoin(TeamMember, TeamMember.team_id == Meeting.team_id)
+            )
+            if not is_admin:
+                participant_query = participant_query.filter(
+                    or_(
+                        Meeting.organizer_id == user_id,
+                        participant_access.user_id == user_id,
+                        TeamMember.user_id == user_id,
+                    )
+                )
+            if team_id is not None:
+                participant_query = participant_query.filter(Meeting.team_id == team_id)
+            if terms:
+                participant_query = participant_query.filter(
+                    or_(
+                        *(
+                            field.ilike(f"%{term}%")
+                            for term in terms
+                            for field in (User.full_name, User.username, User.email)
+                        )
+                    )
+                )
+            participant_rows = (
+                participant_query.order_by(Meeting.updated_at.desc(), participant_match.id.asc())
+                .limit(limit * 2)
+                .all()
+            )
+            for participant_user, meeting, participant in participant_rows:
+                display_name = participant_user.full_name or participant_user.username
+                self._append_source(
+                    sources,
+                    seen,
+                    meeting=meeting,
+                    source_type="participant",
+                    snippet=(
+                        f"{display_name} attended this meeting as {participant.role or 'participant'}; "
+                        f"attendance status: {participant.attendance_status}."
+                    ),
+                )
+                if len(sources) >= limit:
+                    break
+
         if not sources:
             return {
                 "answer": "没有在你有权限访问的会议知识库中找到相关内容。",
@@ -385,18 +435,6 @@ class AIAssistantService:
             )
             if meeting:
                 return meeting.id
-        if intent == "knowledge_query":
-            result = await self.query_meeting_knowledge(db, user_id, message, limit=5)
-            sources = result.get("sources")
-            if isinstance(sources, list) and sources:
-                answer = str(result.get("answer") or "")
-                source_lines = [
-                    f"- {item.get('meeting_title')} ({item.get('source_type')}): {item.get('snippet')}"
-                    for item in sources
-                    if isinstance(item, dict)
-                ]
-                return answer + "\n\n来源：\n" + "\n".join(source_lines)
-
         return None
 
     def _query_user_tasks(self, db: Session, user_id: int, limit: int = 8) -> list[Task]:
@@ -705,6 +743,18 @@ class AIAssistantService:
                     .all()
                 )
                 return self._build_meeting_summary_direct_answer(meeting, transcripts, message)
+
+        if intent == "knowledge_query":
+            result = await self.query_meeting_knowledge(db, user_id, message, limit=5)
+            sources = result.get("sources")
+            if isinstance(sources, list) and sources:
+                answer = str(result.get("answer") or "")
+                source_lines = [
+                    f"- {item.get('meeting_title')} ({item.get('source_type')}): {item.get('snippet')}"
+                    for item in sources
+                    if isinstance(item, dict)
+                ]
+                return answer + "\n\n来源：\n" + "\n".join(source_lines)
 
         return None
 

@@ -259,18 +259,50 @@ def get_meeting(db: Session, meeting_id: int) -> Meeting | None:
     return db.query(Meeting).filter(Meeting.id == meeting_id).first()
 
 
-def create_or_get_meeting_share(db: Session, meeting: Meeting) -> tuple[MeetingShareOut, bool]:
+def _utc_now_naive() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
+def _normalize_naive_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(UTC).replace(tzinfo=None)
+
+
+def is_meeting_share_active(meeting: Meeting, now: datetime | None = None) -> bool:
+    if not meeting.share_token:
+        return False
+    if meeting.share_revoked_at is not None:
+        return False
+    expires_at = _normalize_naive_utc(meeting.share_expires_at)
+    compare_now = _normalize_naive_utc(now) if now else _utc_now_naive()
+    if expires_at is not None and compare_now is not None and expires_at <= compare_now:
+        return False
+    return True
+
+
+def create_or_get_meeting_share(
+    db: Session,
+    meeting: Meeting,
+    expires_at: datetime | None = None,
+) -> tuple[MeetingShareOut, bool]:
     if not meeting.summary:
         raise ValueError("Meeting summary is required for sharing")
 
+    normalized_expires_at = _normalize_naive_utc(expires_at)
     created_now = False
-    if not meeting.share_token:
+    if not is_meeting_share_active(meeting):
         meeting.share_token = token_urlsafe(32)
-        meeting.shared_at = datetime.now(UTC)
-        db.add(meeting)
-        db.commit()
-        db.refresh(meeting)
+        meeting.shared_at = _utc_now_naive()
         created_now = True
+
+    meeting.share_revoked_at = None
+    meeting.share_expires_at = normalized_expires_at
+    db.add(meeting)
+    db.commit()
+    db.refresh(meeting)
 
     assert meeting.share_token is not None
     assert meeting.shared_at is not None
@@ -282,9 +314,19 @@ def create_or_get_meeting_share(db: Session, meeting: Meeting) -> tuple[MeetingS
             share_path=f"/shared/meetings/{meeting.share_token}",
             created_now=created_now,
             shared_at=meeting.shared_at,
+            expires_at=meeting.share_expires_at,
+            revoked_at=meeting.share_revoked_at,
         ),
         created_now,
     )
+
+
+def revoke_meeting_share(db: Session, meeting: Meeting) -> Meeting:
+    meeting.share_revoked_at = _utc_now_naive()
+    db.add(meeting)
+    db.commit()
+    db.refresh(meeting)
+    return meeting
 
 
 def build_shared_meeting_out(db: Session, meeting: Meeting, my_role: str = "guest") -> SharedMeetingOut:
@@ -407,6 +449,7 @@ def generate_tasks_from_transcripts(
     meeting_id: int,
     transcripts: list[MeetingTranscript],
     force_regenerate: bool = False,
+    reporter_id: int | None = None,
 ) -> list[Task]:
     """从转写中抽取行动项并创建任务。"""
 
@@ -443,9 +486,9 @@ def generate_tasks_from_transcripts(
                 title=action[:200],
                 description=action,
                 assignee_id=assignee_id,
-                reporter_id=None,
+                reporter_id=reporter_id,
                 priority=infer_task_priority(action),
-                status="todo",
+                status="draft",
             )
             db.add(task)
             generated.append(task)
@@ -461,6 +504,7 @@ async def generate_tasks_from_transcripts_with_llm(
     meeting_id: int,
     transcripts: list[MeetingTranscript],
     force_regenerate: bool = False,
+    reporter_id: int | None = None,
 ) -> tuple[list[Task], str]:
     existing = db.query(Task).filter(Task.meeting_id == meeting_id).all()
     if existing and not force_regenerate:
@@ -547,9 +591,9 @@ async def generate_tasks_from_transcripts_with_llm(
                         else (item["description"] or transcript.content)
                     ),
                     assignee_id=assignee_id,
-                    reporter_id=None,
+                    reporter_id=reporter_id,
                     priority=priority,
-                    status="todo",
+                    status="draft",
                 )
                 db.add(task)
                 generated.append(task)
@@ -579,9 +623,9 @@ async def generate_tasks_from_transcripts_with_llm(
                 title=action[:200],
                 description=action,
                 assignee_id=assignee_id,
-                reporter_id=None,
+                reporter_id=reporter_id,
                 priority=infer_task_priority(action),
-                status="todo",
+                status="draft",
             )
             db.add(task)
             generated.append(task)

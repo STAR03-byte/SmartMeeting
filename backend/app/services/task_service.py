@@ -78,7 +78,6 @@ def _apply_task_visibility_scope(query, current_user_id: int | None, is_admin: b
         (
             (Meeting.organizer_id == current_user_id)
             | (Task.assignee_id == current_user_id)
-            | (Task.reporter_id == current_user_id)
             | (TeamMember.user_id == current_user_id)
         ),
     )

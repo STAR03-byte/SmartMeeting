@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from importlib import import_module
 from typing import Protocol, cast
 
@@ -19,7 +19,9 @@ from app.services.meeting_service import (
     count_meetings,
     create_meeting,
     create_or_get_meeting_share,
+    is_meeting_share_active,
     list_meetings,
+    revoke_meeting_share,
 )
 
 
@@ -133,6 +135,56 @@ def test_create_or_get_meeting_share_requires_summary() -> None:
 
         with pytest.raises(ValueError, match="Meeting summary is required for sharing"):
             create_or_get_meeting_share(db, meeting)
+    finally:
+        db.close()
+
+
+def test_create_meeting_share_can_set_expiration_and_revoke() -> None:
+    db = make_session()
+    try:
+        owner = seed_user(db)
+        meeting = Meeting(title="Expiring share", organizer_id=owner.id, summary="Meeting summary")
+        db.add(meeting)
+        db.commit()
+        db.refresh(meeting)
+
+        expires_at = datetime.now(UTC) + timedelta(hours=2)
+        share, created = create_or_get_meeting_share(db, meeting, expires_at=expires_at)
+
+        assert created is True
+        assert share.expires_at is not None
+        assert share.revoked_at is None
+        assert is_meeting_share_active(meeting) is True
+
+        revoked = revoke_meeting_share(db, meeting)
+
+        assert revoked.share_revoked_at is not None
+        assert is_meeting_share_active(revoked) is False
+    finally:
+        db.close()
+
+
+def test_create_meeting_share_rotates_expired_or_revoked_token() -> None:
+    db = make_session()
+    try:
+        owner = seed_user(db)
+        meeting = Meeting(
+            title="Rotated share",
+            organizer_id=owner.id,
+            summary="Meeting summary",
+            share_token="old-token",
+            shared_at=datetime.now(UTC) - timedelta(days=2),
+            share_expires_at=datetime.now(UTC) - timedelta(days=1),
+        )
+        db.add(meeting)
+        db.commit()
+        db.refresh(meeting)
+
+        share, created = create_or_get_meeting_share(db, meeting)
+
+        assert created is True
+        assert share.share_token != "old-token"
+        assert is_meeting_share_active(meeting) is True
     finally:
         db.close()
 

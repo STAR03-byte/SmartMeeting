@@ -78,6 +78,10 @@ class MeetingOut(BaseModel):
     location: str | None
     status: str
     summary: str | None
+    share_token: str | None = None
+    shared_at: datetime | None = None
+    share_expires_at: datetime | None = None
+    share_revoked_at: datetime | None = None
     postprocessed_at: datetime | None
     postprocess_version: str | None
     created_at: datetime
@@ -101,6 +105,17 @@ class MeetingShareOut(BaseModel):
     share_path: str
     created_now: bool
     shared_at: datetime
+    expires_at: datetime | None = None
+    revoked_at: datetime | None = None
+
+
+class MeetingShareCreateRequest(BaseModel):
+    expires_at: datetime | None = Field(default=None, description="Optional UTC expiration time for the share link")
+
+    @field_validator("expires_at")
+    @classmethod
+    def normalize_expires_at(cls, value: datetime | None) -> datetime | None:
+        return _normalize_naive_utc(value)
 
 
 class SharedMeetingOut(BaseModel):

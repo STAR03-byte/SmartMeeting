@@ -46,6 +46,10 @@
           <el-icon><ChatDotRound /></el-icon>
           <span>{{ $t('app.navHotwords') }}</span>
         </RouterLink>
+        <RouterLink v-if="authStore.currentUser?.role === 'admin'" to="/system-health" class="nav-link nav-link-inline">
+          <el-icon><Monitor /></el-icon>
+          <span>系统健康</span>
+        </RouterLink>
       </nav>
 
       <div class="mt-auto pt-6 border-t-1 border-t-solid border-border-lighter max-[900px]:mt-0 max-[900px]:border-t-0 max-[900px]:pt-0 flex flex-col gap-3">
@@ -67,7 +71,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { Bell, Calendar, ChatDotRound, Cpu, House, List, UserFilled } from "@element-plus/icons-vue";
+import { Bell, Calendar, ChatDotRound, Cpu, House, List, Monitor, UserFilled } from "@element-plus/icons-vue";
 import { useAuthStore } from "./stores/authStore";
 import { getMyInvitations } from './api/teamInvitations';
 

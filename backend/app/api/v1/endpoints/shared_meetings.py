@@ -10,7 +10,7 @@ from app.models.meeting_participant import MeetingParticipant
 from app.models.team_member import TeamMember
 from app.schemas.auth import CurrentUserOut
 from app.schemas.meeting import SharedMeetingOut
-from app.services.meeting_service import build_shared_meeting_out
+from app.services.meeting_service import build_shared_meeting_out, is_meeting_share_active
 
 router = APIRouter(prefix="/shared/meetings", tags=["shared-meetings"])
 
@@ -57,7 +57,7 @@ def get_shared_meeting_api(
     访客通过分享链接查看会议，但只能查看，不能编辑。
     """
     meeting = db.query(Meeting).filter(Meeting.share_token == share_token).first()
-    if not meeting:
+    if not meeting or not is_meeting_share_active(meeting):
         raise HTTPException(status_code=404, detail="Shared meeting not found")
 
     if not _can_access_meeting(meeting, current_user.id, db):

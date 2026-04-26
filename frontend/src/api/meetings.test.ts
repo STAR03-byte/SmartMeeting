@@ -71,6 +71,8 @@ describe("meetings api module", () => {
         share_path: "/shared/meetings/share-token-1",
         created_now: true,
         shared_at: "2026-03-25T00:00:00Z",
+        expires_at: null,
+        revoked_at: null,
       },
     } as never);
 
@@ -79,6 +81,37 @@ describe("meetings api module", () => {
 
     expect(postSpy).toHaveBeenCalledWith("/api/v1/meetings/7/share");
     expect(result.share_token).toBe("share-token-1");
+  });
+
+  it("creates meeting share link with expiration", async () => {
+    const postSpy = vi.spyOn(apiClient, "post").mockResolvedValueOnce({
+      data: {
+        meeting_id: 7,
+        share_token: "share-token-2",
+        share_path: "/shared/meetings/share-token-2",
+        created_now: true,
+        shared_at: "2026-03-25T00:00:00Z",
+        expires_at: "2026-03-26T00:00:00Z",
+        revoked_at: null,
+      },
+    } as never);
+
+    const mod = await import("./meetings");
+    const result = await mod.createMeetingShareLink(7, { expires_at: "2026-03-26T00:00:00Z" });
+
+    expect(postSpy).toHaveBeenCalledWith("/api/v1/meetings/7/share", {
+      expires_at: "2026-03-26T00:00:00Z",
+    });
+    expect(result.expires_at).toBe("2026-03-26T00:00:00Z");
+  });
+
+  it("revokes meeting share link", async () => {
+    const deleteSpy = vi.spyOn(apiClient, "delete").mockResolvedValueOnce({} as never);
+
+    const mod = await import("./meetings");
+    await mod.revokeMeetingShareLink(7);
+
+    expect(deleteSpy).toHaveBeenCalledWith("/api/v1/meetings/7/share");
   });
 
   it("loads shared meeting payload", async () => {
@@ -100,6 +133,8 @@ describe("meetings api module", () => {
           postprocess_version: null,
           share_token: "share-token-1",
           shared_at: "2026-03-25T00:00:00Z",
+          share_expires_at: null,
+          share_revoked_at: null,
           created_at: "2026-03-25T00:00:00Z",
           updated_at: "2026-03-25T00:00:00Z",
           organizer: {

@@ -4,6 +4,7 @@ import argparse
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -40,7 +41,7 @@ def main() -> int:
         steps.append(
             (
                 "stage-a-smoke",
-                ["python", "scripts/dev/smoke.py"],
+                [sys.executable, "scripts/dev/smoke.py"],
             )
         )
 
@@ -48,7 +49,7 @@ def main() -> int:
         steps.append(
             (
                 "backend-tests",
-                ["python", "-m", "pytest", "backend/tests", "-v", "--tb=short"],
+                [sys.executable, "-m", "pytest", "backend/tests", "-v", "--tb=short"],
             )
         )
 

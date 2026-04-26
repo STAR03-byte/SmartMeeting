@@ -349,6 +349,7 @@ async def postprocess_meeting_api(
         meeting_id,
         transcripts,
         force_regenerate=force_regenerate,
+        reporter_id=current_user.id,
     )
     version = summary_version if "llm" in summary_version else task_version
     _ = save_postprocess_result(db, meeting, summary, version=version)

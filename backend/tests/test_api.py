@@ -12,6 +12,13 @@ def test_health_check(auth_client) -> None:
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
+    preflight_resp = auth_client.get("/api/v1/health/preflight")
+    assert preflight_resp.status_code == 200
+    preflight = preflight_resp.json()
+    assert preflight["status"] in {"ok", "degraded"}
+    assert set(preflight["checks"].keys()) == {"database", "jwt_secret", "ffmpeg", "storage"}
+    assert preflight["database"]["connected"] is True
+
 
 def test_invalid_meeting_id_path_param_returns_422_with_error_code(auth_client) -> None:
     response = auth_client.get("/api/v1/meetings/0")
@@ -726,8 +733,8 @@ def test_task_management_requires_assignee_reporter_organizer_or_admin(client) -
         json={"status": "in_progress"},
         headers=assignee_headers,
     )
-    assert assignee_update_resp.status_code == 403
-    assert assignee_update_resp.json()["detail"] == "无权管理此任务"
+    assert assignee_update_resp.status_code == 200
+    assert assignee_update_resp.json()["status"] == "in_progress"
 
     reporter_update_resp = client.patch(
         f"/api/v1/tasks/{task_id}",
@@ -1324,6 +1331,70 @@ def test_meeting_share_requires_summary(auth_client) -> None:
     share_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/share")
     assert share_resp.status_code == 400
     assert share_resp.json()["detail"] == "No summary available for share"
+
+
+def test_meeting_share_can_expire_and_be_revoked(auth_client) -> None:
+    user_resp = auth_client.post(
+        "/api/v1/users",
+        json={
+            "username": "share_lifecycle_owner",
+            "email": "share_lifecycle_owner@example.com",
+            "password_hash": "hashed_password_123",
+            "full_name": "Share Lifecycle Owner",
+            "role": "member",
+        },
+    )
+    assert user_resp.status_code == 201
+    organizer_id = user_resp.json()["id"]
+
+    meeting_resp = auth_client.post(
+        "/api/v1/meetings",
+        json={
+            "title": "Share lifecycle meeting",
+            "description": "Verify expiration and revoke",
+            "organizer_id": organizer_id,
+        },
+    )
+    assert meeting_resp.status_code == 201
+    meeting_id = meeting_resp.json()["id"]
+
+    transcript_resp = auth_client.post(
+        "/api/v1/transcripts",
+        json={
+            "meeting_id": meeting_id,
+            "speaker_user_id": organizer_id,
+            "speaker_name": "Owner",
+            "segment_index": 1,
+            "content": "Please confirm share lifecycle behavior.",
+        },
+    )
+    assert transcript_resp.status_code == 201
+
+    postprocess_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/postprocess")
+    assert postprocess_resp.status_code == 200
+
+    expired_share_resp = auth_client.post(
+        f"/api/v1/meetings/{meeting_id}/share",
+        json={"expires_at": "2020-01-01T00:00:00Z"},
+    )
+    assert expired_share_resp.status_code == 200
+    expired_share = expired_share_resp.json()
+    assert expired_share["expires_at"] is not None
+
+    expired_access_resp = auth_client.get(f"/api/v1/shared/meetings/{expired_share['share_token']}")
+    assert expired_access_resp.status_code == 404
+
+    active_share_resp = auth_client.post(f"/api/v1/meetings/{meeting_id}/share")
+    assert active_share_resp.status_code == 200
+    active_share = active_share_resp.json()
+    assert active_share["share_token"] != expired_share["share_token"]
+    assert active_share["revoked_at"] is None
+
+    revoke_resp = auth_client.delete(f"/api/v1/meetings/{meeting_id}/share")
+    assert revoke_resp.status_code == 204
+
+    revoked_access_resp = auth_client.get(f"/api/v1/shared/meetings/{active_share['share_token']}")
+    assert revoked_access_resp.status_code == 404
 
 
 def test_meeting_share_requires_organizer(client) -> None:

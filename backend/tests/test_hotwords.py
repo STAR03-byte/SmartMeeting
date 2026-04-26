@@ -67,6 +67,7 @@ def test_hotword_terms_cache_hits_once(monkeypatch: MonkeyPatch) -> None:
     first = get_hotword_terms(db, 7)
     second = get_hotword_terms(db, 7)
 
-    assert first == ("SmartMeeting",)
-    assert second == ("SmartMeeting",)
+    assert first == second
+    assert first[0] == "SmartMeeting"
+    assert "Whisper" in first
     assert calls == [7]

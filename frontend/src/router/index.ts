@@ -7,6 +7,7 @@ const MeetingListView = () => import("../views/MeetingListView.vue");
 const SharedMeetingView = () => import("../views/SharedMeetingView.vue");
 const AIAssistantView = () => import("../views/AIAssistantView.vue");
 const HotwordsView = () => import("../views/HotwordsView.vue");
+const SystemHealthView = () => import("../views/SystemHealthView.vue");
 const TasksView = () => import("../views/TasksView.vue");
 const LoginView = () => import("../views/LoginView.vue");
 const TeamCreateView = () => import("../views/TeamCreateView.vue");
@@ -62,6 +63,12 @@ const router = createRouter({
       component: HotwordsView,
     },
     {
+      path: "/system-health",
+      name: "system-health",
+      component: SystemHealthView,
+      meta: { requiresAdmin: true },
+    },
+    {
       path: "/teams/create",
       name: "team-create",
       component: TeamCreateView,
@@ -91,7 +98,7 @@ const router = createRouter({
   ],
 });
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore();
   if (to.name !== "login" && !authStore.token) {
     return {
@@ -100,6 +107,19 @@ router.beforeEach((to) => {
     };
   }
   if (to.name === "login" && authStore.token) {
+    return { name: "dashboard" };
+  }
+  if (authStore.token && !authStore.currentUser) {
+    try {
+      await authStore.loadCurrentUser();
+    } catch {
+      return {
+        name: "login",
+        query: { redirect: `${to.fullPath}` },
+      };
+    }
+  }
+  if (to.meta.requiresAdmin && authStore.currentUser?.role !== "admin") {
     return { name: "dashboard" };
   }
   return true;

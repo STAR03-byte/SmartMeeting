@@ -7,6 +7,7 @@ import type {
   MeetingListParams,
   MeetingListResult,
   MeetingPostprocessResult,
+  MeetingShareCreatePayload,
   MeetingShareCreateResult,
   SharedMeetingDetail,
   MeetingStatus,
@@ -16,7 +17,7 @@ import type {
   Transcript,
 } from "./types";
 
-export type { Meeting, MeetingAudio, MeetingCreatePayload, MeetingDetail, MeetingListParams, MeetingListResult, MeetingPostprocessResult, MeetingShareCreateResult, SharedMeetingDetail, TaskCreatePayload, TaskItem, Transcript } from "./types";
+export type { Meeting, MeetingAudio, MeetingCreatePayload, MeetingDetail, MeetingListParams, MeetingListResult, MeetingPostprocessResult, MeetingShareCreatePayload, MeetingShareCreateResult, SharedMeetingDetail, TaskCreatePayload, TaskItem, Transcript } from "./types";
 
 export interface MeetingUpdatePayload {
   title?: string;
@@ -134,9 +135,19 @@ export async function exportMeetingSummary(
   return resp.data;
 }
 
-export async function createMeetingShareLink(meetingId: number): Promise<MeetingShareCreateResult> {
-  const resp = await apiClient.post<MeetingShareCreateResult>(`/api/v1/meetings/${meetingId}/share`);
+export async function createMeetingShareLink(
+  meetingId: number,
+  payload?: MeetingShareCreatePayload,
+): Promise<MeetingShareCreateResult> {
+  const url = `/api/v1/meetings/${meetingId}/share`;
+  const resp = payload
+    ? await apiClient.post<MeetingShareCreateResult>(url, payload)
+    : await apiClient.post<MeetingShareCreateResult>(url);
   return resp.data;
+}
+
+export async function revokeMeetingShareLink(meetingId: number): Promise<void> {
+  await apiClient.delete(`/api/v1/meetings/${meetingId}/share`);
 }
 
 export async function listMeetingAudios(meetingId: number): Promise<MeetingAudio[]> {

@@ -1,6 +1,7 @@
 -- SmartMeeting 回滚执行脚本
 -- 用法: 按需注释不需要的回滚步骤
 
+SOURCE database/rollback/rollback_023_meeting_share_lifecycle.sql;
 SOURCE database/rollback/rollback_011_hotwords.sql;
 SOURCE database/rollback/rollback_019_task_reminder_at.sql;
 SOURCE database/rollback/rollback_010_speaker.sql;

@@ -1,4 +1,5 @@
 from app.models.meeting import Meeting
+from app.models.meeting_participant import MeetingParticipant
 from app.models.meeting_transcript import MeetingTranscript
 from app.models.task import Task
 from app.models.user import User
@@ -102,6 +103,62 @@ def test_knowledge_query_respects_member_visibility(member_client) -> None:
         data = response.json()
         assert data["sources"] == []
         assert "Secret acquisition" not in data["answer"]
+    finally:
+        db.close()
+        db_gen.close()
+
+
+def test_knowledge_query_can_search_meeting_participants(auth_client) -> None:
+    db, db_gen = _make_db(auth_client)
+    try:
+        owner = User(
+            username="participant_owner",
+            email="participant_owner@example.com",
+            password_hash="hashed",
+            full_name="Participant Owner",
+            role="admin",
+        )
+        participant = User(
+            username="nora_pm",
+            email="nora.pm@example.com",
+            password_hash="hashed",
+            full_name="Nora Product",
+            role="member",
+        )
+        db.add_all([owner, participant])
+        db.commit()
+        db.refresh(owner)
+        db.refresh(participant)
+
+        meeting = Meeting(
+            title="Roadmap checkpoint",
+            organizer_id=owner.id,
+            summary="Quarterly roadmap priorities were reviewed.",
+        )
+        db.add(meeting)
+        db.commit()
+        db.refresh(meeting)
+
+        db.add(
+            MeetingParticipant(
+                meeting_id=meeting.id,
+                user_id=participant.id,
+                role="participant",
+                participant_role="required",
+                attendance_status="invited",
+            )
+        )
+        db.commit()
+
+        response = auth_client.post(
+            "/api/v1/ai/knowledge/query",
+            json={"question": "Nora Product", "limit": 5},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert any(item["source_type"] == "participant" for item in data["sources"])
+        assert any("Nora Product" in item["snippet"] for item in data["sources"])
     finally:
         db.close()
         db_gen.close()

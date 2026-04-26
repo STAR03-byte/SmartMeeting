@@ -33,7 +33,7 @@
       type="danger"
       :loading="recordingState === 'processing'"
       :disabled="recordingState !== 'recording' && recordingState !== 'paused'"
-      @click="stopRecording"
+      @click="stopRecordingAndRefresh"
     >
       {{ $t('transcript.stopAndTranscribe') }}
     </el-button>
@@ -56,6 +56,7 @@ import { useSummary } from "../../composables/useSummary";
 import { onBeforeUnmount } from "vue";
 
 const props = defineProps<{ meetingId: number }>();
+const emit = defineEmits<{ (e: "processed"): void }>();
 const store = useMeetingStore();
 
 const {
@@ -64,17 +65,32 @@ const {
   startRecording,
   pauseRecording,
   resumeRecording,
-  stopRecording,
+  stopRecording: finishRecording,
   cleanupRecorder,
 } = useRecording(props.meetingId);
 
-const { onFilePicked, runPostprocess } = useTranscription(props.meetingId);
+const { onFilePicked: transcribePickedFile, runPostprocess: generatePostprocess } = useTranscription(props.meetingId);
 
 const { summaryDisplayText, downloadSummary, copySummary } = useSummary(props.meetingId);
 
 onBeforeUnmount(() => {
   cleanupRecorder();
 });
+
+async function onFilePicked(file: { raw?: File }) {
+  await transcribePickedFile(file);
+  emit("processed");
+}
+
+async function runPostprocess() {
+  await generatePostprocess();
+  emit("processed");
+}
+
+async function stopRecordingAndRefresh() {
+  await finishRecording();
+  emit("processed");
+}
 </script>
 
 <style scoped>

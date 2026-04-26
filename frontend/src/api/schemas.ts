@@ -108,6 +108,8 @@ export const MeetingSchema = z.object({
   postprocess_version: z.string().nullable(),
   share_token: z.string().nullable(),
   shared_at: z.string().datetime().nullable(),
+  share_expires_at: z.string().datetime().nullable(),
+  share_revoked_at: z.string().datetime().nullable(),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
 })
@@ -127,6 +129,8 @@ export const MeetingShareCreateResultSchema = z.object({
   share_path: z.string(),
   created_now: z.boolean(),
   shared_at: z.string().datetime(),
+  expires_at: z.string().datetime().nullable(),
+  revoked_at: z.string().datetime().nullable(),
 })
 
 // ============================================

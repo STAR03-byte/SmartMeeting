@@ -17,6 +17,32 @@
         />
         
         <div class="chat-main">
+          <div class="knowledge-panel">
+            <div class="knowledge-header">
+              <span>会议知识问答</span>
+              <el-tag size="small" type="success">带来源</el-tag>
+            </div>
+            <div class="knowledge-query">
+              <el-input
+                v-model="knowledgeQuestion"
+                placeholder="查询历史会议中的决策、风险、任务或参会人"
+                clearable
+                @keyup.enter="handleKnowledgeQuery"
+              />
+              <el-button type="primary" :loading="knowledgeLoading" @click="handleKnowledgeQuery">查询</el-button>
+            </div>
+            <div v-if="knowledgeAnswer" class="knowledge-answer">
+              <p>{{ knowledgeAnswer }}</p>
+              <div v-if="knowledgeSources.length > 0" class="knowledge-sources">
+                <div v-for="source in knowledgeSources" :key="`${source.meeting_id}-${source.source_type}-${source.snippet}`" class="knowledge-source">
+                  <div class="source-title">{{ source.meeting_title }}</div>
+                  <el-tag size="small" type="info">{{ sourceTypeLabel(source.source_type) }}</el-tag>
+                  <span class="source-snippet">{{ source.snippet }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <ChatWindow
             :messages="store.messages"
             :is-streaming="store.isStreaming"
@@ -112,14 +138,19 @@ import ConversationList from '../components/ai/ConversationList.vue'
 import ChatWindow from '../components/ai/ChatWindow.vue'
 import ChatInput from '../components/ai/ChatInput.vue'
 import { useAiAssistantStore } from '../stores/aiAssistantStore'
-import type { TaskDraft, CreateTaskDraftPayload, ChatContext } from '../api/types'
+import type { KnowledgeSource, TaskDraft, CreateTaskDraftPayload, ChatContext } from '../api/types'
 import { getMeetings } from '../api/meetings'
 import { getTasks } from '../api/tasks'
+import { queryMeetingKnowledge } from '../api/ai'
 
 const router = useRouter()
 const store = useAiAssistantStore()
 
 const currentConversationId = ref<number | null>(null)
+const knowledgeQuestion = ref('')
+const knowledgeAnswer = ref('')
+const knowledgeSources = ref<KnowledgeSource[]>([])
+const knowledgeLoading = ref(false)
 const draftDialogVisible = ref(false)
 const draftForm = ref<Partial<TaskDraft>>({
   title: '',
@@ -160,6 +191,39 @@ const contextHint = computed(() => {
 function clearContext() {
   contextMeetingId.value = null
   contextTaskIds.value = []
+}
+
+async function handleKnowledgeQuery() {
+  const question = knowledgeQuestion.value.trim()
+  if (!question) {
+    ElMessage.warning('请输入要查询的问题')
+    return
+  }
+
+  knowledgeLoading.value = true
+  try {
+    const result = await queryMeetingKnowledge({ question, limit: 6 })
+    knowledgeAnswer.value = result.answer
+    knowledgeSources.value = result.sources
+    if (result.sources.length === 0) {
+      ElMessage.info('没有找到可访问的会议来源')
+    }
+  } catch (err) {
+    ElMessage.error('知识问答查询失败')
+  } finally {
+    knowledgeLoading.value = false
+  }
+}
+
+function sourceTypeLabel(type: KnowledgeSource['source_type']): string {
+  const map: Record<KnowledgeSource['source_type'], string> = {
+    meeting: '会议',
+    summary: '纪要',
+    transcript: '转写',
+    task: '任务',
+    participant: '参会人'
+  }
+  return map[type]
 }
 
 async function openContextSelector() {
@@ -353,6 +417,71 @@ async function confirmDraft() {
   min-width: 0;
 }
 
+.knowledge-panel {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  background: var(--el-fill-color-blank);
+}
+
+.knowledge-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.knowledge-query {
+  display: flex;
+  gap: 8px;
+}
+
+.knowledge-answer {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--el-fill-color-lighter);
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: var(--el-border-radius-small);
+}
+
+.knowledge-answer p {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  color: var(--el-text-color-primary);
+}
+
+.knowledge-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.knowledge-source {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) auto 1fr;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.source-title {
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-snippet {
+  color: var(--el-text-color-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .context-item {
   display: flex;
   justify-content: space-between;
@@ -373,5 +502,16 @@ async function confirmDraft() {
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-right: 12px;
+}
+
+@media (max-width: 767px) {
+  .knowledge-query {
+    flex-direction: column;
+  }
+
+  .knowledge-source {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
 }
 </style>

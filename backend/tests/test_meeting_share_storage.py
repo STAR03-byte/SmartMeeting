@@ -6,3 +6,5 @@ def test_meeting_model_includes_share_columns() -> None:
 
     assert "share_token" in columns
     assert "shared_at" in columns
+    assert "share_expires_at" in columns
+    assert "share_revoked_at" in columns

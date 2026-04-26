@@ -37,6 +37,8 @@ export interface Meeting {
   postprocess_version: string | null;
   share_token: string | null;
   shared_at: string | null;
+  share_expires_at: string | null;
+  share_revoked_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -75,6 +77,12 @@ export interface MeetingShareCreateResult {
   share_path: string;
   created_now: boolean;
   shared_at: string;
+  expires_at: string | null;
+  revoked_at: string | null;
+}
+
+export interface MeetingShareCreatePayload {
+  expires_at?: string | null;
 }
 
 export interface Transcript {
