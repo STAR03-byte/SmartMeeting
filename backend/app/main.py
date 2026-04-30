@@ -42,6 +42,9 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         _ensure_mysql_team_features()
         _ensure_mysql_ai_assistant_features()
         _ensure_mysql_processing_jobs()
+    # Startup: recover stale async jobs
+    from app.services.pipeline.job_manager import job_manager
+    await job_manager.recover_stale_jobs()
     yield
     # Shutdown: cancel active async jobs
     from app.services.pipeline.job_manager import job_manager
