@@ -14,7 +14,7 @@ from app.schemas.auth import CurrentUserOut
 from app.schemas.task import TaskPriority, TaskStatus
 from app.schemas.task import TaskCreate, TaskListOut, TaskOut, TaskUpdate
 from app.services.meeting_service import get_meeting
-from app.services.meeting_transcript_service import get_transcript
+from app.services.business.meeting_transcript_service import get_transcript
 from app.services.task_service import (
     count_tasks,
     create_task,

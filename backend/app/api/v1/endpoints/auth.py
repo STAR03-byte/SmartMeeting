@@ -11,8 +11,8 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.limiter import limiter
 from app.schemas.auth import CurrentUserOut, TokenOut
-from app.services.auth_service import authenticate_user, create_user_access_token
-from app.services.audit_service import create_audit_log
+from app.services.business.auth_service import authenticate_user, create_user_access_token
+from app.services.business.audit_service import create_audit_log
 from app.services.user_service import get_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])

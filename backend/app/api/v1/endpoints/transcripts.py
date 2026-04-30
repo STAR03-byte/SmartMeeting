@@ -11,7 +11,7 @@ from app.schemas.meeting_transcript import (
     MeetingTranscriptUpdate,
 )
 from app.services.meeting_service import get_meeting
-from app.services.meeting_transcript_service import (
+from app.services.business.meeting_transcript_service import (
     create_transcript,
     delete_transcript,
     get_transcript,
