@@ -4,7 +4,7 @@ import logging
 import re
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime, timedelta
-from typing import Literal, Protocol
+from typing import Protocol
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, aliased
@@ -16,17 +16,9 @@ from app.models.meeting_transcript import MeetingTranscript
 from app.models.team_member import TeamMember
 from app.models.task import Task
 from app.models.user import User
+from app.services.ai.intent import AssistantIntent, get_intent_classifier
 
 logger = logging.getLogger(__name__)
-
-AssistantIntent = Literal[
-    "my_tasks",
-    "meeting_tasks",
-    "meeting_summary",
-    "knowledge_query",
-    "execution_advice",
-    "general_chat",
-]
 
 
 class LLMService(Protocol):
@@ -351,48 +343,8 @@ class AIAssistantService:
         return {"answer": fallback_answer, "sources": sources, "used_llm": False}
 
     def classify_intent(self, message: str, context: dict[str, object] | None = None) -> AssistantIntent:
-        normalized = message.strip().lower()
-        has_meeting_context = isinstance(context, dict) and isinstance(context.get("meeting_id"), int)
-        asks_for_meeting_summary = any(
-            keyword in normalized
-            for keyword in ("纪要", "总结", "摘要", "讲了什么", "会议内容", "决议", "决定")
-        )
-
-        if any(keyword in normalized for keyword in ("快到期", "即将到期", "近期截止")) and "任务" in normalized:
-            return "my_tasks"
-        if ("会议" in normalized or "会" in normalized) and any(keyword in normalized for keyword in ("任务", "行动项", "todo", "待办")):
-            return "meeting_tasks"
-        if any(keyword in normalized for keyword in ("我的任务", "我有哪些任务", "任务有什么", "待办", "进行中", "已完成")):
-            return "my_tasks"
-        if has_meeting_context and any(keyword in normalized for keyword in ("任务", "行动项", "todo", "待办")):
-            return "meeting_tasks"
-        if has_meeting_context and asks_for_meeting_summary:
-            return "meeting_summary"
-        if any(keyword in normalized for keyword in ("怎么做", "如何推进", "下一步", "执行", "推进")):
-            return "execution_advice"
-        if asks_for_meeting_summary:
-            return "meeting_summary"
-        if any(
-            keyword in normalized
-            for keyword in (
-                "knowledge",
-                "history",
-                "project",
-                "risk",
-                "decision",
-                "customer",
-                "meeting",
-                "会议",
-                "项目",
-                "风险",
-                "决策",
-                "决定",
-                "客户",
-                "历史",
-            )
-        ):
-            return "knowledge_query"
-        return "general_chat"
+        """委托给可替换的意图分类器。"""
+        return get_intent_classifier().classify(message, context)
 
     def _resolve_effective_context(
         self,
