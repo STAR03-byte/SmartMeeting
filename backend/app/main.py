@@ -41,7 +41,11 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     elif engine.dialect.name == "mysql":
         _ensure_mysql_team_features()
         _ensure_mysql_ai_assistant_features()
+        _ensure_mysql_processing_jobs()
     yield
+    # Shutdown: cancel active async jobs
+    from app.services.pipeline.job_manager import job_manager
+    await job_manager.shutdown()
 
 
 def _normalize_mysql_id_type(raw_type: str | None) -> str:
@@ -230,6 +234,78 @@ def _ensure_mysql_ai_assistant_features() -> None:
                 """
             )
         )
+
+
+def _ensure_mysql_processing_jobs() -> None:
+    with engine.begin() as connection:
+        exists = connection.execute(
+            text(
+                """
+                SELECT COUNT(*)
+                FROM information_schema.tables
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'processing_jobs'
+                """
+            )
+        ).scalar_one()
+
+        if not exists:
+            meeting_id_raw = connection.execute(
+                text(
+                    """
+                    SELECT COLUMN_TYPE FROM information_schema.columns
+                    WHERE table_schema = DATABASE() AND table_name = 'meetings' AND column_name = 'id' LIMIT 1
+                    """
+                )
+            ).scalar_one_or_none()
+            user_id_raw = connection.execute(
+                text(
+                    """
+                    SELECT COLUMN_TYPE FROM information_schema.columns
+                    WHERE table_schema = DATABASE() AND table_name = 'users' AND column_name = 'id' LIMIT 1
+                    """
+                )
+            ).scalar_one_or_none()
+
+            meeting_id_type = _normalize_mysql_id_type(meeting_id_raw)
+            user_id_type = _normalize_mysql_id_type(user_id_raw)
+
+            if not re.fullmatch(r"[A-Z ]+", meeting_id_type) or not re.fullmatch(r"[A-Z ]+", user_id_type):
+                raise RuntimeError("Invalid MySQL id type detected while ensuring processing_jobs")
+
+            connection.execute(
+                text(
+                    f"""
+                    CREATE TABLE processing_jobs (
+                        id {meeting_id_type} NOT NULL AUTO_INCREMENT,
+                        job_id VARCHAR(36) NOT NULL,
+                        meeting_id {meeting_id_type} NOT NULL,
+                        user_id {user_id_type} NOT NULL,
+                        job_type VARCHAR(20) NOT NULL,
+                        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                        progress FLOAT NOT NULL DEFAULT 0.0,
+                        message VARCHAR(500) NOT NULL DEFAULT '',
+                        current_chunk INT UNSIGNED NOT NULL DEFAULT 0,
+                        total_chunks INT UNSIGNED NOT NULL DEFAULT 1,
+                        result_json TEXT NULL,
+                        error TEXT NULL,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        started_at DATETIME NULL,
+                        completed_at DATETIME NULL,
+                        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        PRIMARY KEY (id),
+                        UNIQUE KEY uk_processing_jobs_job_id (job_id),
+                        KEY idx_processing_jobs_meeting_id (meeting_id),
+                        KEY idx_processing_jobs_user_id (user_id),
+                        KEY idx_processing_jobs_status (status),
+                        CONSTRAINT fk_processing_jobs_meeting_id FOREIGN KEY (meeting_id)
+                            REFERENCES meetings(id) ON UPDATE CASCADE ON DELETE CASCADE,
+                        CONSTRAINT fk_processing_jobs_user_id FOREIGN KEY (user_id)
+                            REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    """
+                )
+            )
 
 
 app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)

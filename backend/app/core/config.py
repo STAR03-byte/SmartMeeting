@@ -91,6 +91,11 @@ class Settings(BaseSettings):
     llm_enable_post_processing: bool = True  # 启用任务后处理（去重、校验、时间标准化）
     llm_task_similarity_threshold: float = 0.75  # 任务相似度阈值，高于此值视为重复任务
 
+    # Async Processing Settings
+    async_processing_enabled: bool = True  # 启用异步处理模式
+    async_job_timeout_seconds: int = 600  # 单个任务最大执行时间（秒）
+    async_sse_keepalive_seconds: int = 15  # SSE 保活间隔（秒）
+
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         env_file=Path(__file__).resolve().parents[2] / ".env",
         env_file_encoding="utf-8",
