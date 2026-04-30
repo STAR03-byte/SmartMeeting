@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.schemas.auth import CurrentUserOut
 from app.schemas.meeting import MeetingShareCreateRequest, MeetingShareOut
-from app.services.meeting_service import create_or_get_meeting_share, get_meeting, revoke_meeting_share
+from app.services.business.meeting_service import create_or_get_meeting_share, get_meeting, revoke_meeting_share
 from .auth import get_current_user
 
 router = APIRouter(prefix="/meetings", tags=["meetings"], dependencies=[Depends(get_current_user)])

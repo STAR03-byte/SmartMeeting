@@ -16,7 +16,7 @@ from app.models.meeting_audio import MeetingAudio
 from app.models.meeting_participant import MeetingParticipant
 from app.models.meeting_transcript import MeetingTranscript
 from app.models.task import Task
-from app.services.meeting_service import clear_meeting_content
+from app.services.business.meeting_service import clear_meeting_content
 
 
 @pytest.fixture()

@@ -10,7 +10,7 @@ from app.schemas.meeting_participant import (
     MeetingParticipantOut,
     MeetingParticipantUpdate,
 )
-from app.services.meeting_service import get_meeting
+from app.services.business.meeting_service import get_meeting
 from app.services.business.meeting_participant_service import (
     create_participant,
     delete_participant,

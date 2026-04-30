@@ -6,7 +6,7 @@ from datetime import datetime
 
 from app.core.database import Base
 from app.models.meeting import Meeting
-from app.services.meeting_service import list_meetings, match_meeting_keyword
+from app.services.business.meeting_service import list_meetings, match_meeting_keyword
 
 
 def test_match_meeting_keyword_matches_title_or_description() -> None:

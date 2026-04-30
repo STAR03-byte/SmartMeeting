@@ -10,7 +10,7 @@ from app.schemas.meeting_transcript import (
     MeetingTranscriptOut,
     MeetingTranscriptUpdate,
 )
-from app.services.meeting_service import get_meeting
+from app.services.business.meeting_service import get_meeting
 from app.services.business.meeting_transcript_service import (
     create_transcript,
     delete_transcript,

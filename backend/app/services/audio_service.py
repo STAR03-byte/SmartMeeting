@@ -13,7 +13,7 @@ from app.models.meeting_transcript import MeetingTranscript
 from app.core.config import settings
 from app.services.business.hotword_service import get_hotword_terms
 from app.services.business.meeting_participant_service import list_participants
-from app.services.meeting_service import get_meeting
+from app.services.business.meeting_service import get_meeting
 from app.services.ai.faster_whisper_service import transcribe_audio_file
 from app.services.ai.whisper_service import WhisperServiceError
 from app.services.ai.speaker_diarization_service import diarize_audio

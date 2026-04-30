@@ -10,7 +10,7 @@ from app.models.meeting_participant import MeetingParticipant
 from app.models.team_member import TeamMember
 from app.schemas.auth import CurrentUserOut
 from app.schemas.meeting import SharedMeetingOut
-from app.services.meeting_service import build_shared_meeting_out, is_meeting_share_active
+from app.services.business.meeting_service import build_shared_meeting_out, is_meeting_share_active
 
 router = APIRouter(prefix="/shared/meetings", tags=["shared-meetings"])
 

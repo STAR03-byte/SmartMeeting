@@ -31,7 +31,7 @@ from app.schemas.meeting_transcript import MeetingTranscriptOut
 from app.schemas.task import TaskOut
 from app.services.audio_service import save_meeting_audio, transcribe_latest_audio
 from app.services.ai.whisper_service import WhisperServiceError
-from app.services.meeting_service import (
+from app.services.business.meeting_service import (
     build_meeting_summary_with_llm,
     count_meetings,
     clear_meeting_content,

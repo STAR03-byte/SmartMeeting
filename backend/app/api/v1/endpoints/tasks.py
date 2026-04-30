@@ -13,7 +13,7 @@ from app.schemas.ai_assistant import TaskDraftRequest, TaskDraftResponse
 from app.schemas.auth import CurrentUserOut
 from app.schemas.task import TaskPriority, TaskStatus
 from app.schemas.task import TaskCreate, TaskListOut, TaskOut, TaskUpdate
-from app.services.meeting_service import get_meeting
+from app.services.business.meeting_service import get_meeting
 from app.services.business.meeting_transcript_service import get_transcript
 from app.services.business.task_service import (
     count_tasks,

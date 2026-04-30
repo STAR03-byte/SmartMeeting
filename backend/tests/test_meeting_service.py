@@ -14,7 +14,7 @@ from app.models.meeting_transcript import MeetingTranscript
 from app.models.task import Task
 from app.models.user import User
 from app.schemas.meeting import MeetingCreate
-from app.services.meeting_service import (
+from app.services.business.meeting_service import (
     build_shared_meeting_out,
     count_meetings,
     create_meeting,

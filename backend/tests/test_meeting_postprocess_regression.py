@@ -14,7 +14,7 @@ from app.models.meeting_transcript import MeetingTranscript
 from app.models.task import Task
 from app.models.user import User
 from app.services.ai.llm_service import LLMServiceError
-from app.services.meeting_service import (
+from app.services.business.meeting_service import (
     build_meeting_summary,
     build_meeting_summary_with_llm,
     generate_tasks_from_transcripts,
