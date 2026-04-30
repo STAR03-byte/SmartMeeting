@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from app.core.config import settings
-from app.services.gpu_manager import (
+from app.services.pipeline.gpu_manager import (
     GPUManager,
     ProcessingStatus,
     ProgressInfo,

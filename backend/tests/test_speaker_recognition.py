@@ -3,7 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from app.models.meeting_transcript import MeetingTranscript
-from app.services.audio_service import _assign_speaker_labels
+from app.services.pipeline.audio_service import _assign_speaker_labels
 
 
 def test_assign_speaker_labels_uses_participant_order() -> None:
