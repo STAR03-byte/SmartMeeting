@@ -7,7 +7,7 @@ import wave
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from app.services.whisper_service import WhisperTranscriber
+from app.services.ai.whisper_service import WhisperTranscriber
 
 
 def _find_ffmpeg() -> str:

@@ -5,7 +5,7 @@ from app.models.meeting import Meeting
 from app.models.meeting_transcript import MeetingTranscript
 from app.models.task import Task
 from app.models.user import User
-from app.services.ai_assistant_service import AIAssistantService
+from app.services.ai.ai_assistant_service import AIAssistantService
 
 
 class DummyLLMService:

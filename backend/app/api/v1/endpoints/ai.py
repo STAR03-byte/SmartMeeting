@@ -24,7 +24,7 @@ from app.schemas.ai_assistant import (
     TaskSuggestionsResponse,
 )
 from app.schemas.auth import CurrentUserOut
-from app.services.ai_assistant_service import AIAssistantService
+from app.services.ai.ai_assistant_service import AIAssistantService
 from app.services.llm_service import llm_client
 from app.services.meeting_service import get_meeting
 from .auth import get_current_user

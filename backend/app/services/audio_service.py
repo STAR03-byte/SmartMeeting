@@ -15,8 +15,8 @@ from app.services.business.hotword_service import get_hotword_terms
 from app.services.business.meeting_participant_service import list_participants
 from app.services.meeting_service import get_meeting
 from app.services.faster_whisper_service import transcribe_audio_file
-from app.services.whisper_service import WhisperServiceError
-from app.services.speaker_diarization_service import diarize_audio
+from app.services.ai.whisper_service import WhisperServiceError
+from app.services.ai.speaker_diarization_service import diarize_audio
 
 
 def _assign_speaker_labels(

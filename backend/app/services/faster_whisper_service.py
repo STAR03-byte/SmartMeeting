@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from app.core.config import settings
-from app.services.whisper_service import (
+from app.services.ai.whisper_service import (
     WhisperResult,
     WhisperSegment,
     WhisperServiceError,

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.services.faster_whisper_service import FasterWhisperTranscriber
-from app.services.whisper_service import WhisperServiceError
+from app.services.ai.whisper_service import WhisperServiceError
 
 @pytest.fixture
 def mock_faster_whisper():
