@@ -208,7 +208,7 @@ import { onMounted, onUnmounted, reactive, ref, computed } from "vue";
 import { useRoute } from "vue-router";
 import { ElMessage } from "element-plus";
 
-import AppErrorAlert from "../components/AppErrorAlert.vue";
+import AppErrorAlert from "../components/common/AppErrorAlert.vue";
 import { notifyApiError } from "../utils/notify";
 import {
   updateTask,

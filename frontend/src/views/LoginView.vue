@@ -78,7 +78,7 @@ import { reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 
-import AppErrorAlert from "../components/AppErrorAlert.vue";
+import AppErrorAlert from "../components/common/AppErrorAlert.vue";
 import { registerUser } from "../api/users";
 import { useAuthStore } from "../stores/authStore";
 import { notifyApiError } from "../utils/notify";

@@ -156,7 +156,7 @@ import { Plus } from "@element-plus/icons-vue";
 import { useRoute, useRouter } from "vue-router";
 
 import { useMeetingStore } from "../stores/meetingStore";
-import AppErrorAlert from "../components/AppErrorAlert.vue";
+import AppErrorAlert from "../components/common/AppErrorAlert.vue";
 import { notifyApiError } from "../utils/notify";
 import type { MeetingCreatePayload, MeetingListParams, MeetingStatus } from "../api/types";
 import { getUsers, type UserItem } from "../api/users";

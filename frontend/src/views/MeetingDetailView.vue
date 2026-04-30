@@ -119,7 +119,7 @@ import { useRoute, useRouter } from "vue-router";
 import { Splitpanes, Pane } from "splitpanes";
 import "splitpanes/dist/splitpanes.css";
 
-import AppErrorAlert from "../components/AppErrorAlert.vue";
+import AppErrorAlert from "../components/common/AppErrorAlert.vue";
 import StatsOverview from "../components/meeting/StatsOverview.vue";
 import AudioFiles from "../components/meeting/AudioFiles.vue";
 import AudioRecorder from "../components/meeting/AudioRecorder.vue";

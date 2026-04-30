@@ -13,7 +13,7 @@
 import { useI18n } from 'vue-i18n';
 const { t } = useI18n();
 import { useRouter } from "vue-router";
-import type { Meeting } from "../api/meetings";
+import type { Meeting } from "../../api/meetings";
 
 const props = defineProps<{
   meeting: Meeting;

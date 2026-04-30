@@ -46,7 +46,7 @@ const { t } = useI18n();
 import { onMounted, ref } from "vue";
 import { ElMessage } from "element-plus";
 
-import AppErrorAlert from "../components/AppErrorAlert.vue";
+import AppErrorAlert from "../components/common/AppErrorAlert.vue";
 import { notifyApiError } from "../utils/notify";
 import { createHotword, deleteHotword, getHotwords, type HotwordItem } from "../api/hotwords";
 
