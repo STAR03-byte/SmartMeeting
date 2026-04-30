@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 *)",
+      "Bash(npx vue-tsc *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(/home/star/Dev/Projects/SmartMeeting/.venv/bin/python3 *)",
+      "Bash(git commit *)",
+      "Bash(pip3 list *)",
+      "Bash(conda info *)",
+      "Bash(python -m pytest backend/tests/test_api.py -x -q --tb=short)",
+      "Bash(git push *)"
+    ]
+  }
+}
