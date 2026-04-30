@@ -31,18 +31,39 @@ frontend/
 
 ## CONVENTIONS
 
+### 通用
 - 强制 `<script setup lang="ts">` + Composition API。
 - 避免 `any`；props/emits/接口返回都要有类型。
 - 业务 API 调用集中在 `src/api/`，页面层不直接拼接 URL。
 - 路由集中在 `src/router/index.ts`，避免视图内硬编码导航规则。
 - 构建前置类型检查（`vue-tsc --noEmit`）不可绕过。
 
+### 视图层 (views/)
+- 页面层职责是编排，不承载底层 HTTP 细节；请求优先经 `src/api/` 或 store action。
+- 统一使用 `ElMessage` 做用户可见反馈，失败时输出可理解文案。
+- 页面状态（loading/error/列表）优先复用 store，避免跨页面重复状态源。
+- 大页面改动优先"拆小函数+保持流程顺序"，避免继续堆叠单函数复杂度。
+
+### 组件层 (components/)
+- 组件命名使用 PascalCase。
+- 通用组件放 `common/`，业务组件按功能域分目录（`meeting/`, `ai/`, `workbench/`）。
+
 ## ANTI-PATTERNS
 
+### 通用
 - 直接在 `views` 里写大段请求逻辑并绕开 `src/api/`。
 - 在组件内吞掉异常（空 `catch`）或只 `console.log` 不反馈。
 - 使用未声明类型的跨组件共享状态（应落到 Pinia）。
 - 跳过 `npm --prefix frontend run typecheck` 直接宣称可构建。
+
+### 视图层
+- 在 view 内直接 new axios 或手写后端 URL。
+- 在多个页面复制同一业务流程（应下沉 store/api）。
+- 修改页面流程后不验证关键路径（登录、会议详情、任务状态更新）。
+
+### 组件层
+- 组件内直接调用 API 而不通过 store 或 composable。
+- 组件职责不单一，同时处理数据获取、业务逻辑和展示。
 
 ## COMMANDS
 

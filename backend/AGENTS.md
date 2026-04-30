@@ -26,19 +26,35 @@ backend/app/
 
 ## CONVENTIONS
 
+### 路由层 (endpoints/)
 - **路由薄、服务厚**：`endpoints/` 不直接做复杂业务或大量 DB 操作，统一下沉 `app/services/`。
 - **API 版本前缀**：生产端点统一在 `/api/v1/`。
-- **Model/Schema 分离**：`models/` 只做持久化；`schemas/` 只做请求/响应序列化与校验。
 - **依赖注入**：数据库 Session 用 `Depends(get_db)` 获取。
+- endpoint 只做：参数解析/校验、`Depends(...)` 注入、调用 `app/services/`、返回 schema。
+
+### 服务层 (services/)
+- 服务函数必须有完整类型标注，返回类型可读且稳定。
+- 事务边界收敛在服务层：写操作统一 `add/commit/refresh`，避免分散提交。
+- 外部能力（LLM/Whisper）必须提供 fallback 或可观测失败路径，不吞异常。
+- 命名遵循动作语义：`create_*`, `list_*`, `generate_*`, `build_*`, `extract_*`。
+
+### 模型/Schema
+- **Model/Schema 分离**：`models/` 只做持久化；`schemas/` 只做请求/响应序列化与校验。
 - **音频存储**：当前实现写入 `backend/storage/audio/`。
-- **服务层本地规则**：详见 `app/services/AGENTS.md`。
 
 ## ANTI-PATTERNS
 
+### 路由层
 - 不要在 `endpoints/` 内直接写 `db.query` / 大段 SQLAlchemy 查询（应放 `services/`）。
+- 不要在 endpoint 内做跨领域编排（如”上传→转写→后处理→任务生成”链路），应在 service 层提供单入口。
 - 不要硬编码路径或配置；使用 `app/core/config.py` settings。
-- 避免“胖模型”；业务逻辑放在 services。
+
+### 服务层
+- 避免”胖模型”；业务逻辑放在 services。
 - 不要省略服务函数参数类型标注。
+- 用 `Any` 或弱类型返回值掩盖 schema/model 不一致。
+- LLM 调用失败后直接静默成功（必须返回 fallback 来源标识）。
+- 跨函数隐式提交事务（导致部分写入不可控）。
 
 ## COMMANDS
 
