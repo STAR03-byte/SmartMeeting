@@ -1,7 +1,7 @@
 """后端核心接口测试。"""
 
 from app.core.security import get_password_hash
-from app.services.llm_service import LLMServiceError
+from app.services.ai.llm_service import LLMServiceError
 from app.core.security import get_password_hash
 
 

@@ -21,7 +21,7 @@ from app.schemas.meeting_transcript import MeetingTranscriptOut
 from app.schemas.task import TaskOut
 from app.services.business.task_service import extract_action_items, infer_assignee_name, infer_task_priority
 from app.services.business.task_service import is_actionable_task_text
-from app.services.llm_service import (
+from app.services.ai.llm_service import (
     ExtractedTask,
     LLMServiceError,
     extract_action_items as llm_extract_action_items,

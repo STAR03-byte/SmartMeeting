@@ -1,7 +1,7 @@
 import asyncio
 from typing import cast
 
-from app.services.llm_service import LLMClient
+from app.services.ai.llm_service import LLMClient
 
 
 def test_chat_completion_stream_returns_incremental_chunks() -> None:

@@ -20,7 +20,7 @@ from app.core.config import settings
 from app.core.database import Base, engine
 from app.core.errors import AppError, ErrorCode
 from app.core.limiter import limiter
-from app.services.llm_service import LLMServiceError
+from app.services.ai.llm_service import LLMServiceError
 from app.services.ai.whisper_service import WhisperServiceError
 
 from app import models  # noqa: F401

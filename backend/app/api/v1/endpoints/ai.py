@@ -25,7 +25,7 @@ from app.schemas.ai_assistant import (
 )
 from app.schemas.auth import CurrentUserOut
 from app.services.ai.ai_assistant_service import AIAssistantService
-from app.services.llm_service import llm_client
+from app.services.ai.llm_service import llm_client
 from app.services.meeting_service import get_meeting
 from .auth import get_current_user
 
