@@ -14,6 +14,7 @@ from app.schemas.structured_summary import AgendaItem, Resolution, StructuredSum
 from app.services.business.task_service import is_actionable_task_text
 from app.services.ai.llm.exceptions import LLMServiceError
 from app.services.ai.llm.provider import LLMProviderConfig, build_provider_chain
+from app.services.ai.llm.tracking import TokenUsage, extract_usage_from_response, record_usage
 from app.services.ai.llm.types import (
     BatchedExtractedTask,
     ExtractedTask,
@@ -56,7 +57,7 @@ class LLMClient:
         provider: LLMProviderConfig,
         temperature: float | None = None,
         max_tokens: int | None = None,
-    ) -> str:
+    ) -> tuple[str, TokenUsage]:
         if provider.name == "mock":
             raise LLMServiceError("Mock provider uses rule fallback")
         client = self._ensure_client(provider)
@@ -70,7 +71,8 @@ class LLMClient:
                     max_tokens=max_tokens if max_tokens is not None else provider.max_tokens,
                 )
                 content = response.choices[0].message.content
-                return content or ""
+                usage = extract_usage_from_response(response)
+                return content or "", usage
             except (APIConnectionError, RateLimitError) as exc:
                 last_error = exc
                 if attempt == 2:
@@ -128,19 +130,19 @@ class LLMClient:
         messages: list[ChatCompletionMessageParam],
         temperature: float | None = None,
         max_tokens: int | None = None,
+        operation: str = "unknown",
     ) -> tuple[str, str]:
         errors: list[str] = []
         for provider in build_provider_chain():
             try:
-                return (
-                    await self._call_chat(
-                        messages,
-                        provider=provider,
-                        temperature=temperature,
-                        max_tokens=max_tokens,
-                    ),
-                    provider.name,
+                content, usage = await self._call_chat(
+                    messages,
+                    provider=provider,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
                 )
+                record_usage(provider.name, provider.model, operation, usage)
+                return content, provider.name
             except LLMServiceError as exc:
                 errors.append(f"{provider.name}: {exc}")
                 logger.warning("LLM provider failed, trying fallback: %s", exc)
@@ -193,7 +195,7 @@ class LLMClient:
             {"role": "system", "content": MEETING_SUMMARY_SYSTEM_PROMPT},
             {"role": "user", "content": build_meeting_summary_user_prompt(meeting_title or "", full_transcript)},
         ]
-        content, _provider = await self._call_with_fallback(messages, temperature=0.2)
+        content, _provider = await self._call_with_fallback(messages, temperature=0.2, operation="meeting_summary")
         return content
 
     async def chat_completion(
@@ -221,6 +223,7 @@ class LLMClient:
         response, _provider = await self._call_with_fallback(
             messages=full_messages,
             temperature=0.7,
+            operation="chat_completion",
         )
         return response
 
@@ -272,6 +275,7 @@ class LLMClient:
         response, provider = await self._call_with_fallback(
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
+            operation="task_suggestions",
         )
 
         default_result: TaskSuggestions = {
@@ -348,7 +352,7 @@ class LLMClient:
         ]
 
         try:
-            response, _provider = await self._call_with_fallback(messages, temperature=0.1)
+            response, _provider = await self._call_with_fallback(messages, temperature=0.1, operation="structured_summary")
             parsed = self._parse_structured_summary(response)
             return parsed
         except (json.JSONDecodeError, LLMServiceError) as exc:
@@ -574,7 +578,7 @@ class LLMClient:
         ]
 
         try:
-            response, _provider = await self._call_with_fallback(messages, temperature=0.1)
+            response, _provider = await self._call_with_fallback(messages, temperature=0.1, operation="action_items")
             parsed = cast(object, json.loads(response))
         except json.JSONDecodeError as exc:
             logger.warning("Failed to parse LLM response as JSON: %s", exc)
@@ -637,7 +641,7 @@ class LLMClient:
         ]
 
         try:
-            response, _provider = await self._call_with_fallback(messages, temperature=0.1)
+            response, _provider = await self._call_with_fallback(messages, temperature=0.1, operation="action_items_batch")
             parsed = cast(object, json.loads(response))
         except json.JSONDecodeError as exc:
             logger.warning("Failed to parse batched LLM response as JSON: %s", exc)
@@ -676,6 +680,7 @@ class LLMClient:
             response = await self._call_with_fallback(
                 [{"role": "user", "content": "Hi"}],
                 max_tokens=5,
+                operation="health_check",
             )
             return bool(response[0])
         except Exception as exc:

@@ -42,6 +42,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         _ensure_mysql_team_features()
         _ensure_mysql_ai_assistant_features()
         _ensure_mysql_processing_jobs()
+        _ensure_mysql_llm_usage()
     # Startup: recover stale async jobs
     from app.services.pipeline.job_manager import job_manager
     await job_manager.recover_stale_jobs()
@@ -309,6 +310,29 @@ def _ensure_mysql_processing_jobs() -> None:
                     """
                 )
             )
+
+
+def _ensure_mysql_llm_usage() -> None:
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS llm_usage (
+                    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                    provider VARCHAR(50) NOT NULL,
+                    model VARCHAR(100) NOT NULL,
+                    operation VARCHAR(50) NOT NULL,
+                    prompt_tokens INT NOT NULL DEFAULT 0,
+                    completion_tokens INT NOT NULL DEFAULT 0,
+                    total_tokens INT NOT NULL DEFAULT 0,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    INDEX idx_llm_usage_provider (provider),
+                    INDEX idx_llm_usage_operation (operation),
+                    INDEX idx_llm_usage_created_at (created_at)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                """
+            )
+        )
 
 
 app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)

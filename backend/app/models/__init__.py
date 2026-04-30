@@ -14,6 +14,7 @@ from app.models.team_invitation import TeamInvitation
 from app.models.team_invite_link import TeamInviteLink
 from app.models.conversation import Conversation, ConversationMessage
 from app.models.processing_job import ProcessingJob
+from app.models.llm_usage import LLMUsage
 
 __all__ = [
     "User",
@@ -31,4 +32,5 @@ __all__ = [
     "Conversation",
     "ConversationMessage",
     "ProcessingJob",
+    "LLMUsage",
 ]
