@@ -105,7 +105,7 @@ def search_invitable_users(
     is_admin: bool,
     limit: int = 20,
 ) -> list[User]:
-    from app.services.team_permission_service import check_team_permission
+    from app.services.business.team_permission_service import check_team_permission
 
     normalized = keyword.strip()
     if len(normalized) < 2:

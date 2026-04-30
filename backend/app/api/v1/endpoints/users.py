@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.schemas.auth import CurrentUserOut
 from app.schemas.user import UserCreate, UserOut
-from app.services.user_service import create_user, delete_user, get_user, list_selectable_users, list_users, search_invitable_users
+from app.services.business.user_service import create_user, delete_user, get_user, list_selectable_users, list_users, search_invitable_users
 from .auth import get_current_user
 
 router = APIRouter(prefix="/users", tags=["users"], dependencies=[Depends(get_current_user)])

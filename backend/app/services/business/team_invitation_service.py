@@ -11,7 +11,7 @@ from app.models.team_invitation import TeamInvitation
 from app.models.team_member import TeamMember
 from app.models.user import User
 from app.schemas.team_invitation import TeamInvitationCreate
-from app.services.team_permission_service import require_team_admin
+from app.services.business.team_permission_service import require_team_admin
 
 
 def _get_team(db: Session, team_id: int) -> Team | None:

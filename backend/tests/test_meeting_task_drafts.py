@@ -15,7 +15,7 @@ from app.models.task import Task
 from app.models.user import User
 from app.schemas.task import TaskUpdate
 from app.services.meeting_service import generate_tasks_from_transcripts_with_llm
-from app.services.task_service import update_task
+from app.services.business.task_service import update_task
 
 
 class _MetadataOwner(Protocol):

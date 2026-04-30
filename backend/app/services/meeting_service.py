@@ -19,8 +19,8 @@ from app.models.user import User
 from app.schemas.meeting import MeetingCreate, MeetingDetailOut, MeetingShareOut, MeetingUpdate, SharedMeetingOut
 from app.schemas.meeting_transcript import MeetingTranscriptOut
 from app.schemas.task import TaskOut
-from app.services.task_service import extract_action_items, infer_assignee_name, infer_task_priority
-from app.services.task_service import is_actionable_task_text
+from app.services.business.task_service import extract_action_items, infer_assignee_name, infer_task_priority
+from app.services.business.task_service import is_actionable_task_text
 from app.services.llm_service import (
     ExtractedTask,
     LLMServiceError,
@@ -30,8 +30,8 @@ from app.services.llm_service import (
     generate_meeting_summary as llm_generate_meeting_summary,
 )
 from app.core.config import settings
-from app.services.user_service import get_user
-from app.services.task_service import serialize_task_out
+from app.services.business.user_service import get_user
+from app.services.business.task_service import serialize_task_out
 
 logger = logging.getLogger(__name__)
 

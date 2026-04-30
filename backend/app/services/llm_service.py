@@ -12,7 +12,7 @@ from openai.types.chat import ChatCompletionMessageParam
 
 from app.core.config import settings
 from app.schemas.structured_summary import AgendaItem, Resolution, StructuredSummary, TodoItem
-from app.services.task_service import is_actionable_task_text
+from app.services.business.task_service import is_actionable_task_text
 
 logger = logging.getLogger(__name__)
 

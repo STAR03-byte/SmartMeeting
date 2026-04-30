@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.schemas.auth import CurrentUserOut
 from app.schemas.hotword import HotwordCreate, HotwordOut
-from app.services.hotword_service import create_hotword, delete_hotword, get_hotword, list_hotwords
+from app.services.business.hotword_service import create_hotword, delete_hotword, get_hotword, list_hotwords
 from .auth import get_current_user
 
 router = APIRouter(prefix="/hotwords", tags=["hotwords"], dependencies=[Depends(get_current_user)])

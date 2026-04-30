@@ -5,7 +5,7 @@ from typing import cast
 
 from fastapi.testclient import TestClient
 from app.core.security import get_password_hash
-from app.services.hotword_service import clear_hotword_cache, get_hotword_terms
+from app.services.business.hotword_service import clear_hotword_cache, get_hotword_terms
 from sqlalchemy.orm import Session
 from pytest import MonkeyPatch
 

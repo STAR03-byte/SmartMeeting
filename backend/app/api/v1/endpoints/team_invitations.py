@@ -7,7 +7,7 @@ from app.core.database import get_db
 from app.schemas.auth import CurrentUserOut
 from app.schemas.team_invitation import TeamInvitationCreate, TeamInvitationOut, TeamInviteLinkCreate, TeamInviteLinkOut
 from app.models.team_invitation import TeamInvitation
-from app.services.team_invitation_service import (
+from app.services.business.team_invitation_service import (
     accept_invite_link,
     accept_invitation,
     create_invite_link,

@@ -15,7 +15,7 @@ from app.schemas.task import TaskPriority, TaskStatus
 from app.schemas.task import TaskCreate, TaskListOut, TaskOut, TaskUpdate
 from app.services.meeting_service import get_meeting
 from app.services.business.meeting_transcript_service import get_transcript
-from app.services.task_service import (
+from app.services.business.task_service import (
     count_tasks,
     create_task,
     create_task_draft,
@@ -25,7 +25,7 @@ from app.services.task_service import (
     serialize_task_out,
     update_task,
 )
-from app.services.user_service import get_user
+from app.services.business.user_service import get_user
 from .auth import get_current_user
 
 router = APIRouter(prefix="/tasks", tags=["tasks"], dependencies=[Depends(get_current_user)])

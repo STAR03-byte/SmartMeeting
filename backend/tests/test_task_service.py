@@ -9,7 +9,7 @@ from app.models.meeting import Meeting
 from app.models.task import Task
 from app.models.user import User
 from app.schemas.task import TaskCreate, TaskUpdate
-from app.services.task_service import (
+from app.services.business.task_service import (
     can_manage_task,
     count_tasks,
     create_task,

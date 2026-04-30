@@ -13,7 +13,7 @@ from app.core.limiter import limiter
 from app.schemas.auth import CurrentUserOut, TokenOut
 from app.services.business.auth_service import authenticate_user, create_user_access_token
 from app.services.business.audit_service import create_audit_log
-from app.services.user_service import get_user
+from app.services.business.user_service import get_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)

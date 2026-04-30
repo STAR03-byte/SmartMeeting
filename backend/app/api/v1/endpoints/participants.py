@@ -11,7 +11,7 @@ from app.schemas.meeting_participant import (
     MeetingParticipantUpdate,
 )
 from app.services.meeting_service import get_meeting
-from app.services.meeting_participant_service import (
+from app.services.business.meeting_participant_service import (
     create_participant,
     delete_participant,
     get_participant,
@@ -20,7 +20,7 @@ from app.services.meeting_participant_service import (
     list_participants_out,
     update_participant,
 )
-from app.services.user_service import get_user
+from app.services.business.user_service import get_user
 from .auth import get_current_user
 
 router = APIRouter(prefix="/participants", tags=["participants"], dependencies=[Depends(get_current_user)])

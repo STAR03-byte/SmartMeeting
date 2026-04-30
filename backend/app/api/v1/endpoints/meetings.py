@@ -43,7 +43,7 @@ from app.services.meeting_service import (
     save_postprocess_result,
     update_meeting,
 )
-from app.services.user_service import get_user
+from app.services.business.user_service import get_user
 from .auth import get_current_user
 
 router = APIRouter(prefix="/meetings", tags=["meetings"], dependencies=[Depends(get_current_user)])
