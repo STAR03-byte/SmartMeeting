@@ -22,6 +22,11 @@ SOURCE database/migrations/020_create_team_invitations.sql;
 SOURCE database/migrations/021_create_conversations.sql;
 SOURCE database/migrations/022_create_conversation_messages.sql;
 SOURCE database/migrations/023_meeting_share_lifecycle.sql;
+SOURCE database/migrations/024_create_processing_jobs.sql;
+SOURCE database/migrations/025_create_llm_usage.sql;
+SOURCE database/migrations/027_fix_hotwords_user_id_type.sql;
+SOURCE database/migrations/028_create_meeting_audios.sql;
+SOURCE database/migrations/029_fix_team_tables_types.sql;
 
 SOURCE database/seeds/001_seed_basic_data.sql;
 SOURCE database/seeds/002_seed_participants.sql;
