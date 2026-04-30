@@ -5,6 +5,7 @@ import {
   clearMeetingContent,
   deleteMeeting,
   getMeeting,
+  getMeetingCounts,
   getMeetings,
   getMeetingTranscripts,
   getTasksByMeeting,
@@ -20,6 +21,7 @@ import {
   type MeetingDetail,
   type MeetingListParams,
   type MeetingListResult,
+  type MeetingStatusCounts,
   type TaskCreatePayload,
   type TaskItem,
   type Transcript,
@@ -66,6 +68,9 @@ export const useMeetingStore = defineStore("meeting", {
       } finally {
         this.loading = false;
       }
+    },
+    async fetchMeetingCounts(): Promise<MeetingStatusCounts> {
+      return getMeetingCounts();
     },
     async createMeeting(payload: MeetingCreatePayload) {
       this.error = null;

@@ -6,7 +6,7 @@
       </template>
     </el-page-header>
 
-    <el-card class="main-card">
+    <el-card class="main-card" v-loading="store.isLoading && !store.sortedConversations.length">
       <div class="chat-container">
         <ConversationList
           :conversations="store.sortedConversations"

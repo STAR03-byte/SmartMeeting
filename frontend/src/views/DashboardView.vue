@@ -148,10 +148,10 @@ const greeting = computed(() => {
   return name ? `${timeGreeting}，${name}` : `${timeGreeting}！`;
 });
 
-const totalMeetings = computed(() => store.meetingsTotal || store.meetings.length);
-const ongoingMeetings = computed(() => store.meetings.filter((m) => m.status === "ongoing").length);
-const plannedMeetings = computed(() => store.meetings.filter((m) => m.status === "planned").length);
-const doneMeetings = computed(() => store.meetings.filter((m) => m.status === "done").length);
+const totalMeetings = ref(0);
+const ongoingMeetings = ref(0);
+const plannedMeetings = ref(0);
+const doneMeetings = ref(0);
 
 const recentMeetings = computed(() =>
   [...store.meetings]
@@ -194,7 +194,12 @@ const loadPendingInvitations = async () => {
 };
 
 onMounted(async () => {
-  await store.fetchMeetings({ limit: 100, offset: 0 });
+  const counts = await store.fetchMeetingCounts();
+  totalMeetings.value = counts.planned + counts.ongoing + counts.done;
+  ongoingMeetings.value = counts.ongoing;
+  plannedMeetings.value = counts.planned;
+  doneMeetings.value = counts.done;
+  await store.fetchMeetings({ limit: 5, offset: 0 });
   await loadPendingInvitations();
 });
 </script>

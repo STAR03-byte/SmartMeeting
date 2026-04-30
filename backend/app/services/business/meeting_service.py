@@ -262,6 +262,37 @@ def count_meetings(
     return query.count()
 
 
+def count_meetings_by_status(
+    db: Session,
+    current_user_id: int | None = None,
+    is_admin: bool = False,
+) -> dict[str, int]:
+    """按状态统计会议数，复用 count_meetings 的可见性过滤。"""
+    from sqlalchemy import case, func
+
+    query = db.query(
+        func.count(case((Meeting.status == "planned", 1))),
+        func.count(case((Meeting.status == "ongoing", 1))),
+        func.count(case((Meeting.status == "done", 1))),
+    )
+
+    if not is_admin and current_user_id is not None:
+        participant_meeting_ids = db.query(MeetingParticipant.meeting_id).filter(
+            MeetingParticipant.user_id == current_user_id
+        )
+        user_team_ids = db.query(TeamMember.team_id).filter(TeamMember.user_id == current_user_id)
+        query = query.filter(
+            or_(
+                Meeting.organizer_id == current_user_id,
+                Meeting.id.in_(participant_meeting_ids),
+                Meeting.team_id.in_(user_team_ids),
+            )
+        )
+
+    row = query.one()
+    return {"planned": row[0], "ongoing": row[1], "done": row[2]}
+
+
 def match_meeting_keyword(meeting: Meeting, keyword: str) -> bool:
     normalized_keyword = keyword.strip()
     if not normalized_keyword:

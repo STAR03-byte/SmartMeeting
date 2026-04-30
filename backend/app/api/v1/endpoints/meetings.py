@@ -37,6 +37,7 @@ from app.core.config import settings as app_settings
 from app.services.business.meeting_service import (
     build_meeting_summary_with_llm,
     count_meetings,
+    count_meetings_by_status,
     clear_meeting_content,
     create_meeting,
     delete_meeting,
@@ -163,6 +164,15 @@ def create_meeting_api(
     db.commit()
 
     return MeetingOut.model_validate(meeting)
+
+
+@router.get("/counts")
+def get_meeting_counts_api(
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
+) -> dict[str, int]:
+    """按状态统计当前用户可见的会议数。"""
+    return count_meetings_by_status(db, current_user.id, current_user.role == "admin")
 
 
 @router.get("", response_model=MeetingListOut)

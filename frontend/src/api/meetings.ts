@@ -47,6 +47,17 @@ export async function getMeetings(params?: MeetingListParams): Promise<MeetingLi
   return resp.data;
 }
 
+export interface MeetingStatusCounts {
+  planned: number;
+  ongoing: number;
+  done: number;
+}
+
+export async function getMeetingCounts(): Promise<MeetingStatusCounts> {
+  const resp = await apiClient.get<MeetingStatusCounts>("/api/v1/meetings/counts");
+  return resp.data;
+}
+
 export async function createMeeting(payload: MeetingCreatePayload): Promise<Meeting> {
   const resp = await apiClient.post<Meeting>("/api/v1/meetings", payload);
   return resp.data;

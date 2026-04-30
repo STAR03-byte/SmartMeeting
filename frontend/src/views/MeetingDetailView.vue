@@ -36,24 +36,24 @@
                 v-model="shareExpiryMode"
                 class="share-expiry-select"
                 :disabled="!store.currentMeeting.summary"
-                placeholder="分享有效期"
+                :placeholder="$t('meeting.shareExpiry')"
               >
-                <el-option label="永久有效" value="never" />
-                <el-option label="1 天" value="1d" />
-                <el-option label="7 天" value="7d" />
-                <el-option label="30 天" value="30d" />
+                <el-option :label="$t('meeting.expiryPermanent')" value="never" />
+                <el-option :label="$t('meeting.expiry1d')" value="1d" />
+                <el-option :label="$t('meeting.expiry7d')" value="7d" />
+                <el-option :label="$t('meeting.expiry30d')" value="30d" />
               </el-select>
               <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="copyShareLink">{{ $t('meeting.generateShareLink') }}</el-button>
-              <el-button type="warning" plain :disabled="!canRevokeShare" @click="revokeShareLink">撤销分享</el-button>
+              <el-button type="warning" plain :disabled="!canRevokeShare" @click="revokeShareLink">{{ $t('meeting.revokeShare') }}</el-button>
               <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="distributeByEmail">{{ $t('meeting.emailDistribute') }}</el-button>
-              <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="exportMarkdown">导出 MD</el-button>
+              <el-button type="primary" plain :disabled="!store.currentMeeting.summary" @click="exportMarkdown">{{ $t('meeting.exportMd') }}</el-button>
               <el-button v-if="canCreateTask" type="primary" @click="openTaskDialog">{{ $t('meeting.newTask') }}</el-button>
             </div>
           </div>
 
           <div class="workflow-strip">
             <div class="workflow-heading">
-              <span>会议流程</span>
+              <span>{{ $t('meeting.workflowTitle') }}</span>
               <el-tag :type="workflowTagType">{{ workflowCurrentLabel }}</el-tag>
             </div>
             <el-steps :active="workflowActiveStep" finish-status="success" align-center>
@@ -192,32 +192,32 @@ const workflowSteps = computed<WorkflowStep[]>(() => {
   const steps: WorkflowStep[] = [
     {
       key: "meeting",
-      title: "创建会议",
-      description: hasMeeting ? "基础信息已就绪" : "等待创建",
+      title: t('meeting.stepCreate'),
+      description: hasMeeting ? t('meeting.stepCreateReady') : t('meeting.stepCreatePending'),
       done: hasMeeting,
     },
     {
       key: "audio",
-      title: "上传/录音",
-      description: hasAudio ? `${audioCount.value} 个音频文件` : "等待音频",
+      title: t('meeting.stepAudio'),
+      description: hasAudio ? t('meeting.stepAudioCount', { n: audioCount.value }) : t('meeting.stepAudioPending'),
       done: hasAudio,
     },
     {
       key: "transcript",
-      title: "转写",
-      description: hasTranscripts ? `${store.transcripts.length} 段转写` : "等待转写",
+      title: t('meeting.stepTranscript'),
+      description: hasTranscripts ? t('meeting.stepTranscriptCount', { n: store.transcripts.length }) : t('meeting.stepTranscriptPending'),
       done: hasTranscripts,
     },
     {
       key: "summary",
-      title: "结构化纪要",
-      description: hasSummary ? "纪要已生成" : "等待后处理",
+      title: t('meeting.stepSummary'),
+      description: hasSummary ? t('meeting.stepSummaryReady') : t('meeting.stepSummaryPending'),
       done: hasSummary,
     },
     {
       key: "tasks",
-      title: "行动项确认",
-      description: hasDraftTasks ? `${draftTaskCount.value} 个待确认` : `${confirmedTaskCount.value} 个正式任务`,
+      title: t('meeting.stepTasks'),
+      description: hasDraftTasks ? t('meeting.stepTasksDraft', { n: draftTaskCount.value }) : t('meeting.stepTasksDone', { n: confirmedTaskCount.value }),
       done: hasSummary && !hasDraftTasks && hasConfirmedTasks,
       status: hasDraftTasks ? "process" : undefined,
     },
@@ -240,7 +240,7 @@ const workflowActiveStep = computed(() => {
 const workflowCurrentLabel = computed(() => {
   const current = workflowSteps.value.find((step) => step.status === "process");
   if (current) return current.title;
-  return "已完成";
+  return t('meeting.stepCompleted');
 });
 
 const workflowTagType = computed(() => {
@@ -325,14 +325,14 @@ function buildSharePayload() {
 
 async function revokeShareLink() {
   try {
-    await ElMessageBox.confirm("撤销后，已有分享链接将无法继续访问。", "撤销分享", {
+    await ElMessageBox.confirm(t('meeting.revokeConfirmBody'), t('meeting.revokeConfirmTitle'), {
       type: "warning",
-      confirmButtonText: "撤销",
+      confirmButtonText: t('meeting.revokeButton'),
       cancelButtonText: t('common.cancel'),
     });
     await revokeMeetingShareLink(meetingId);
     await reloadMeeting();
-    ElMessage.success("分享链接已撤销");
+    ElMessage.success(t('meeting.revokeSuccess'));
   } catch (err) {
     if (err !== "cancel") {
       notifyApiError(err);
@@ -352,7 +352,7 @@ async function exportMarkdown() {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
-    ElMessage.success("Markdown 已导出");
+    ElMessage.success(t('meeting.exportSuccess'));
   } catch (err) {
     notifyApiError(err);
   }
@@ -401,9 +401,12 @@ function statusLabel(status: string): string {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-height: calc(100vh - 80px);
+  overflow: hidden;
 }
 
 .base-card {
+  flex-shrink: 0;
   border-radius: var(--el-border-radius-base);
   border: none;
   box-shadow: var(--el-box-shadow-light) !important;
@@ -485,8 +488,9 @@ function statusLabel(status: string): string {
 }
 
 .panel-container {
-  height: 700px;
-  min-height: 500px;
+  flex: 1;
+  min-height: 300px;
+  overflow: hidden;
 }
 
 .panel-container :deep(.splitpanes__pane) {
@@ -517,9 +521,12 @@ function statusLabel(status: string): string {
 }
 
 @media (max-width: 900px) {
+  .detail-page {
+    min-height: auto;
+    overflow: visible;
+  }
   .panel-container {
-    height: auto;
-    min-height: 800px;
+    min-height: 60vh;
   }
   .panel-container :deep(.splitpanes.default-theme) {
     flex-direction: column !important;
