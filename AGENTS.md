@@ -1,118 +1,166 @@
-# PROJECT KNOWLEDGE BASE
+# Everything Claude Code (ECC) — Agent Instructions
 
-**Generated:** 2026-03-31
-**Commit:** 76fadd4
-**Branch:** main
+This is a **production-ready AI coding plugin** providing 48 specialized agents, 184 skills, 80 commands, and automated hook workflows for software development.
 
-## OVERVIEW
+**Version:** 2.0.0-rc.1
 
-SmartMeeting 是 FastAPI + Vue 3 + MySQL 的会议与任务系统。仓库为多域结构：业务代码（backend/frontend/database）+ 运维与文档（scripts/infrastructure/docs）。
+## Core Principles
 
-## STRUCTURE
+1. **Agent-First** — Delegate to specialized agents for domain tasks
+2. **Test-Driven** — Write tests before implementation, 80%+ coverage required
+3. **Security-First** — Never compromise on security; validate all inputs
+4. **Immutability** — Always create new objects, never mutate existing ones
+5. **Plan Before Execute** — Plan complex features before writing code
 
-```text
-SmartMeeting/
-├── backend/         # FastAPI 服务（有独立 AGENTS）
-│   └── app/
-│       └── services/  # 业务核心（新增独立 AGENTS）
-├── frontend/        # Vue3 + TS 应用（有独立 AGENTS）
-│   └── src/
-│       ├── api/       # API 封装（新增独立 AGENTS）
-│       └── views/     # 页面编排（新增独立 AGENTS）
-├── database/        # SQL 迁移/种子/回滚（有独立 AGENTS）
-├── scripts/         # 执行脚本（db 编排在 scripts/db）
-├── infrastructure/  # 部署资产目录（compose/docker/k8s/nginx）
-└── docs/            # 文档与计划
+## Available Agents
+
+| Agent | Purpose | When to Use |
+|-------|---------|-------------|
+| planner | Implementation planning | Complex features, refactoring |
+| architect | System design and scalability | Architectural decisions |
+| tdd-guide | Test-driven development | New features, bug fixes |
+| code-reviewer | Code quality and maintainability | After writing/modifying code |
+| security-reviewer | Vulnerability detection | Before commits, sensitive code |
+| build-error-resolver | Fix build/type errors | When build fails |
+| e2e-runner | End-to-end Playwright testing | Critical user flows |
+| refactor-cleaner | Dead code cleanup | Code maintenance |
+| doc-updater | Documentation and codemaps | Updating docs |
+| cpp-reviewer | C/C++ code review | C and C++ projects |
+| cpp-build-resolver | C/C++ build errors | C and C++ build failures |
+| docs-lookup | Documentation lookup via Context7 | API/docs questions |
+| go-reviewer | Go code review | Go projects |
+| go-build-resolver | Go build errors | Go build failures |
+| kotlin-reviewer | Kotlin code review | Kotlin/Android/KMP projects |
+| kotlin-build-resolver | Kotlin/Gradle build errors | Kotlin build failures |
+| database-reviewer | PostgreSQL/Supabase specialist | Schema design, query optimization |
+| python-reviewer | Python code review | Python projects |
+| java-reviewer | Java and Spring Boot code review | Java/Spring Boot projects |
+| java-build-resolver | Java/Maven/Gradle build errors | Java build failures |
+| loop-operator | Autonomous loop execution | Run loops safely, monitor stalls, intervene |
+| harness-optimizer | Harness config tuning | Reliability, cost, throughput |
+| rust-reviewer | Rust code review | Rust projects |
+| rust-build-resolver | Rust build errors | Rust build failures |
+| pytorch-build-resolver | PyTorch runtime/CUDA/training errors | PyTorch build/training failures |
+| typescript-reviewer | TypeScript/JavaScript code review | TypeScript/JavaScript projects |
+
+## Agent Orchestration
+
+Use agents proactively without user prompt:
+- Complex feature requests → **planner**
+- Code just written/modified → **code-reviewer**
+- Bug fix or new feature → **tdd-guide**
+- Architectural decision → **architect**
+- Security-sensitive code → **security-reviewer**
+- Autonomous loops / loop monitoring → **loop-operator**
+- Harness config reliability and cost → **harness-optimizer**
+
+Use parallel execution for independent operations — launch multiple agents simultaneously.
+
+## Security Guidelines
+
+**Before ANY commit:**
+- No hardcoded secrets (API keys, passwords, tokens)
+- All user inputs validated
+- SQL injection prevention (parameterized queries)
+- XSS prevention (sanitized HTML)
+- CSRF protection enabled
+- Authentication/authorization verified
+- Rate limiting on all endpoints
+- Error messages don't leak sensitive data
+
+**Secret management:** NEVER hardcode secrets. Use environment variables or a secret manager. Validate required secrets at startup. Rotate any exposed secrets immediately.
+
+**If security issue found:** STOP → use security-reviewer agent → fix CRITICAL issues → rotate exposed secrets → review codebase for similar issues.
+
+## Coding Style
+
+**Immutability (CRITICAL):** Always create new objects, never mutate. Return new copies with changes applied.
+
+**File organization:** Many small files over few large ones. 200-400 lines typical, 800 max. Organize by feature/domain, not by type. High cohesion, low coupling.
+
+**Error handling:** Handle errors at every level. Provide user-friendly messages in UI code. Log detailed context server-side. Never silently swallow errors.
+
+**Input validation:** Validate all user input at system boundaries. Use schema-based validation. Fail fast with clear messages. Never trust external data.
+
+**Code quality checklist:**
+- Functions small (<50 lines), files focused (<800 lines)
+- No deep nesting (>4 levels)
+- Proper error handling, no hardcoded values
+- Readable, well-named identifiers
+
+## Testing Requirements
+
+**Minimum coverage: 80%**
+
+Test types (all required):
+1. **Unit tests** — Individual functions, utilities, components
+2. **Integration tests** — API endpoints, database operations
+3. **E2E tests** — Critical user flows
+
+**TDD workflow (mandatory):**
+1. Write test first (RED) — test should FAIL
+2. Write minimal implementation (GREEN) — test should PASS
+3. Refactor (IMPROVE) — verify coverage 80%+
+
+Troubleshoot failures: check test isolation → verify mocks → fix implementation (not tests, unless tests are wrong).
+
+## Development Workflow
+
+1. **Plan** — Use planner agent, identify dependencies and risks, break into phases
+2. **TDD** — Use tdd-guide agent, write tests first, implement, refactor
+3. **Review** — Use code-reviewer agent immediately, address CRITICAL/HIGH issues
+4. **Capture knowledge in the right place**
+   - Personal debugging notes, preferences, and temporary context → auto memory
+   - Team/project knowledge (architecture decisions, API changes, runbooks) → the project's existing docs structure
+   - If the current task already produces the relevant docs or code comments, do not duplicate the same information elsewhere
+   - If there is no obvious project doc location, ask before creating a new top-level file
+5. **Commit** — Conventional commits format, comprehensive PR summaries
+
+## Workflow Surface Policy
+
+- `skills/` is the canonical workflow surface.
+- New workflow contributions should land in `skills/` first.
+- `commands/` is a legacy slash-entry compatibility surface and should only be added or updated when a shim is still required for migration or cross-harness parity.
+
+## Git Workflow
+
+**Commit format:** `<type>: <description>` — Types: feat, fix, refactor, docs, test, chore, perf, ci
+
+**PR workflow:** Analyze full commit history → draft comprehensive summary → include test plan → push with `-u` flag.
+
+## Architecture Patterns
+
+**API response format:** Consistent envelope with success indicator, data payload, error message, and pagination metadata.
+
+**Repository pattern:** Encapsulate data access behind standard interface (findAll, findById, create, update, delete). Business logic depends on abstract interface, not storage mechanism.
+
+**Skeleton projects:** Search for battle-tested templates, evaluate with parallel agents (security, extensibility, relevance), clone best match, iterate within proven structure.
+
+## Performance
+
+**Context management:** Avoid last 20% of context window for large refactoring and multi-file features. Lower-sensitivity tasks (single edits, docs, simple fixes) tolerate higher utilization.
+
+**Build troubleshooting:** Use build-error-resolver agent → analyze errors → fix incrementally → verify after each fix.
+
+## Project Structure
+
+```
+agents/          — 48 specialized subagents
+skills/          — 184 workflow skills and domain knowledge
+commands/        — 80 slash commands
+hooks/           — Trigger-based automations
+rules/           — Always-follow guidelines (common + per-language)
+scripts/         — Cross-platform Node.js utilities
+mcp-configs/     — 14 MCP server configurations
+tests/           — Test suite
 ```
 
-## WHERE TO LOOK
+`commands/` remains in the repo for compatibility, but the long-term direction is skills-first.
 
-| Task | Location | Notes |
-|------|----------|-------|
-| 后端路由/鉴权入口 | `backend/app/api/v1/endpoints/` | 路由保持薄层，复杂逻辑下沉 `services/` |
-| 后端业务规则/AI回退 | `backend/app/services/` | LLM + rule fallback、任务抽取、事务操作 |
-| 前端接口封装 | `frontend/src/api/` | 统一 `apiClient` + typed payload/response |
-| 前端页面流程编排 | `frontend/src/views/` | 大页面集中，优先调用 store/api 而非直接拼 URL |
-| 前端路由与守卫 | `frontend/src/router/index.ts` | 登录守卫依赖 auth store |
-| 数据库变更与回滚 | `database/migrations/`, `database/rollback/` | 执行入口在 `scripts/db/*.sql` |
-| CI 与基础校验 | `.github/workflows/ci.yml` | db script order check + backend tests + frontend typecheck/build |
-| DB 脚本顺序校验 | `scripts/db/check_sql_file_order.py` | CI 会校验 `scripts/db/run_all.sql` 与 `database/migrations/` 顺序一致 |
-| 工程自检（本地） | `scripts/dev/qa.py` | 串行跑 db order + backend tests + frontend typecheck/build |
+## Success Metrics
 
-## CODE MAP
-
-| Symbol | Type | Location | Role |
-|--------|------|----------|------|
-| `app` | FastAPI app | `backend/app/main.py` | 应用实例、异常处理、`/api/v1` 挂载 |
-| `lifespan` | function | `backend/app/main.py` | 启停资源管理 |
-| `create_meeting` | service fn | `backend/app/services/meeting_service.py` | 会议写入主流程入口 |
-| `apiClient` | Axios instance | `frontend/src/api/client.ts` | 统一 HTTP 客户端与 Bearer 注入 |
-| `getApiErrorMessage` | function | `frontend/src/api/client.ts` | API 错误文本归一化 |
-| `router` | Vue Router | `frontend/src/router/index.ts` | 路由表与登录守卫 |
-| `useAuthStore` | Pinia store | `frontend/src/stores/authStore.ts` | token 持久化与当前用户加载 |
-| `useMeetingStore` | Pinia store | `frontend/src/stores/meetingStore.ts` | 会议详情/转写/任务编排 |
-
-## CONVENTIONS
-
-- 中文沟通；代码/命令/路径保持英文。
-- 增量改动优先：先改已有文件，再考虑新增文件。
-- 后端遵循“路由薄、服务厚”；路由统一挂在 `/api/v1`。
-- 前端固定 `<script setup lang="ts">` + Composition API。
-- 前端构建链不可跳过类型检查：`build = vue-tsc --noEmit && vite build`。
-- DB 管理采用 `migrations + seeds + rollback` 脚本链路（非 alembic）。
-
-## ANTI-PATTERNS (THIS PROJECT)
-
-- 未确认影响就执行破坏性命令（reset/覆盖历史/强制历史操作）。
-- 擅自删除用户已有改动。
-- 硬编码 secrets/token/password/DB 凭据。
-- 引入 `any` / 无类型服务接口 / 空 `catch` 吞异常。
-- 在后端 endpoint 直接写复杂业务或大量 DB 操作（应放 `services/`）。
-- 跳过 `frontend` typecheck 或 `scripts/db/check_health.sql` 后宣称完成。
-
-## UNIQUE STYLES
-
-- 后端存在双入口：`backend/main.py`（uvicorn兼容）+ `backend/app/main.py`（真实应用装配）。
-- DB 资产与执行脚本分离：定义在 `database/`，编排在 `scripts/db/`。
-- 当前仓库无 `skills-main/`、`ui-ux-pro-max-skill-main/` 实体目录，避免按旧层级误改。
-
-## COMMANDS
-
-```bash
-# backend
-python -m pip install -r backend/requirements.txt
-python -m uvicorn backend.main:app --reload
-python -m pytest backend/tests -v --tb=short
-
-# engineering
-python scripts/dev/bootstrap.py
-python scripts/dev/qa.py
-
-# frontend
-npm --prefix frontend install --cache "D:\SmartMeeting\.npm-cache"
-npm --prefix frontend run dev
-npm --prefix frontend run typecheck
-npm --prefix frontend run build
-
-# database
-mysql -u <user> -p < scripts/db/run_all.sql
-mysql -u <user> -p < scripts/db/check_health.sql
-mysql -u <user> -p < scripts/db/check_performance.sql
-```
-
-## HIERARCHY
-
-- `./AGENTS.md`（root）
-  - `./backend/AGENTS.md`
-    - `./backend/app/services/AGENTS.md`
-    - `./backend/app/api/v1/endpoints/AGENTS.md`
-    - `./backend/tests/AGENTS.md`
-  - `./frontend/AGENTS.md`
-    - `./frontend/src/api/AGENTS.md`
-    - `./frontend/src/views/AGENTS.md`
-    - `./frontend/src/stores/AGENTS.md`
-  - `./database/AGENTS.md`
-  - `./scripts/AGENTS.md`
-    - `./scripts/db/AGENTS.md`
-    - `./scripts/dev/AGENTS.md`
-  - `./docs/AGENTS.md`
+- All tests pass with 80%+ coverage
+- No security vulnerabilities
+- Code is readable and maintainable
+- Performance is acceptable
+- User requirements are met
