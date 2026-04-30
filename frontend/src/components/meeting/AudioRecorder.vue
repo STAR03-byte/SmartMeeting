@@ -5,14 +5,14 @@
       :show-file-list="false"
       accept="audio/*"
       :on-change="onFilePicked"
-      :disabled="recordingState !== 'idle'"
+      :disabled="recordingState !== 'idle' || jobProgress.isActive.value"
     >
       <el-button type="primary">{{ $t('transcript.uploadAndTranscribe') }}</el-button>
     </el-upload>
     <el-button
       type="primary"
       plain
-      :disabled="recordingState === 'recording' || recordingState === 'paused'"
+      :disabled="recordingState === 'recording' || recordingState === 'paused' || jobProgress.isActive.value"
       @click="startRecording"
     >
       {{ $t('transcript.startRecord') }}
@@ -41,7 +41,17 @@
     <el-button @click="downloadSummary" :disabled="!store.currentMeeting?.summary">{{ $t('transcript.exportSummary') }}</el-button>
     <el-button @click="copySummary" :disabled="summaryDisplayText === $t('summary.emptySummary')">{{ $t('transcript.copySummary') }}</el-button>
   </div>
-  <div class="recording-status" :class="recordingState">
+  <ProcessingProgress
+    :visible="jobProgress.isActive.value || jobProgress.isCompleted.value || jobProgress.isFailed.value"
+    :status="jobProgress.jobStatus.value"
+    :progress="jobProgress.jobProgress.value"
+    :message="jobProgress.jobMessage.value"
+    :error="jobProgress.jobError.value"
+    :formatted-elapsed="jobProgress.formattedElapsed.value"
+    :label="jobProgress.activeJobType.value === 'postprocess' ? '后处理' : '音频转写'"
+    @cancel="jobProgress.cancel()"
+  />
+  <div v-if="!jobProgress.isActive.value" class="recording-status" :class="recordingState">
     录音状态：{{ recordingStateLabel }}
   </div>
 </template>
@@ -53,7 +63,8 @@ import { useMeetingStore } from "../../stores/meetingStore";
 import { useRecording } from "../../composables/useRecording";
 import { useTranscription } from "../../composables/useTranscription";
 import { useSummary } from "../../composables/useSummary";
-import { onBeforeUnmount } from "vue";
+import { watch, onBeforeUnmount } from "vue";
+import ProcessingProgress from "./ProcessingProgress.vue";
 
 const props = defineProps<{ meetingId: number }>();
 const emit = defineEmits<{ (e: "processed"): void }>();
@@ -69,9 +80,21 @@ const {
   cleanupRecorder,
 } = useRecording(props.meetingId);
 
-const { onFilePicked: transcribePickedFile, runPostprocess: generatePostprocess } = useTranscription(props.meetingId);
+const {
+  onFilePickedAsync: transcribePickedFile,
+  runPostprocessAsync: generatePostprocess,
+  onJobCompleted,
+  jobProgress,
+} = useTranscription(props.meetingId);
 
 const { summaryDisplayText, downloadSummary, copySummary } = useSummary(props.meetingId);
+
+watch(() => jobProgress.isCompleted.value, (completed) => {
+  if (completed) {
+    onJobCompleted(jobProgress.activeJobType.value);
+    emit("processed");
+  }
+});
 
 onBeforeUnmount(() => {
   cleanupRecorder();
@@ -79,12 +102,10 @@ onBeforeUnmount(() => {
 
 async function onFilePicked(file: { raw?: File }) {
   await transcribePickedFile(file);
-  emit("processed");
 }
 
 async function runPostprocess() {
   await generatePostprocess();
-  emit("processed");
 }
 
 async function stopRecordingAndRefresh() {

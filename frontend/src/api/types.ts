@@ -377,3 +377,42 @@ export interface KnowledgeQueryResponse {
   sources: KnowledgeSource[];
   used_llm: boolean;
 }
+
+// 异步处理任务类型
+
+export type ProcessingJobType = "transcribe" | "postprocess";
+export type ProcessingJobStatus =
+  | "pending"
+  | "queued"
+  | "loading_models"
+  | "segmenting"
+  | "transcribing"
+  | "diarizing"
+  | "merging"
+  | "generating_summary"
+  | "extracting_tasks"
+  | "completed"
+  | "failed"
+  | "interrupted";
+
+export interface ProcessingJob {
+  id: number;
+  job_id: string;
+  meeting_id: number;
+  user_id: number;
+  job_type: ProcessingJobType;
+  status: ProcessingJobStatus;
+  progress: number;
+  message: string;
+  current_chunk: number;
+  total_chunks: number;
+  error: string | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  updated_at: string;
+}
+
+export interface ProcessingJobResult extends ProcessingJob {
+  result_json: string | null;
+}

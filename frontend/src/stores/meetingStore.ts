@@ -11,7 +11,9 @@ import {
   deleteTranscript,
   exportMeetingSummary,
   transcribeMeetingAudio,
+  transcribeMeetingAudioAsync,
   triggerPostprocess,
+  triggerPostprocessAsync,
   uploadMeetingAudio,
   type Meeting,
   type MeetingCreatePayload,
@@ -170,6 +172,16 @@ export const useMeetingStore = defineStore("meeting", {
         this.loading = false;
       }
     },
+    async uploadAudioAndTranscribeAsync(meetingId: number, file: File) {
+      this.error = null;
+      try {
+        await uploadMeetingAudio(meetingId, file);
+        return await transcribeMeetingAudioAsync(meetingId);
+      } catch (error) {
+        this.error = getApiErrorMessage(error);
+        throw error;
+      }
+    },
     async appendRealtimeTranscript(meetingId: number, file: File) {
       this.error = null;
       try {
@@ -204,6 +216,15 @@ export const useMeetingStore = defineStore("meeting", {
         throw error;
       } finally {
         this.loading = false;
+      }
+    },
+    async runPostprocessAsync(meetingId: number) {
+      this.error = null;
+      try {
+        return await triggerPostprocessAsync(meetingId);
+      } catch (error) {
+        this.error = getApiErrorMessage(error);
+        throw error;
       }
     },
     async exportMeetingSummary(meetingId: number) {

@@ -9,6 +9,7 @@ import type {
   MeetingPostprocessResult,
   MeetingShareCreatePayload,
   MeetingShareCreateResult,
+  ProcessingJob,
   SharedMeetingDetail,
   MeetingStatus,
   TaskCreatePayload,
@@ -109,6 +110,15 @@ export async function triggerPostprocess(meetingId: number): Promise<MeetingPost
   return resp.data;
 }
 
+export async function triggerPostprocessAsync(meetingId: number): Promise<ProcessingJob> {
+  const resp = await apiClient.post<ProcessingJob>(
+    `/api/v1/meetings/${meetingId}/postprocess`,
+    null,
+    { params: { async_mode: true } },
+  );
+  return resp.data;
+}
+
 export async function uploadMeetingAudio(meetingId: number, file: File): Promise<MeetingAudio> {
   const formData = new FormData();
   formData.append("file", file);
@@ -122,6 +132,15 @@ export async function uploadMeetingAudio(meetingId: number, file: File): Promise
 
 export async function transcribeMeetingAudio(meetingId: number): Promise<Transcript> {
   const resp = await apiClient.post<Transcript>(`/api/v1/meetings/${meetingId}/audio/transcribe`);
+  return resp.data;
+}
+
+export async function transcribeMeetingAudioAsync(meetingId: number): Promise<ProcessingJob> {
+  const resp = await apiClient.post<ProcessingJob>(
+    `/api/v1/meetings/${meetingId}/audio/transcribe`,
+    null,
+    { params: { async_mode: true } },
+  );
   return resp.data;
 }
 
