@@ -31,6 +31,9 @@ from app.schemas.meeting_transcript import MeetingTranscriptOut
 from app.schemas.task import TaskOut
 from app.services.pipeline.audio_service import save_meeting_audio, transcribe_latest_audio
 from app.services.ai.whisper_service import WhisperServiceError
+from app.services.pipeline.job_manager import job_manager
+from app.schemas.processing_job import ProcessingJobOut
+from app.core.config import settings as app_settings
 from app.services.business.meeting_service import (
     build_meeting_summary_with_llm,
     count_meetings,
@@ -392,14 +395,14 @@ def upload_meeting_audio_api(
 
 @router.post(
     "/{meeting_id}/audio/transcribe",
-    response_model=MeetingTranscriptOut,
     status_code=status.HTTP_201_CREATED,
 )
 async def transcribe_meeting_audio_api(
     meeting_id: int,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
-) -> MeetingTranscriptOut:
+    async_mode: Annotated[bool, Query()] = False,
+) -> MeetingTranscriptOut | ProcessingJobOut:
     """对最新上传音频执行 Whisper 语音识别。"""
 
     meeting = get_meeting(db, meeting_id)
@@ -407,6 +410,16 @@ async def transcribe_meeting_audio_api(
         raise HTTPException(status_code=404, detail="Meeting not found")
     _assert_meeting_permission(meeting, current_user)
 
+    # 异步模式：创建后台任务
+    if async_mode and app_settings.async_processing_enabled:
+        job = job_manager.create_job(meeting_id, current_user.id, "transcribe")
+        db.add(job)
+        db.commit()
+        db.refresh(job)
+        job_manager.start_transcription_job(job.job_id, meeting_id, current_user.id)
+        return ProcessingJobOut.model_validate(job)
+
+    # 同步模式（原有逻辑）
     try:
         transcripts = await transcribe_latest_audio(db, meeting_id, current_user.id)
     except WhisperServiceError as exc:
