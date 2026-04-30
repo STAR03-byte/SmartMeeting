@@ -318,25 +318,35 @@ class JobManager:
                 save_postprocess_result,
                 get_meeting,
             )
+            from app.models.meeting_transcript import MeetingTranscript
 
             meeting = get_meeting(db, meeting_id)
             if not meeting:
                 self._update_job_progress(job_id, "failed", 0.0, "会议不存在", error="会议不存在")
                 return
 
-            loop = asyncio.get_running_loop()
+            transcripts = (
+                db.query(MeetingTranscript)
+                .filter(MeetingTranscript.meeting_id == meeting_id)
+                .order_by(MeetingTranscript.segment_index.asc(), MeetingTranscript.id.asc())
+                .all()
+            )
+            if not transcripts:
+                self._update_job_progress(job_id, "failed", 0.0, "无转写记录", error="无转写记录")
+                return
 
+            # build_meeting_summary_with_llm 是 async 函数，直接 await
             self._update_job_progress(job_id, "generating_summary", 0.3, "正在调用 LLM 生成摘要...")
-            summary = await loop.run_in_executor(
-                None, lambda: build_meeting_summary_with_llm(db, meeting_id)
-            )
+            summary, summary_version = await build_meeting_summary_with_llm(meeting, transcripts)
 
+            # generate_tasks_from_transcripts_with_llm 也是 async 函数
             self._update_job_progress(job_id, "extracting_tasks", 0.6, "正在提取行动项...")
-            tasks = await loop.run_in_executor(
-                None, lambda: generate_tasks_from_transcripts_with_llm(db, meeting_id)
+            tasks, task_version = await generate_tasks_from_transcripts_with_llm(
+                db, meeting_id, transcripts, reporter_id=None
             )
 
-            save_postprocess_result(db, meeting, summary, tasks)
+            version = summary_version if "llm" in summary_version else task_version
+            save_postprocess_result(db, meeting, summary, version=version)
 
             result = {
                 "summary_length": len(summary) if summary else 0,

@@ -326,13 +326,14 @@ def clear_meeting_content_api(
     )
 
 
-@router.post("/{meeting_id}/postprocess", response_model=MeetingPostprocessOut)
+@router.post("/{meeting_id}/postprocess")
 async def postprocess_meeting_api(
     meeting_id: int,
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
     force_regenerate: Annotated[bool, Query()] = False,
-) -> MeetingPostprocessOut:
+    async_mode: Annotated[bool, Query()] = False,
+) -> MeetingPostprocessOut | ProcessingJobOut:
     """对会议转写进行后处理并生成摘要与任务。"""
 
     meeting = get_meeting(db, meeting_id)
@@ -340,6 +341,16 @@ async def postprocess_meeting_api(
         raise HTTPException(status_code=404, detail="Meeting not found")
     _assert_meeting_permission(meeting, current_user)
 
+    # 异步模式：创建后台任务
+    if async_mode and app_settings.async_processing_enabled:
+        job = job_manager.create_job(meeting_id, current_user.id, "postprocess")
+        db.add(job)
+        db.commit()
+        db.refresh(job)
+        job_manager.start_postprocess_job(job.job_id, meeting_id)
+        return ProcessingJobOut.model_validate(job)
+
+    # 同步模式（原有逻辑）
     transcripts = (
         db.query(MeetingTranscript)
         .filter(MeetingTranscript.meeting_id == meeting_id)
