@@ -1,11 +1,19 @@
 """任务模型定义。"""
 
+# pyright: reportImportCycles=false
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.meeting import Meeting
+    from app.models.meeting_transcript import MeetingTranscript
+    from app.models.user import User
 
 
 class Task(Base):
@@ -37,3 +45,8 @@ class Task(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    meeting: Mapped["Meeting"] = relationship("Meeting", back_populates="tasks", lazy="selectin")
+    assignee: Mapped["User | None"] = relationship("User", foreign_keys=[assignee_id], lazy="selectin")
+    reporter: Mapped["User | None"] = relationship("User", foreign_keys=[reporter_id], lazy="selectin")
+    transcript: Mapped["MeetingTranscript | None"] = relationship("MeetingTranscript", lazy="selectin")

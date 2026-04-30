@@ -1,11 +1,17 @@
 """会议音频模型定义。"""
 
+# pyright: reportImportCycles=false
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.meeting import Meeting
 
 
 class MeetingAudio(Base):
@@ -20,3 +26,5 @@ class MeetingAudio(Base):
     content_type: Mapped[str] = mapped_column(String(100), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+
+    meeting: Mapped["Meeting"] = relationship("Meeting", back_populates="audios", lazy="selectin")

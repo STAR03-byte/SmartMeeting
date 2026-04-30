@@ -11,7 +11,10 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from app.core.database import Base  # pyright: ignore[reportAny]
 
 if TYPE_CHECKING:
+    from app.models.meeting_audio import MeetingAudio
     from app.models.meeting_participant import MeetingParticipant
+    from app.models.meeting_transcript import MeetingTranscript
+    from app.models.task import Task
     from app.models.team import Team
     from app.models.user import User
 
@@ -50,6 +53,9 @@ class Meeting(TypedBase):
         nullable=False,
     )
 
-    organizer: Mapped["User"] = relationship("User", foreign_keys=[organizer_id])
-    team: Mapped["Team | None"] = relationship("Team")
-    participants: Mapped[list["MeetingParticipant"]] = relationship("MeetingParticipant")
+    organizer: Mapped["User"] = relationship("User", foreign_keys=[organizer_id], lazy="selectin")
+    team: Mapped["Team | None"] = relationship("Team", lazy="selectin")
+    participants: Mapped[list["MeetingParticipant"]] = relationship("MeetingParticipant", back_populates="meeting", lazy="selectin")
+    tasks: Mapped[list["Task"]] = relationship("Task", back_populates="meeting", cascade="all, delete-orphan", lazy="selectin")
+    transcripts: Mapped[list["MeetingTranscript"]] = relationship("MeetingTranscript", back_populates="meeting", cascade="all, delete-orphan", lazy="selectin")
+    audios: Mapped[list["MeetingAudio"]] = relationship("MeetingAudio", back_populates="meeting", cascade="all, delete-orphan", lazy="selectin")

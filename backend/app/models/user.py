@@ -1,11 +1,18 @@
 """用户模型定义。"""
 
+# pyright: reportImportCycles=false
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.meeting import Meeting
+    from app.models.task import Task
 
 
 class User(Base):
@@ -27,4 +34,14 @@ class User(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    meetings_organized: Mapped[list["Meeting"]] = relationship(
+        "Meeting", foreign_keys="Meeting.organizer_id", back_populates="organizer", lazy="selectin"
+    )
+    tasks_assigned: Mapped[list["Task"]] = relationship(
+        "Task", foreign_keys="Task.assignee_id", back_populates="assignee", lazy="selectin"
+    )
+    tasks_reported: Mapped[list["Task"]] = relationship(
+        "Task", foreign_keys="Task.reporter_id", back_populates="reporter", lazy="selectin"
     )
