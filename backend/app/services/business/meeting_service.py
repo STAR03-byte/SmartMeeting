@@ -46,11 +46,8 @@ def normalize_person_key(value: str | None) -> str:
     return normalized
 
 
-def resolve_assignee_id_by_name(db: Session, assignee_name: str | None) -> int | None:
-    target = normalize_person_key(assignee_name)
-    if not target:
-        return None
-
+def _build_user_name_map(db: Session) -> list[tuple[int, str]]:
+    """Build a list of (user_id, normalized_alias) for all users. Loads once per call."""
     users = db.query(User).all()
     alias_index: list[tuple[int, str]] = []
     for user in users:
@@ -63,6 +60,20 @@ def resolve_assignee_id_by_name(db: Session, assignee_name: str | None) -> int |
             normalized_alias = normalize_person_key(alias)
             if normalized_alias:
                 alias_index.append((user.id, normalized_alias))
+    return alias_index
+
+
+def resolve_assignee_id_by_name(
+    db: Session,
+    assignee_name: str | None,
+    alias_index: list[tuple[int, str]] | None = None,
+) -> int | None:
+    target = normalize_person_key(assignee_name)
+    if not target:
+        return None
+
+    if alias_index is None:
+        alias_index = _build_user_name_map(db)
 
     for user_id, alias in alias_index:
         if alias == target:
@@ -76,24 +87,21 @@ def resolve_assignee_id_by_name(db: Session, assignee_name: str | None) -> int |
     return None
 
 
-def resolve_assignee_id_from_text(db: Session, text: str | None) -> int | None:
+def resolve_assignee_id_from_text(
+    db: Session,
+    text: str | None,
+    alias_index: list[tuple[int, str]] | None = None,
+) -> int | None:
     normalized_text = normalize_person_key(text)
     if not normalized_text:
         return None
 
-    users = db.query(User).all()
-    for user in users:
-        aliases = {
-            user.full_name,
-            user.username,
-            user.email.split("@", 1)[0] if user.email and "@" in user.email else user.email,
-        }
-        for alias in aliases:
-            normalized_alias = normalize_person_key(alias)
-            if not normalized_alias:
-                continue
-            if len(normalized_alias) >= 3 and normalized_alias in normalized_text:
-                return user.id
+    if alias_index is None:
+        alias_index = _build_user_name_map(db)
+
+    for user_id, alias in alias_index:
+        if len(alias) >= 3 and alias in normalized_text:
+            return user_id
 
     return None
 
@@ -338,20 +346,17 @@ def revoke_meeting_share(db: Session, meeting: Meeting) -> Meeting:
 
 
 def build_shared_meeting_out(db: Session, meeting: Meeting, my_role: str = "guest") -> SharedMeetingOut:
-    organizer = get_user(db, meeting.organizer_id)
-    if organizer is None:
+    if meeting.organizer is None:
         raise ValueError("Organizer not found")
 
-    transcripts = (
-        db.query(MeetingTranscript)
-        .filter(MeetingTranscript.meeting_id == meeting.id)
-        .order_by(MeetingTranscript.segment_index.asc(), MeetingTranscript.id.asc())
-        .all()
+    transcripts = sorted(
+        meeting.transcripts,
+        key=lambda t: (t.segment_index, t.id),
     )
-    tasks = db.query(Task).filter(Task.meeting_id == meeting.id).order_by(Task.id.desc()).all()
+    tasks = sorted(meeting.tasks, key=lambda t: t.id, reverse=True)
 
     return SharedMeetingOut(
-        meeting=MeetingDetailOut.model_validate({**meeting.__dict__, "organizer": organizer}),
+        meeting=MeetingDetailOut.model_validate(meeting),
         transcripts=[MeetingTranscriptOut.model_validate(item) for item in transcripts],
         tasks=[TaskOut.model_validate(serialize_task_out(task)) for task in tasks],
         my_role=my_role,
@@ -371,14 +376,8 @@ def update_meeting(db: Session, meeting: Meeting, payload: MeetingUpdate) -> Mee
 
 
 def delete_meeting(db: Session, meeting: Meeting) -> None:
-    """删除会议。"""
-
-    _ = db.query(MeetingAudio).filter(MeetingAudio.meeting_id == meeting.id).delete(synchronize_session=False)
-    _ = db.query(Task).filter(Task.meeting_id == meeting.id).delete(synchronize_session=False)
-    _ = db.query(MeetingTranscript).filter(MeetingTranscript.meeting_id == meeting.id).delete(synchronize_session=False)
-    _ = db.query(MeetingParticipant).filter(MeetingParticipant.meeting_id == meeting.id).delete(
-        synchronize_session=False
-    )
+    """删除会议。participants 需手动删除（无 cascade），其余由 ORM cascade 级联删除。"""
+    db.query(MeetingParticipant).filter(MeetingParticipant.meeting_id == meeting.id).delete(synchronize_session=False)
     db.delete(meeting)
     db.commit()
 
@@ -394,20 +393,19 @@ def clear_meeting_content(
     reset_status: bool = True,
 ) -> Meeting:
     if clear_audios:
-        audios = db.query(MeetingAudio).filter(MeetingAudio.meeting_id == meeting.id).all()
-        for audio in audios:
+        for audio in list(meeting.audios):
             storage_path = Path(audio.storage_path)
             try:
                 storage_path.unlink(missing_ok=True)
             except OSError as exc:
                 logger.warning("Failed to remove audio file when clearing meeting %s: %s", meeting.id, exc)
-        _ = db.query(MeetingAudio).filter(MeetingAudio.meeting_id == meeting.id).delete(synchronize_session=False)
+        meeting.audios.clear()
 
     if clear_tasks:
-        _ = db.query(Task).filter(Task.meeting_id == meeting.id).delete(synchronize_session=False)
+        meeting.tasks.clear()
 
     if clear_transcripts:
-        _ = db.query(MeetingTranscript).filter(MeetingTranscript.meeting_id == meeting.id).delete(synchronize_session=False)
+        meeting.transcripts.clear()
 
     if clear_summary:
         meeting.summary = None
@@ -471,6 +469,7 @@ def generate_tasks_from_transcripts(
         db.commit()
 
     generated: list[Task] = []
+    alias_index = _build_user_name_map(db)
     for transcript in transcripts:
         action_items = extract_action_items(transcript.content)
         if not action_items:
@@ -482,11 +481,11 @@ def generate_tasks_from_transcripts(
             assignee_id = transcript.speaker_user_id
             assignee_name = infer_assignee_name(action)
             if assignee_name:
-                matched_user_id = resolve_assignee_id_by_name(db, assignee_name)
+                matched_user_id = resolve_assignee_id_by_name(db, assignee_name, alias_index)
                 if matched_user_id is not None:
                     assignee_id = matched_user_id
             if assignee_id is None:
-                assignee_id = resolve_assignee_id_from_text(db, action)
+                assignee_id = resolve_assignee_id_from_text(db, action, alias_index)
 
             task = Task(
                 meeting_id=meeting_id,
@@ -525,11 +524,8 @@ async def generate_tasks_from_transcripts_with_llm(
 
     used_llm = False
     generated: list[Task] = []
-    participants = [
-        user.full_name
-        for user in db.query(User).all()
-        if getattr(user, "full_name", None)
-    ]
+    alias_index = _build_user_name_map(db)
+    participants = list({alias for _, alias in alias_index if len(alias) >= 2})
 
     transcript_batches = [
         transcripts[index : index + TASK_EXTRACTION_BATCH_SIZE]
@@ -575,13 +571,14 @@ async def generate_tasks_from_transcripts_with_llm(
                 assignee_id = transcript.speaker_user_id
                 assignee_name = item["assignee_name"]
                 if assignee_name:
-                    matched_user_id = resolve_assignee_id_by_name(db, assignee_name)
+                    matched_user_id = resolve_assignee_id_by_name(db, assignee_name, alias_index)
                     if matched_user_id is not None:
                         assignee_id = matched_user_id
                 if assignee_id is None:
                     assignee_id = resolve_assignee_id_from_text(
                         db,
                         item.get("description") or item.get("title") or transcript.content,
+                        alias_index,
                     )
 
                 priority = (
@@ -619,11 +616,11 @@ async def generate_tasks_from_transcripts_with_llm(
             assignee_id = transcript.speaker_user_id
             assignee_name = infer_assignee_name(action)
             if assignee_name:
-                matched_user_id = resolve_assignee_id_by_name(db, assignee_name)
+                matched_user_id = resolve_assignee_id_by_name(db, assignee_name, alias_index)
                 if matched_user_id is not None:
                     assignee_id = matched_user_id
             if assignee_id is None:
-                assignee_id = resolve_assignee_id_from_text(db, action)
+                assignee_id = resolve_assignee_id_from_text(db, action, alias_index)
 
             task = Task(
                 meeting_id=meeting_id,

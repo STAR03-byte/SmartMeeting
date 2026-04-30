@@ -295,7 +295,7 @@ class AIAssistantService:
                     meeting=meeting,
                     source_type="participant",
                     snippet=(
-                        f"{display_name} attended this meeting as {participant.role or 'participant'}; "
+                        f"{display_name} attended this meeting as {participant.participant_role}; "
                         f"attendance status: {participant.attendance_status}."
                     ),
                 )

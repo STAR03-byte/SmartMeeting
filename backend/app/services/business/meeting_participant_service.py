@@ -29,7 +29,6 @@ def _build_participant_out(
         username=safe_username,
         full_name=safe_full_name,
         email=email,
-        role=participant.role,
         participant_role=participant.participant_role,
         attendance_status=participant.attendance_status,
         joined_at=participant.joined_at,
@@ -170,6 +169,11 @@ def delete_participant(db: Session, participant: MeetingParticipant) -> None:
 
 def get_participant_role(db: Session, meeting_id: int, user_id: int) -> str | None:
     """获取用户在会议中的角色。返回 'organizer', 'participant', 或 None。"""
+    from app.models.meeting import Meeting
+
+    meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+    if meeting and meeting.organizer_id == user_id:
+        return "organizer"
     participant = (
         db.query(MeetingParticipant)
         .filter(
@@ -178,16 +182,30 @@ def get_participant_role(db: Session, meeting_id: int, user_id: int) -> str | No
         )
         .first()
     )
-    return participant.role if participant else None
+    return "participant" if participant else None
 
 
 def is_organizer(db: Session, meeting_id: int, user_id: int) -> bool:
     """检查用户是否是会议组织者。"""
-    role = get_participant_role(db, meeting_id, user_id)
-    return role == "organizer"
+    from app.models.meeting import Meeting
+
+    meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+    return meeting is not None and meeting.organizer_id == user_id
 
 
 def is_participant(db: Session, meeting_id: int, user_id: int) -> bool:
     """检查用户是否是会议参与者（包括 organizer）。"""
-    role = get_participant_role(db, meeting_id, user_id)
-    return role in ["organizer", "participant"]
+    from app.models.meeting import Meeting
+
+    meeting = db.query(Meeting).filter(Meeting.id == meeting_id).first()
+    if meeting and meeting.organizer_id == user_id:
+        return True
+    participant = (
+        db.query(MeetingParticipant)
+        .filter(
+            MeetingParticipant.meeting_id == meeting_id,
+            MeetingParticipant.user_id == user_id,
+        )
+        .first()
+    )
+    return participant is not None

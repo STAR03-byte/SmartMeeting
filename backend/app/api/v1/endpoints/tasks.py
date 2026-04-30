@@ -202,15 +202,12 @@ def list_tasks_api(
         is_admin=(current_user.role == "admin"),
     )
 
-    meeting_ids = {task.meeting_id for task in tasks}
-    meetings = {m.id: m for m in [get_meeting(db, mid) for mid in meeting_ids] if m}
-    
     return TaskListOut(
         items=[
             TaskOut.model_validate(
                 serialize_task_out(
                     task,
-                    meetings.get(task.meeting_id, None),
+                    task.meeting,
                     current_user_id=current_user.id,
                     is_admin=(current_user.role == "admin"),
                 )

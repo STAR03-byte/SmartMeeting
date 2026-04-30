@@ -96,7 +96,7 @@ def _check_meeting_access(
     )
 
     if participant:
-        return participant.role
+        return participant.participant_role
 
     # 如果是团队会议，检查团队成员身份
     meeting = get_meeting(db, meeting_id)
@@ -152,11 +152,10 @@ def create_meeting_api(
 
     meeting = create_meeting(db, payload)
 
-    # 自动添加组织者到 participants（role=organizer）
+    # 自动添加组织者到 participants
     participant = MeetingParticipant(
         meeting_id=meeting.id,
         user_id=payload.organizer_id,
-        role="organizer",
         participant_role="required",
         attendance_status="invited",
     )
@@ -222,16 +221,10 @@ def get_meeting_api(
         if not access_role:
             raise HTTPException(status_code=403, detail="无权查看此会议")
 
-    organizer = get_user(db, meeting.organizer_id)
-    if not organizer:
+    if meeting.organizer is None:
         raise HTTPException(status_code=404, detail="Organizer not found")
 
-    return MeetingDetailOut.model_validate(
-        {
-            **meeting.__dict__,
-            "organizer": organizer,
-        }
-    )
+    return MeetingDetailOut.model_validate(meeting)
 
 
 @router.patch("/{meeting_id}", response_model=MeetingOut)
