@@ -286,62 +286,14 @@ class LLMClient:
             f"[片段{i + 1}] {content}" for i, content in enumerate(transcript_contents)
         )
 
-        system_prompt = """你是一个专业的会议记录助手。你的任务是根据会议转写内容生成结构化的会议摘要。
-
-请遵循以下原则：
-1. 忠实记录：只记录转写中实际讨论的内容，不要编造
-2. 结构清晰：按主题组织，便于快速浏览
-3. 重点突出：标注关键决定和行动项
-4. 简洁专业：去除口语化表达，保留核心信息
-
-输出格式：
-━━━━━━━━━━━━━━━━━━━━━━━━
-📋 会议主题：[一句话概括核心议题]
-
-👥 与会人员：[从转写中提取提到的参与者]
-
-💬 主要讨论：
-• [讨论点1：简要描述]
-• [讨论点2：简要描述]
-• [讨论点3：如有]
-
-✅ 重要决定：
-• [决定1：具体内容及决策人]
-• [决定2：如有]
-
-📝 后续行动：
-• [行动项1] - [负责人] - [截止时间]
-• [行动项2] - [负责人] - [截止时间]
-
-💡 风险提示：[如有提及的风险或注意事项]
-━━━━━━━━━━━━━━━━━━━━━━━━
-
-示例：
-📋 会议主题：Q4产品发布计划评审
-
-👥 与会人员：张三（产品经理）、李四（技术负责人）、王五（设计）
-
-💬 主要讨论：
-• 发布时间节点：原定12月初，讨论后认为需延后至12月中旬
-• 技术实现方案：微服务架构已就绪，需补充压力测试
-• 设计资源：UI稿已完成80%，剩余交互细节待确认
-
-✅ 重要决定：
-• 发布日期确定为12月15日（张三决定）
-• 压力测试必须在12月5日前完成（李四承诺）
-
-📝 后续行动：
-• 完成压力测试报告 - 李四 - 12月5日
-• 提交最终UI稿 - 王五 - 11月30日
-"""
-        user_prompt = (
-            f"请为以下会议转写内容生成摘要：\n\n会议标题：{meeting_title or '未命名会议'}"
-            f"\n\n转写内容：\n{full_transcript}\n\n请按照上述格式生成结构化的会议摘要，务必忠实记录转写内容，不要添加转写中没有的信息。"
+        from app.services.ai.prompts.meeting_summary import (
+            MEETING_SUMMARY_SYSTEM_PROMPT,
+            build_meeting_summary_user_prompt,
         )
 
         messages: list[ChatCompletionMessageParam] = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
+            {"role": "system", "content": MEETING_SUMMARY_SYSTEM_PROMPT},
+            {"role": "user", "content": build_meeting_summary_user_prompt(meeting_title or "", full_transcript)},
         ]
         content, _provider = await self._call_with_fallback(messages, temperature=0.2)
         return content
@@ -353,64 +305,9 @@ class LLMClient:
         stream: bool = False,
     ) -> str | AsyncGenerator[str, None]:
         """多轮对话补全。"""
-        system_prompt = """你是 SmartMeeting 的 AI 助理，帮助用户管理会议和任务。
+        from app.services.ai.prompts.chat_system import build_chat_system_prompt
 
-重要提示：用户已通过界面选择了以下真实数据，这些数据来自 SmartMeeting 数据库，你有权访问并基于这些数据回答用户问题。不要说自己无法访问数据。"""
-        
-        if context_info:
-            if "meeting_title" in context_info:
-                system_prompt += f"\n\n【当前关联会议】\n标题：{context_info['meeting_title']}"
-                if "meeting_description" in context_info:
-                    system_prompt += f"\n描述：{context_info['meeting_description']}"
-            
-            if "task_title" in context_info:
-                system_prompt += f"\n\n【当前关联任务】\n标题：{context_info['task_title']}"
-                if "task_description" in context_info:
-                    system_prompt += f"\n描述：{context_info['task_description']}"
-                if "task_status" in context_info:
-                    system_prompt += f"\n状态：{context_info['task_status']}"
-                if "task_priority" in context_info:
-                    system_prompt += f"\n优先级：{context_info['task_priority']}"
-            
-            if "task_not_found" in context_info:
-                system_prompt += f"\n\n注意：{context_info['task_not_found']}"
-
-            if "assistant_intent" in context_info:
-                system_prompt += f"\n\n【当前问题类型】\n{context_info['assistant_intent']}"
-            if "my_tasks" in context_info:
-                system_prompt += f"\n\n【我的任务查询结果】\n{context_info['my_tasks']}"
-            if "recent_meetings" in context_info:
-                system_prompt += f"\n\n【最近相关会议】\n{context_info['recent_meetings']}"
-            if "meeting_summary" in context_info:
-                system_prompt += f"\n\n【会议摘要】\n{context_info['meeting_summary']}"
-            if "meeting_summary_missing" in context_info:
-                system_prompt += f"\n\n【会议摘要】\n{context_info['meeting_summary_missing']}"
-            if "meeting_tasks" in context_info:
-                system_prompt += f"\n\n【会议任务】\n{context_info['meeting_tasks']}"
-            if "meeting_tasks_missing" in context_info:
-                system_prompt += f"\n\n【会议任务】\n{context_info['meeting_tasks_missing']}"
-            if "meeting_participants" in context_info:
-                system_prompt += f"\n\n【参会人员】\n{context_info['meeting_participants']}"
-            if "meeting_participants_missing" in context_info:
-                system_prompt += f"\n\n【参会人员】\n{context_info['meeting_participants_missing']}"
-            if "meeting_transcript_preview" in context_info:
-                system_prompt += f"\n\n【会议转写片段】\n{context_info['meeting_transcript_preview']}"
-            if "meeting_transcript_missing" in context_info:
-                system_prompt += f"\n\n【会议转写】\n{context_info['meeting_transcript_missing']}"
-            if "meeting_not_found" in context_info:
-                system_prompt += f"\n\n注意：{context_info['meeting_not_found']}"
-            if "meeting_description_missing" in context_info:
-                system_prompt += f"\n\n【会议描述】\n{context_info['meeting_description_missing']}"
-
-        system_prompt += (
-            "\n\n回答要求："
-            "\n1. 先基于真实结构化数据回答，不要空泛。"
-            "\n2. 如果已经有任务/会议数据，就直接引用，不要要求用户重复说明。"
-            "\n3. 如果用户问执行建议，请结合会议摘要、任务状态和上下文给出下一步动作。"
-            "\n4. 严禁补充数据库中不存在的议程、参会人、决议、任务、时间和地点。"
-            "\n5. 如果某字段缺失，必须明确说“当前没有记录到”，不要自行推断或编造。"
-            "\n6. 回答尽量简洁、明确、可执行。"
-        )
+        system_prompt = build_chat_system_prompt(context_info)
 
         full_messages = cast(
             list[ChatCompletionMessageParam],
@@ -543,72 +440,14 @@ class LLMClient:
             for speaker, content in transcript_contents
         )
 
-        system_prompt = """你是一个专业的会议记录助手。请根据会议转写内容生成结构化的会议摘要。
+        from app.services.ai.prompts.structured_summary import (
+            STRUCTURED_SUMMARY_SYSTEM_PROMPT,
+            build_structured_summary_user_prompt,
+        )
 
-输出格式要求（必须是有效的JSON，不要包含markdown代码块标记）：
-{
-  "agenda": [
-    {
-      "topic": "讨论主题（必填，从转写中提炼）",
-      "speaker": "发言人姓名（可选，从转写中提取）",
-      "key_points": ["要点1（简洁，20字内）", "要点2"]
-    }
-  ],
-  "resolutions": [
-    {
-      "decision": "决议内容（必填，必须是会议明确达成的决定）",
-      "proposer": "提议人（可选，从转写中提取）",
-      "context": "决议背景（可选，简要说明）"
-    }
-  ],
-  "todos": [
-    {
-      "title": "任务标题（必填，简洁明确）",
-      "description": "任务描述（可选，补充上下文）",
-      "assignee": "负责人姓名（从转写中提取，确保真实存在）",
-      "due_date": "截止时间（可选，标准化格式如'2024-01-15'或'下周一'）",
-      "priority": "high/medium/low（根据紧急程度判断：high-紧急/今天/立即，medium-本周，low-后续/月底）"
-    }
-  ]
-}
+        system_prompt = STRUCTURED_SUMMARY_SYSTEM_PROMPT
 
-提取规则（严格遵守）：
-1. agenda：提取3-5个核心讨论主题，不要罗列所有对话
-2. resolutions：只包含会议明确达成的决定，不要推测
-3. todos：只提取转写中明确提到的任务，必须有action verb（完成、提交、审核等）
-4. assignee：必须从转写中提取真实人名，不确定时留空
-5. priority：
-   - high: 今天、立即、尽快、紧急、截止
-   - medium: 本周、下周、3天内
-   - low: 月底、后续、待定
-
-Few-shot示例：
-
-输入："张三：我们需要在今天下班前完成API文档。李四：我来负责，明天上午可以提交初稿。王五：设计方案还需要一周时间。"
-
-输出：
-{
-  "agenda": [
-    {"topic": "API文档完成", "speaker": "张三", "key_points": ["今天下班前必须完成"]}
-  ],
-  "resolutions": [],
-  "todos": [
-    {"title": "完成API文档", "description": "编写完整的API接口文档", "assignee": "李四", "due_date": "明天上午", "priority": "high"},
-    {"title": "完成设计方案", "description": "输出最终设计方案", "assignee": "王五", "due_date": "一周后", "priority": "medium"}
-  ]
-}
-3. todos（待办）：列出需要跟进的任务，包含标题、描述、负责人、截止时间和优先级
-4. 如果某类信息不存在，对应数组为空
-5. 只输出JSON，不要其他内容"""
-
-        user_prompt = f"""请为以下会议转写内容生成结构化摘要：
-
-会议标题：{meeting_title or '未命名会议'}
-
-转写内容：
-{formatted_transcript}
-
-请输出JSON格式的结构化摘要："""
+        user_prompt = build_structured_summary_user_prompt(meeting_title or "", formatted_transcript)
 
         messages: list[ChatCompletionMessageParam] = [
             {"role": "system", "content": system_prompt},
@@ -840,27 +679,16 @@ Few-shot示例：
         if not transcript_content.strip():
             return []
 
+        from app.services.ai.prompts.action_items import (
+            build_action_items_system_prompt,
+            build_action_items_user_prompt,
+        )
+
         participants_context = (
             f"\n\n会议参与者：{', '.join(participants)}" if participants else ""
         )
-        system_prompt = (
-            "你是一个任务提取助手。从会议转写中提取行动项/任务。\n\n"
-            "只提取明确、可执行、可落地的任务，不要把讨论语气、模糊建议、时间判断、口语化表达当成任务。\n"
-            "像‘后天完成也可以’、‘那这个事情明天完成也可以’、‘我觉得可以’这类句子不是任务，必须忽略。\n\n"
-            "输出格式：JSON数组，每个任务包含：\n"
-            "- title: 任务标题（简洁，不超过50字）\n"
-            "- description: 任务详细描述\n"
-            "- assignee_name: 负责人姓名（如果能从内容推断，否则为null）\n"
-            "- priority: 优先级（high/medium/low）\n"
-            "- due_hint: 截止时间提示（如果提到，否则为null）\n\n"
-            "示例输出：\n"
-            "[{\"title\": \"完成项目报告\", \"description\": \"下周一前提交项目进度报告\", "
-            "\"assignee_name\": \"张三\", \"priority\": \"high\", \"due_hint\": \"下周一\"}]\n\n"
-            f"只输出JSON数组，不要其他内容。{participants_context}"
-        )
-        user_prompt = (
-            f"从以下会议转写中提取所有行动项：\n\n{transcript_content}\n\n输出JSON数组："
-        )
+        system_prompt = build_action_items_system_prompt(participants_context)
+        user_prompt = build_action_items_user_prompt(transcript_content)
 
         messages: list[ChatCompletionMessageParam] = [
             {"role": "system", "content": system_prompt},
@@ -914,25 +742,16 @@ Few-shot示例：
         if not numbered_transcripts:
             return []
 
+        from app.services.ai.prompts.action_items import (
+            build_action_items_batch_system_prompt,
+            build_action_items_batch_user_prompt,
+        )
+
         participants_context = (
             f"\n\n会议参与者：{', '.join(participants)}" if participants else ""
         )
-        system_prompt = (
-            "你是一个任务提取助手。从多段会议转写中提取行动项/任务。\n\n"
-            "只提取明确、可执行、可落地的任务，不要把讨论语气、模糊建议、时间判断、口语化表达当成任务。\n"
-            "输出格式：JSON数组，每个任务包含：\n"
-            "- segment_index: 任务来源的转写序号（必须对应输入中的 [0]、[1]...）\n"
-            "- title: 任务标题（简洁，不超过50字）\n"
-            "- description: 任务详细描述\n"
-            "- assignee_name: 负责人姓名（如果能从内容推断，否则为null）\n"
-            "- priority: 优先级（high/medium/low）\n"
-            "- due_hint: 截止时间提示（如果提到，否则为null）\n\n"
-            "示例输出：\n"
-            "[{\"segment_index\": 0, \"title\": \"完成项目报告\", \"description\": \"下周一前提交项目进度报告\", "
-            "\"assignee_name\": \"张三\", \"priority\": \"high\", \"due_hint\": \"下周一\"}]\n\n"
-            f"只输出JSON数组，不要其他内容。{participants_context}"
-        )
-        user_prompt = "从以下多段会议转写中提取所有行动项：\n\n" + "\n\n".join(numbered_transcripts) + "\n\n输出JSON数组："
+        system_prompt = build_action_items_batch_system_prompt(participants_context)
+        user_prompt = build_action_items_batch_user_prompt(numbered_transcripts)
 
         messages: list[ChatCompletionMessageParam] = [
             {"role": "system", "content": system_prompt},
