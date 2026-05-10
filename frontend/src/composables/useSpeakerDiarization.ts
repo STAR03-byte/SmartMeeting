@@ -1,6 +1,7 @@
 import { computed } from "vue";
 import { ElMessage } from "element-plus";
 import { useMeetingStore } from "../stores/meetingStore";
+import { updateTranscript } from "../api/meetings";
 import type { Speaker, DiarizationSegment } from "../api/types";
 
 /**
@@ -62,9 +63,13 @@ export function useSpeakerDiarization(meetingId: number) {
    */
   async function renameSpeaker(speakerId: string, newName: string): Promise<void> {
     try {
-      // TODO: 调用后端 API 更新说话人名称
+      const transcript = store.transcripts.find(
+        (t) => (t.speaker_user_id?.toString() || `speaker-${t.segment_index}`) === speakerId,
+      );
+      if (transcript) {
+        await updateTranscript(transcript.id, { speaker_name: newName });
+      }
       store.updateSpeakerName(speakerId, newName);
-      
       ElMessage.success(`已将说话人重命名为 "${newName}"`);
     } catch (error) {
       ElMessage.error(`重命名失败：${getErrorMessage(error)}`);

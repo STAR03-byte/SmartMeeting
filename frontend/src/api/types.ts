@@ -91,6 +91,7 @@ export interface Transcript {
   id: number;
   meeting_id: number;
   speaker_user_id: number | null;
+  speaker_id: number | null;
   speaker_name: string | null;
   segment_index: number;
   start_time_sec: number | null;

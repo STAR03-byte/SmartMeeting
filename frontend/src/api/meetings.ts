@@ -102,6 +102,22 @@ export async function deleteTranscript(transcriptId: number): Promise<void> {
   await apiClient.delete(`/api/v1/transcripts/${transcriptId}`);
 }
 
+export interface TranscriptUpdatePayload {
+  speaker_user_id?: number | null;
+  speaker_id?: number | null;
+  speaker_name?: string | null;
+  start_time_sec?: number | null;
+  end_time_sec?: number | null;
+  language_code?: string | null;
+  source?: string | null;
+  content?: string | null;
+}
+
+export async function updateTranscript(transcriptId: number, payload: TranscriptUpdatePayload): Promise<Transcript> {
+  const resp = await apiClient.patch<Transcript>(`/api/v1/transcripts/${transcriptId}`, payload);
+  return resp.data;
+}
+
 export async function getTasksByAssignee(assigneeId: number): Promise<TaskListResult> {
   const resp = await apiClient.get<TaskListResult>("/api/v1/tasks", {
     params: { assignee_id: assigneeId },
