@@ -83,6 +83,34 @@ function formatDate(iso: string | null): string {
   return new Date(iso).toLocaleString("zh-CN");
 }
 
+function exportMarkdown() {
+  const lines: string[] = ["# 承诺导出\n", `> 导出时间：${new Date().toLocaleString("zh-CN")}\n`];
+  const grouped = new Map<number, Commitment[]>();
+  for (const c of commitments.value) {
+    const arr = grouped.get(c.meeting_id) || [];
+    arr.push(c);
+    grouped.set(c.meeting_id, arr);
+  }
+  for (const [meetingId, items] of grouped) {
+    lines.push(`## 会议 #${meetingId}\n`);
+    for (const c of items) {
+      const parts = [`- **[${statusLabel[c.status] || c.status}]** ${c.content}`];
+      if (c.assignee_name) parts[0] += ` — ${c.assignee_name}`;
+      if (c.due_hint) parts.push(`  - 截止：${c.due_hint}`);
+      if (c.linked_task_id) parts.push(`  - 关联任务 #${c.linked_task_id}`);
+      parts.push(`  - 时间：${formatDate(c.created_at)}`);
+      lines.push(...parts);
+    }
+    lines.push("");
+  }
+  const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `commitments-${new Date().toISOString().slice(0, 10)}.md`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 onMounted(loadCommitments);
 </script>
 
@@ -90,9 +118,18 @@ onMounted(loadCommitments);
   <div class="max-w-5xl mx-auto p-6">
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold">承诺追踪</h1>
-      <select v-model="statusFilter" class="px-3 py-2 border rounded-lg" @change="loadCommitments">
-        <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-      </select>
+      <div class="flex items-center gap-2">
+        <button
+          v-if="commitments.length > 0"
+          class="px-3 py-2 text-sm border rounded-lg hover:bg-gray-50"
+          @click="exportMarkdown"
+        >
+          导出 Markdown
+        </button>
+        <select v-model="statusFilter" class="px-3 py-2 border rounded-lg" @change="loadCommitments">
+          <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+        </select>
+      </div>
     </div>
 
     <div v-if="loading" class="text-center py-12 text-gray-500">加载中...</div>

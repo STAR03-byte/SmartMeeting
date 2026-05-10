@@ -77,6 +77,33 @@ function confidenceColor(conf: number | null): string {
   return "text-red-600";
 }
 
+function exportMarkdown() {
+  const lines: string[] = ["# 决策导出\n", `> 导出时间：${new Date().toLocaleString("zh-CN")}\n`];
+  const grouped = new Map<number, Decision[]>();
+  for (const d of decisions.value) {
+    const arr = grouped.get(d.meeting_id) || [];
+    arr.push(d);
+    grouped.set(d.meeting_id, arr);
+  }
+  for (const [meetingId, items] of grouped) {
+    lines.push(`## 会议 #${meetingId}\n`);
+    for (const d of items) {
+      const conf = d.confidence !== null ? ` (置信度 ${(d.confidence * 100).toFixed(0)}%)` : "";
+      lines.push(`- **[${statusLabel[d.status] || d.status}]${conf}** ${d.content}`);
+      if (d.proposer_name) lines.push(`  - 提出者：${d.proposer_name}`);
+      if (d.context) lines.push(`  - 背景：${d.context}`);
+      lines.push(`  - 时间：${formatDate(d.created_at)}`);
+    }
+    lines.push("");
+  }
+  const blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `decisions-${new Date().toISOString().slice(0, 10)}.md`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 onMounted(loadDecisions);
 </script>
 
@@ -84,9 +111,18 @@ onMounted(loadDecisions);
   <div class="max-w-5xl mx-auto p-6">
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold">决策管理</h1>
-      <select v-model="statusFilter" class="px-3 py-2 border rounded-lg" @change="loadDecisions">
-        <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-      </select>
+      <div class="flex items-center gap-2">
+        <button
+          v-if="decisions.length > 0"
+          class="px-3 py-2 text-sm border rounded-lg hover:bg-gray-50"
+          @click="exportMarkdown"
+        >
+          导出 Markdown
+        </button>
+        <select v-model="statusFilter" class="px-3 py-2 border rounded-lg" @change="loadDecisions">
+          <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+        </select>
+      </div>
     </div>
 
     <div v-if="loading" class="text-center py-12 text-gray-500">加载中...</div>
