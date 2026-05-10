@@ -27,6 +27,7 @@ tauri-plugin-log = "2"
 reqwest = { version = "0.12", features = ["multipart", "json", "native-tls-vendored"] }
 tokio = { version = "1", features = ["full"] }
 openssl = { version = "0.10", features = ["vendored"] }
+chrono = { version = "0.4", features = ["serde"] }
 
 # 音频采集依赖（需要系统库：libasound2-dev, pkg-config）
 cpal = { version = "0.15", optional = true }

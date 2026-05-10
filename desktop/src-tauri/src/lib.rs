@@ -1,7 +1,9 @@
 #[cfg(feature = "audio-capture")]
 mod audio_capture;
+mod meeting_session;
 mod transcription;
 
+use meeting_session::{MeetingSession, MeetingSessionManager};
 use std::sync::Mutex;
 use tauri::State;
 use transcription::{TranscriptResult, WhisperConfig};
@@ -9,6 +11,7 @@ use transcription::{TranscriptResult, WhisperConfig};
 /// 应用状态
 pub struct AppState {
     pub whisper_config: Mutex<WhisperConfig>,
+    pub session_manager: MeetingSessionManager,
 }
 
 /// 转写指定段落
@@ -59,10 +62,61 @@ fn get_whisper_config(state: State<'_, AppState>) -> WhisperConfig {
     state.whisper_config.lock().unwrap().clone()
 }
 
+/// 开始会议会话
+#[tauri::command]
+async fn start_meeting_session(
+    title: String,
+    state: State<'_, AppState>,
+) -> Result<u32, String> {
+    meeting_session::start_session(&state.session_manager, title).await
+}
+
+/// 同步转写文本
+#[tauri::command]
+async fn sync_transcript(
+    text: String,
+    speaker: Option<String>,
+    start_time: Option<f64>,
+    end_time: Option<f64>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    meeting_session::sync_transcript(&state.session_manager, text, speaker, start_time, end_time)
+        .await
+}
+
+/// 停止会议会话
+#[tauri::command]
+async fn stop_meeting_session(
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    meeting_session::stop_session(&state.session_manager).await
+}
+
+/// 获取会议会话状态
+#[tauri::command]
+fn get_meeting_session_status(
+    state: State<'_, AppState>,
+) -> MeetingSession {
+    meeting_session::get_session_status(&state.session_manager)
+}
+
+/// 设置服务器配置
+#[tauri::command]
+fn set_server_config(
+    server_url: String,
+    auth_token: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    *state.session_manager.server_url.lock().unwrap() = server_url;
+    *state.session_manager.auth_token.lock().unwrap() = auth_token;
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app_state = AppState {
         whisper_config: Mutex::new(WhisperConfig::default()),
+        session_manager: MeetingSessionManager::new(),
     };
 
     tauri::Builder::default()
@@ -72,6 +126,11 @@ pub fn run() {
             transcribe_all_segments,
             update_whisper_config,
             get_whisper_config,
+            start_meeting_session,
+            sync_transcript,
+            stop_meeting_session,
+            get_meeting_session_status,
+            set_server_config,
         ])
         .setup(|app| {
             if cfg!(debug_assertions) {
