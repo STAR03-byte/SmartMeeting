@@ -39,7 +39,7 @@ def search_meetings(
 
     results = vector_search(
         db=db,
-        user_id=current_user["id"],
+        user_id=current_user.id,
         query_embedding=query_embedding,
         query_text=q,
         source_types=source_types,

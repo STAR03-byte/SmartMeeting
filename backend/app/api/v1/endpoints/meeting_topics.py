@@ -38,7 +38,7 @@ def create_meeting_topic(
     if not meeting:
         raise HTTPException(status_code=404, detail="会议不存在")
 
-    if not _check_access(meeting, current_user["id"], db):
+    if not _check_access(meeting, current_user.id, db):
         raise HTTPException(status_code=403, detail="无权访问此会议")
 
     topic = MeetingTopic(
