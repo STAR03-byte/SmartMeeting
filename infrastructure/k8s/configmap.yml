@@ -4,9 +4,9 @@ metadata:
   name: smartmeeting-backend-config
 data:
   DB_HOST: smartmeeting-db
-  DB_PORT: "3306"
+  DB_PORT: "5432"
   DB_NAME: smartmeeting
-  DB_BACKEND: mysql
+  DB_BACKEND: postgresql
   DB_AUTO_FALLBACK_SQLITE: "false"
   JWT_ALGORITHM: HS256
   JWT_ACCESS_TOKEN_EXPIRE_MINUTES: "1440"

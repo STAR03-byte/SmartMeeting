@@ -1,210 +1,164 @@
 -- SmartMeeting 业务增强与审计脚本
 -- 依赖: 001_init_smartmeeting.sql
 
-USE smartmeeting;
-
 -- ==========================================
--- 1) 会议参与人关系表（替代文本 participants 的结构化能力）
+-- 1) 会议参与人关系表
 -- ==========================================
 CREATE TABLE IF NOT EXISTS meeting_participants (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  meeting_id BIGINT UNSIGNED NOT NULL COMMENT '会议ID',
-  user_id BIGINT UNSIGNED NOT NULL COMMENT '用户ID',
-  participant_role ENUM('owner', 'required', 'optional') NOT NULL DEFAULT 'required' COMMENT '参会角色',
-  attendance_status ENUM('invited', 'accepted', 'declined', 'attended') NOT NULL DEFAULT 'invited' COMMENT '参会状态',
-  joined_at DATETIME NULL COMMENT '加入时间',
-  left_at DATETIME NULL COMMENT '离开时间',
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (id),
-  UNIQUE KEY uk_meeting_participants_unique (meeting_id, user_id),
-  KEY idx_meeting_participants_user_status (user_id, attendance_status),
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  meeting_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  participant_role VARCHAR(20) NOT NULL DEFAULT 'required'
+    CHECK (participant_role IN ('owner', 'required', 'optional')),
+  attendance_status VARCHAR(20) NOT NULL DEFAULT 'invited'
+    CHECK (attendance_status IN ('invited', 'accepted', 'declined', 'attended')),
+  joined_at TIMESTAMP NULL,
+  left_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uk_meeting_participants_unique UNIQUE (meeting_id, user_id),
   CONSTRAINT fk_meeting_participants_meeting_id
     FOREIGN KEY (meeting_id) REFERENCES meetings(id)
-    ON UPDATE CASCADE
-    ON DELETE CASCADE,
+    ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT fk_meeting_participants_user_id
     FOREIGN KEY (user_id) REFERENCES users(id)
-    ON UPDATE CASCADE
-    ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='会议参与人关系表';
+    ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+CREATE INDEX idx_meeting_participants_user_status ON meeting_participants (user_id, attendance_status);
+
+CREATE TRIGGER trg_meeting_participants_updated_at
+  BEFORE UPDATE ON meeting_participants
+  FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
 
 
 -- ==========================================
 -- 2) 审计日志表
 -- ==========================================
 CREATE TABLE IF NOT EXISTS audit_logs (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '审计日志ID',
-  actor_user_id BIGINT UNSIGNED NULL COMMENT '操作者用户ID(系统操作可为空)',
-  entity_type ENUM('users', 'meetings', 'meeting_transcripts', 'tasks', 'meeting_participants') NOT NULL COMMENT '实体类型',
-  entity_id BIGINT UNSIGNED NOT NULL COMMENT '实体ID',
-  action ENUM('INSERT', 'UPDATE', 'DELETE') NOT NULL COMMENT '动作',
-  before_data JSON NULL COMMENT '变更前数据',
-  after_data JSON NULL COMMENT '变更后数据',
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  PRIMARY KEY (id),
-  KEY idx_audit_entity (entity_type, entity_id, created_at),
-  KEY idx_audit_actor (actor_user_id, created_at),
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  actor_user_id BIGINT NULL,
+  entity_type VARCHAR(64) NOT NULL
+    CHECK (entity_type IN ('users', 'meetings', 'meeting_transcripts', 'tasks', 'meeting_participants')),
+  entity_id BIGINT NOT NULL,
+  action VARCHAR(32) NOT NULL CHECK (action IN ('INSERT', 'UPDATE', 'DELETE')),
+  before_data JSONB NULL,
+  after_data JSONB NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_audit_actor_user_id
     FOREIGN KEY (actor_user_id) REFERENCES users(id)
-    ON UPDATE CASCADE
-    ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='审计日志表';
+    ON UPDATE CASCADE ON DELETE SET NULL
+);
+
+CREATE INDEX idx_audit_entity ON audit_logs (entity_type, entity_id, created_at);
+CREATE INDEX idx_audit_actor ON audit_logs (actor_user_id, created_at);
 
 
 -- ==========================================
 -- 3) 会议与任务审计触发器
--- 说明: actor_user_id 预留, 当前置为 NULL（后续可结合会话上下文变量注入）
 -- ==========================================
-DROP TRIGGER IF EXISTS trg_audit_meetings_insert;
-DROP TRIGGER IF EXISTS trg_audit_meetings_update;
-DROP TRIGGER IF EXISTS trg_audit_meetings_delete;
-DROP TRIGGER IF EXISTS trg_audit_tasks_insert;
-DROP TRIGGER IF EXISTS trg_audit_tasks_update;
-DROP TRIGGER IF EXISTS trg_audit_tasks_delete;
 
-DELIMITER $$
-
-CREATE TRIGGER trg_audit_meetings_insert
-AFTER INSERT ON meetings
-FOR EACH ROW
+-- meetings 审计函数
+CREATE OR REPLACE FUNCTION fn_audit_meetings()
+RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO audit_logs (actor_user_id, entity_type, entity_id, action, before_data, after_data)
-  VALUES (
-    NULL,
-    'meetings',
-    NEW.id,
-    'INSERT',
-    NULL,
-    JSON_OBJECT(
-      'title', NEW.title,
-      'organizer_id', NEW.organizer_id,
-      'status', NEW.status,
-      'scheduled_start_at', NEW.scheduled_start_at,
-      'scheduled_end_at', NEW.scheduled_end_at
-    )
-  );
-END$$
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO audit_logs (actor_user_id, entity_type, entity_id, action, before_data, after_data)
+    VALUES (NULL, 'meetings', NEW.id, 'INSERT', NULL,
+      jsonb_build_object(
+        'title', NEW.title,
+        'organizer_id', NEW.organizer_id,
+        'status', NEW.status,
+        'scheduled_start_at', NEW.scheduled_start_at,
+        'scheduled_end_at', NEW.scheduled_end_at
+      ));
+  ELSIF TG_OP = 'UPDATE' THEN
+    INSERT INTO audit_logs (actor_user_id, entity_type, entity_id, action, before_data, after_data)
+    VALUES (NULL, 'meetings', NEW.id, 'UPDATE',
+      jsonb_build_object(
+        'title', OLD.title,
+        'organizer_id', OLD.organizer_id,
+        'status', OLD.status,
+        'scheduled_start_at', OLD.scheduled_start_at,
+        'scheduled_end_at', OLD.scheduled_end_at
+      ),
+      jsonb_build_object(
+        'title', NEW.title,
+        'organizer_id', NEW.organizer_id,
+        'status', NEW.status,
+        'scheduled_start_at', NEW.scheduled_start_at,
+        'scheduled_end_at', NEW.scheduled_end_at
+      ));
+  ELSIF TG_OP = 'DELETE' THEN
+    INSERT INTO audit_logs (actor_user_id, entity_type, entity_id, action, before_data, after_data)
+    VALUES (NULL, 'meetings', OLD.id, 'DELETE',
+      jsonb_build_object(
+        'title', OLD.title,
+        'organizer_id', OLD.organizer_id,
+        'status', OLD.status,
+        'scheduled_start_at', OLD.scheduled_start_at,
+        'scheduled_end_at', OLD.scheduled_end_at
+      ), NULL);
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_audit_meetings_update
-AFTER UPDATE ON meetings
-FOR EACH ROW
+CREATE TRIGGER trg_audit_meetings
+  AFTER INSERT OR UPDATE OR DELETE ON meetings
+  FOR EACH ROW EXECUTE FUNCTION fn_audit_meetings();
+
+
+-- tasks 审计函数
+CREATE OR REPLACE FUNCTION fn_audit_tasks()
+RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO audit_logs (actor_user_id, entity_type, entity_id, action, before_data, after_data)
-  VALUES (
-    NULL,
-    'meetings',
-    NEW.id,
-    'UPDATE',
-    JSON_OBJECT(
-      'title', OLD.title,
-      'organizer_id', OLD.organizer_id,
-      'status', OLD.status,
-      'scheduled_start_at', OLD.scheduled_start_at,
-      'scheduled_end_at', OLD.scheduled_end_at
-    ),
-    JSON_OBJECT(
-      'title', NEW.title,
-      'organizer_id', NEW.organizer_id,
-      'status', NEW.status,
-      'scheduled_start_at', NEW.scheduled_start_at,
-      'scheduled_end_at', NEW.scheduled_end_at
-    )
-  );
-END$$
+  IF TG_OP = 'INSERT' THEN
+    INSERT INTO audit_logs (actor_user_id, entity_type, entity_id, action, before_data, after_data)
+    VALUES (NULL, 'tasks', NEW.id, 'INSERT', NULL,
+      jsonb_build_object(
+        'meeting_id', NEW.meeting_id,
+        'title', NEW.title,
+        'assignee_id', NEW.assignee_id,
+        'priority', NEW.priority,
+        'status', NEW.status,
+        'due_at', NEW.due_at
+      ));
+  ELSIF TG_OP = 'UPDATE' THEN
+    INSERT INTO audit_logs (actor_user_id, entity_type, entity_id, action, before_data, after_data)
+    VALUES (NULL, 'tasks', NEW.id, 'UPDATE',
+      jsonb_build_object(
+        'meeting_id', OLD.meeting_id,
+        'title', OLD.title,
+        'assignee_id', OLD.assignee_id,
+        'priority', OLD.priority,
+        'status', OLD.status,
+        'due_at', OLD.due_at
+      ),
+      jsonb_build_object(
+        'meeting_id', NEW.meeting_id,
+        'title', NEW.title,
+        'assignee_id', NEW.assignee_id,
+        'priority', NEW.priority,
+        'status', NEW.status,
+        'due_at', NEW.due_at
+      ));
+  ELSIF TG_OP = 'DELETE' THEN
+    INSERT INTO audit_logs (actor_user_id, entity_type, entity_id, action, before_data, after_data)
+    VALUES (NULL, 'tasks', OLD.id, 'DELETE',
+      jsonb_build_object(
+        'meeting_id', OLD.meeting_id,
+        'title', OLD.title,
+        'assignee_id', OLD.assignee_id,
+        'priority', OLD.priority,
+        'status', OLD.status,
+        'due_at', OLD.due_at
+      ), NULL);
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_audit_meetings_delete
-AFTER DELETE ON meetings
-FOR EACH ROW
-BEGIN
-  INSERT INTO audit_logs (actor_user_id, entity_type, entity_id, action, before_data, after_data)
-  VALUES (
-    NULL,
-    'meetings',
-    OLD.id,
-    'DELETE',
-    JSON_OBJECT(
-      'title', OLD.title,
-      'organizer_id', OLD.organizer_id,
-      'status', OLD.status,
-      'scheduled_start_at', OLD.scheduled_start_at,
-      'scheduled_end_at', OLD.scheduled_end_at
-    ),
-    NULL
-  );
-END$$
-
-CREATE TRIGGER trg_audit_tasks_insert
-AFTER INSERT ON tasks
-FOR EACH ROW
-BEGIN
-  INSERT INTO audit_logs (actor_user_id, entity_type, entity_id, action, before_data, after_data)
-  VALUES (
-    NULL,
-    'tasks',
-    NEW.id,
-    'INSERT',
-    NULL,
-    JSON_OBJECT(
-      'meeting_id', NEW.meeting_id,
-      'title', NEW.title,
-      'assignee_id', NEW.assignee_id,
-      'priority', NEW.priority,
-      'status', NEW.status,
-      'due_at', NEW.due_at
-    )
-  );
-END$$
-
-CREATE TRIGGER trg_audit_tasks_update
-AFTER UPDATE ON tasks
-FOR EACH ROW
-BEGIN
-  INSERT INTO audit_logs (actor_user_id, entity_type, entity_id, action, before_data, after_data)
-  VALUES (
-    NULL,
-    'tasks',
-    NEW.id,
-    'UPDATE',
-    JSON_OBJECT(
-      'meeting_id', OLD.meeting_id,
-      'title', OLD.title,
-      'assignee_id', OLD.assignee_id,
-      'priority', OLD.priority,
-      'status', OLD.status,
-      'due_at', OLD.due_at
-    ),
-    JSON_OBJECT(
-      'meeting_id', NEW.meeting_id,
-      'title', NEW.title,
-      'assignee_id', NEW.assignee_id,
-      'priority', NEW.priority,
-      'status', NEW.status,
-      'due_at', NEW.due_at
-    )
-  );
-END$$
-
-CREATE TRIGGER trg_audit_tasks_delete
-AFTER DELETE ON tasks
-FOR EACH ROW
-BEGIN
-  INSERT INTO audit_logs (actor_user_id, entity_type, entity_id, action, before_data, after_data)
-  VALUES (
-    NULL,
-    'tasks',
-    OLD.id,
-    'DELETE',
-    JSON_OBJECT(
-      'meeting_id', OLD.meeting_id,
-      'title', OLD.title,
-      'assignee_id', OLD.assignee_id,
-      'priority', OLD.priority,
-      'status', OLD.status,
-      'due_at', OLD.due_at
-    ),
-    NULL
-  );
-END$$
-
-DELIMITER ;
+CREATE TRIGGER trg_audit_tasks
+  AFTER INSERT OR UPDATE OR DELETE ON tasks
+  FOR EACH ROW EXECUTE FUNCTION fn_audit_tasks();

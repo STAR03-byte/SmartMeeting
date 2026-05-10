@@ -1,51 +1,7 @@
 -- SmartMeeting 数据库增强脚本
 -- 依赖: 先执行 001_init_smartmeeting.sql
 
-USE smartmeeting;
-
-DROP TRIGGER IF EXISTS trg_tasks_set_completed_at;
-DROP VIEW IF EXISTS v_task_detail;
-DROP VIEW IF EXISTS v_meeting_overview;
-
-DROP PROCEDURE IF EXISTS sp_drop_constraint_if_exists;
-
-DELIMITER $$
-CREATE PROCEDURE sp_drop_constraint_if_exists(
-  IN p_table_name VARCHAR(64),
-  IN p_constraint_name VARCHAR(64)
-)
-BEGIN
-  DECLARE v_exists INT DEFAULT 0;
-
-  SELECT COUNT(1)
-    INTO v_exists
-  FROM information_schema.table_constraints
-  WHERE table_schema = DATABASE()
-    AND table_name = p_table_name
-    AND constraint_name = p_constraint_name
-    AND constraint_type = 'CHECK';
-
-  IF v_exists > 0 THEN
-    SET @ddl = CONCAT(
-      'ALTER TABLE ', p_table_name,
-      ' DROP CHECK ', p_constraint_name
-    );
-    PREPARE stmt FROM @ddl;
-    EXECUTE stmt;
-    DEALLOCATE PREPARE stmt;
-  END IF;
-END$$
-DELIMITER ;
-
-CALL sp_drop_constraint_if_exists('tasks', 'chk_tasks_due_after_create');
-CALL sp_drop_constraint_if_exists('tasks', 'chk_tasks_complete_after_create');
-CALL sp_drop_constraint_if_exists('meeting_transcripts', 'chk_transcript_time_range');
-CALL sp_drop_constraint_if_exists('meetings', 'chk_meetings_time_range');
-CALL sp_drop_constraint_if_exists('meetings', 'chk_meetings_actual_time_range');
-
-DROP PROCEDURE IF EXISTS sp_drop_constraint_if_exists;
-
--- 1) 数据有效性约束（MySQL 8.0.16+ 支持 CHECK）
+-- 1) 数据有效性约束
 ALTER TABLE meetings
   ADD CONSTRAINT chk_meetings_time_range
     CHECK (
@@ -69,7 +25,7 @@ ALTER TABLE meeting_transcripts
     );
 
 ALTER TABLE tasks
-  ADD COLUMN progress_note TEXT NULL COMMENT '任务进展备注' AFTER status,
+  ADD COLUMN progress_note TEXT NULL,
   ADD CONSTRAINT chk_tasks_due_after_create
     CHECK (due_at IS NULL OR due_at >= created_at),
   ADD CONSTRAINT chk_tasks_complete_after_create
@@ -95,15 +51,8 @@ JOIN users u ON u.id = m.organizer_id
 LEFT JOIN meeting_transcripts mt ON mt.meeting_id = m.id
 LEFT JOIN tasks t ON t.meeting_id = m.id
 GROUP BY
-  m.id,
-  m.title,
-  m.status,
-  m.organizer_id,
-  u.full_name,
-  m.scheduled_start_at,
-  m.scheduled_end_at,
-  m.created_at,
-  m.updated_at;
+  m.id, m.title, m.status, m.organizer_id, u.full_name,
+  m.scheduled_start_at, m.scheduled_end_at, m.created_at, m.updated_at;
 
 CREATE OR REPLACE VIEW v_task_detail AS
 SELECT
@@ -127,19 +76,19 @@ LEFT JOIN users ua ON ua.id = t.assignee_id
 LEFT JOIN users ur ON ur.id = t.reporter_id;
 
 -- 3) 任务状态自动维护 completed_at
-DROP TRIGGER IF EXISTS trg_tasks_set_completed_at;
-
-DELIMITER $$
-CREATE TRIGGER trg_tasks_set_completed_at
-BEFORE UPDATE ON tasks
-FOR EACH ROW
+CREATE OR REPLACE FUNCTION fn_tasks_set_completed_at()
+RETURNS TRIGGER AS $$
 BEGIN
-  IF NEW.status = 'done' AND OLD.status <> 'done' AND NEW.completed_at IS NULL THEN
-    SET NEW.completed_at = CURRENT_TIMESTAMP;
+  IF NEW.status = 'done' AND (OLD.status IS NULL OR OLD.status <> 'done') AND NEW.completed_at IS NULL THEN
+    NEW.completed_at = CURRENT_TIMESTAMP;
   END IF;
-
   IF NEW.status <> 'done' THEN
-    SET NEW.completed_at = NULL;
+    NEW.completed_at = NULL;
   END IF;
-END$$
-DELIMITER ;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_tasks_set_completed_at
+  BEFORE UPDATE ON tasks
+  FOR EACH ROW EXECUTE FUNCTION fn_tasks_set_completed_at();

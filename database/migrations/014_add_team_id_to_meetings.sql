@@ -1,5 +1,5 @@
 ALTER TABLE meetings
-  ADD COLUMN team_id BIGINT UNSIGNED NULL;
+  ADD COLUMN team_id BIGINT NULL;
 
 ALTER TABLE meetings
   ADD CONSTRAINT fk_meetings_team_id

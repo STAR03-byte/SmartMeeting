@@ -1,10 +1,2 @@
-SET FOREIGN_KEY_CHECKS = 0;
-
-TRUNCATE TABLE meeting_transcripts;
-TRUNCATE TABLE meeting_audios;
-TRUNCATE TABLE meeting_participants;
-TRUNCATE TABLE tasks;
-TRUNCATE TABLE meetings;
-TRUNCATE TABLE hotwords;
-
-SET FOREIGN_KEY_CHECKS = 1;
+TRUNCATE TABLE meeting_transcripts, meeting_audios, meeting_participants, tasks, meetings, hotwords
+  CASCADE;

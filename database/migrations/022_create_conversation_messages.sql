@@ -3,14 +3,15 @@
 -- Description: Stores messages in AI assistant conversations
 
 CREATE TABLE IF NOT EXISTS conversation_messages (
-    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    conversation_id BIGINT UNSIGNED NOT NULL,
-    role ENUM('user', 'assistant') NOT NULL,
-    content TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
-    INDEX idx_conversation_id (conversation_id),
-    INDEX idx_created_at (created_at),
-    INDEX idx_conversation_created (conversation_id, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  conversation_id BIGINT NOT NULL,
+  role VARCHAR(20) NOT NULL CHECK (role IN ('user', 'assistant')),
+  content TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_conversation_messages_conversation_id
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_conversation_messages_conversation_id ON conversation_messages (conversation_id);
+CREATE INDEX idx_conversation_messages_created_at ON conversation_messages (created_at);
+CREATE INDEX idx_conversation_messages_conversation_created ON conversation_messages (conversation_id, created_at);

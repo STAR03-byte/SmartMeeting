@@ -1,16 +1,28 @@
 -- SmartMeeting 存储过程: 任务查询
 -- 依赖: 001_init_smartmeeting.sql, 002_enhance_smartmeeting.sql
 
-USE smartmeeting;
-
-DROP PROCEDURE IF EXISTS sp_list_tasks_by_user;
-
-DELIMITER $$
-CREATE PROCEDURE sp_list_tasks_by_user(
-  IN p_user_id BIGINT UNSIGNED,
-  IN p_status VARCHAR(20)
+CREATE OR REPLACE FUNCTION sp_list_tasks_by_user(
+  p_user_id BIGINT,
+  p_status VARCHAR(20)
 )
+RETURNS TABLE (
+  id BIGINT,
+  title VARCHAR(200),
+  description TEXT,
+  priority VARCHAR(20),
+  status VARCHAR(20),
+  due_at TIMESTAMP,
+  completed_at TIMESTAMP,
+  meeting_id BIGINT,
+  meeting_title VARCHAR(200),
+  assignee_id BIGINT,
+  reporter_id BIGINT,
+  created_at TIMESTAMP,
+  updated_at TIMESTAMP
+)
+AS $$
 BEGIN
+  RETURN QUERY
   SELECT
     t.id,
     t.title,
@@ -36,7 +48,7 @@ BEGIN
       WHEN 'medium' THEN 3
       ELSE 4
     END,
-    t.due_at ASC,
+    t.due_at ASC NULLS LAST,
     t.id DESC;
-END$$
-DELIMITER ;
+END;
+$$ LANGUAGE plpgsql;

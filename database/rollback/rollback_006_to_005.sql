@@ -1,6 +1,3 @@
-USE smartmeeting;
-
-ALTER TABLE meetings
-  DROP INDEX uk_meetings_share_token,
-  DROP COLUMN shared_at,
-  DROP COLUMN share_token;
+DROP INDEX IF EXISTS uk_meetings_share_token;
+ALTER TABLE meetings DROP COLUMN IF EXISTS shared_at;
+ALTER TABLE meetings DROP COLUMN IF EXISTS share_token;

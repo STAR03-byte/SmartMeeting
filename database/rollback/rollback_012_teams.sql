@@ -1,3 +1,2 @@
-USE smartmeeting;
-
+DROP TRIGGER IF EXISTS trg_teams_updated_at ON teams;
 DROP TABLE IF EXISTS teams;

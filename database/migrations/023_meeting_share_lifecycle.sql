@@ -3,6 +3,7 @@
 -- Description: Supports expiring and revoking meeting share links
 
 ALTER TABLE meetings
-  ADD COLUMN share_expires_at DATETIME NULL AFTER shared_at,
-  ADD COLUMN share_revoked_at DATETIME NULL AFTER share_expires_at,
-  ADD INDEX idx_meetings_share_lifecycle (share_token, share_revoked_at, share_expires_at);
+  ADD COLUMN share_expires_at TIMESTAMP NULL,
+  ADD COLUMN share_revoked_at TIMESTAMP NULL;
+
+CREATE INDEX idx_meetings_share_lifecycle ON meetings (share_token, share_revoked_at, share_expires_at);

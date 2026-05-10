@@ -1,5 +1,9 @@
-USE smartmeeting;
+-- 回滚 CHECK 约束到 005 的原始定义
+ALTER TABLE audit_logs DROP CONSTRAINT IF EXISTS audit_logs_entity_type_check;
+ALTER TABLE audit_logs DROP CONSTRAINT IF EXISTS audit_logs_action_check;
 
 ALTER TABLE audit_logs
-  MODIFY entity_type ENUM('users', 'meetings', 'meeting_transcripts', 'tasks', 'meeting_participants') NOT NULL,
-  MODIFY action ENUM('INSERT', 'UPDATE', 'DELETE') NOT NULL;
+  ADD CONSTRAINT audit_logs_entity_type_check
+    CHECK (entity_type IN ('users', 'meetings', 'meeting_transcripts', 'tasks', 'meeting_participants')),
+  ADD CONSTRAINT audit_logs_action_check
+    CHECK (action IN ('INSERT', 'UPDATE', 'DELETE'));

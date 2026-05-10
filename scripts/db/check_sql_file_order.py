@@ -6,12 +6,17 @@ from pathlib import Path
 
 
 SOURCE_PATTERN = re.compile(r"^\s*SOURCE\s+([^;]+);\s*$", re.IGNORECASE)
+PSQL_INCLUDE_PATTERN = re.compile(r"^\s*\\i\s+(\S+)\s*$", re.IGNORECASE)
 
 
 def extract_sources(sql_text: str) -> list[str]:
     entries: list[str] = []
     for line in sql_text.splitlines():
         match = SOURCE_PATTERN.match(line)
+        if match:
+            entries.append(match.group(1).strip())
+            continue
+        match = PSQL_INCLUDE_PATTERN.match(line)
         if match:
             entries.append(match.group(1).strip())
     return entries

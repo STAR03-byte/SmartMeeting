@@ -77,7 +77,7 @@ def _run_bootstrap() -> None:
 
 
 def _python_runtime_ready() -> bool:
-    required_modules = ["fastapi", "uvicorn", "sqlalchemy", "pymysql"]
+    required_modules = ["fastapi", "uvicorn", "sqlalchemy", "psycopg2"]
     for module in required_modules:
         try:
             importlib.import_module(module)

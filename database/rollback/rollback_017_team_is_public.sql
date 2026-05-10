@@ -1,4 +1,2 @@
-USE smartmeeting;
-
-ALTER TABLE teams
-  DROP COLUMN is_public;
+-- 017 迁移文件不存在
+-- teams.is_public 在 012 中定义，此回滚无意义

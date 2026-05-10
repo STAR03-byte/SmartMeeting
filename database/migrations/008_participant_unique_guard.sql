@@ -1,5 +1,2 @@
-USE smartmeeting;
-
-ALTER TABLE meeting_participants
-  ADD CONSTRAINT uk_meeting_participants_unique
-  UNIQUE (meeting_id, user_id);
+-- 约束已在 005 中内联定义，此迁移保留兼容性
+-- 若 005 已包含 uk_meeting_participants_unique 则此文件为空操作

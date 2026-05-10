@@ -1,132 +1,146 @@
--- SmartMeeting MySQL Schema
+-- SmartMeeting PostgreSQL Schema
 -- 说明: 包含用户、会议、会议转写、任务四张核心表
 
-CREATE DATABASE IF NOT EXISTS smartmeeting
-  DEFAULT CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
-USE smartmeeting;
+-- ==========================================
+-- 0) updated_at 自动维护函数（全局复用）
+-- ==========================================
+CREATE OR REPLACE FUNCTION fn_set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = CURRENT_TIMESTAMP;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 -- ==========================================
 -- 1) users
 -- ==========================================
 CREATE TABLE IF NOT EXISTS users (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '用户ID',
-  username VARCHAR(50) NOT NULL COMMENT '用户名',
-  email VARCHAR(120) NOT NULL COMMENT '邮箱',
-  password_hash VARCHAR(255) NOT NULL COMMENT '密码哈希',
-  full_name VARCHAR(100) NOT NULL COMMENT '姓名',
-  role ENUM('admin', 'member') NOT NULL DEFAULT 'member' COMMENT '角色',
-  is_active TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
-  last_login_at DATETIME NULL COMMENT '最后登录时间',
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (id),
-  UNIQUE KEY uk_users_username (username),
-  UNIQUE KEY uk_users_email (email),
-  KEY idx_users_role (role)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  username VARCHAR(50) NOT NULL,
+  email VARCHAR(120) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  full_name VARCHAR(100) NOT NULL,
+  role VARCHAR(20) NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  last_login_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uk_users_username UNIQUE (username),
+  CONSTRAINT uk_users_email UNIQUE (email)
+);
+
+CREATE INDEX idx_users_role ON users (role);
+
+CREATE TRIGGER trg_users_updated_at
+  BEFORE UPDATE ON users
+  FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
 
 
 -- ==========================================
 -- 2) meetings
 -- ==========================================
 CREATE TABLE IF NOT EXISTS meetings (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '会议ID',
-  title VARCHAR(200) NOT NULL COMMENT '会议标题',
-  description TEXT NULL COMMENT '会议描述',
-  organizer_id BIGINT UNSIGNED NOT NULL COMMENT '组织者用户ID',
-  scheduled_start_at DATETIME NULL COMMENT '计划开始时间',
-  scheduled_end_at DATETIME NULL COMMENT '计划结束时间',
-  actual_start_at DATETIME NULL COMMENT '实际开始时间',
-  actual_end_at DATETIME NULL COMMENT '实际结束时间',
-  location VARCHAR(255) NULL COMMENT '会议地点/链接',
-  status ENUM('planned', 'ongoing', 'done', 'cancelled') NOT NULL DEFAULT 'planned' COMMENT '会议状态',
-  summary TEXT NULL COMMENT '会议摘要',
-  postprocessed_at DATETIME NULL COMMENT '后处理时间',
-  postprocess_version VARCHAR(32) NULL COMMENT '后处理版本',
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (id),
-  KEY idx_meetings_organizer_id (organizer_id),
-  KEY idx_meetings_status (status),
-  KEY idx_meetings_scheduled_start_at (scheduled_start_at),
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  title VARCHAR(200) NOT NULL,
+  description TEXT NULL,
+  organizer_id BIGINT NOT NULL,
+  scheduled_start_at TIMESTAMP NULL,
+  scheduled_end_at TIMESTAMP NULL,
+  actual_start_at TIMESTAMP NULL,
+  actual_end_at TIMESTAMP NULL,
+  location VARCHAR(255) NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'planned' CHECK (status IN ('planned', 'ongoing', 'done', 'cancelled')),
+  summary TEXT NULL,
+  postprocessed_at TIMESTAMP NULL,
+  postprocess_version VARCHAR(32) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_meetings_organizer_id
     FOREIGN KEY (organizer_id) REFERENCES users(id)
-    ON UPDATE CASCADE
-    ON DELETE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='会议表';
+    ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+CREATE INDEX idx_meetings_organizer_id ON meetings (organizer_id);
+CREATE INDEX idx_meetings_status ON meetings (status);
+CREATE INDEX idx_meetings_scheduled_start_at ON meetings (scheduled_start_at);
+
+CREATE TRIGGER trg_meetings_updated_at
+  BEFORE UPDATE ON meetings
+  FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
 
 
 -- ==========================================
 -- 3) meeting_transcripts
 -- ==========================================
 CREATE TABLE IF NOT EXISTS meeting_transcripts (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '转写记录ID',
-  meeting_id BIGINT UNSIGNED NOT NULL COMMENT '所属会议ID',
-  speaker_user_id BIGINT UNSIGNED NULL COMMENT '发言用户ID(可为空)',
-  speaker_name VARCHAR(100) NULL COMMENT '发言人名称(识别/手工)',
-  segment_index INT UNSIGNED NOT NULL COMMENT '片段序号',
-  start_time_sec DECIMAL(10,3) NULL COMMENT '片段开始秒',
-  end_time_sec DECIMAL(10,3) NULL COMMENT '片段结束秒',
-  language_code VARCHAR(10) NOT NULL DEFAULT 'zh-CN' COMMENT '语言代码',
-  source ENUM('whisper', 'manual', 'imported') NOT NULL DEFAULT 'whisper' COMMENT '文本来源',
-  content LONGTEXT NOT NULL COMMENT '转写文本内容',
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (id),
-  UNIQUE KEY uk_transcripts_meeting_segment (meeting_id, segment_index),
-  KEY idx_transcripts_meeting_id (meeting_id),
-  KEY idx_transcripts_speaker_user_id (speaker_user_id),
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  meeting_id BIGINT NOT NULL,
+  speaker_user_id BIGINT NULL,
+  speaker_name VARCHAR(100) NULL,
+  segment_index INTEGER NOT NULL,
+  start_time_sec DECIMAL(10,3) NULL,
+  end_time_sec DECIMAL(10,3) NULL,
+  language_code VARCHAR(10) NOT NULL DEFAULT 'zh-CN',
+  source VARCHAR(20) NOT NULL DEFAULT 'whisper' CHECK (source IN ('whisper', 'manual', 'imported')),
+  content TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uk_transcripts_meeting_segment UNIQUE (meeting_id, segment_index),
   CONSTRAINT fk_transcripts_meeting_id
     FOREIGN KEY (meeting_id) REFERENCES meetings(id)
-    ON UPDATE CASCADE
-    ON DELETE CASCADE,
+    ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT fk_transcripts_speaker_user_id
     FOREIGN KEY (speaker_user_id) REFERENCES users(id)
-    ON UPDATE CASCADE
-    ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='会议转写表';
+    ON UPDATE CASCADE ON DELETE SET NULL
+);
+
+CREATE INDEX idx_transcripts_meeting_id ON meeting_transcripts (meeting_id);
+CREATE INDEX idx_transcripts_speaker_user_id ON meeting_transcripts (speaker_user_id);
+
+CREATE TRIGGER trg_meeting_transcripts_updated_at
+  BEFORE UPDATE ON meeting_transcripts
+  FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
 
 
 -- ==========================================
 -- 4) tasks
 -- ==========================================
 CREATE TABLE IF NOT EXISTS tasks (
-  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '任务ID',
-  meeting_id BIGINT UNSIGNED NOT NULL COMMENT '来源会议ID',
-  transcript_id BIGINT UNSIGNED NULL COMMENT '来源转写片段ID',
-  title VARCHAR(200) NOT NULL COMMENT '任务标题',
-  description TEXT NULL COMMENT '任务描述',
-  assignee_id BIGINT UNSIGNED NULL COMMENT '执行人用户ID',
-  reporter_id BIGINT UNSIGNED NULL COMMENT '创建人/提取人用户ID',
-  priority ENUM('high', 'medium', 'low') NOT NULL DEFAULT 'medium' COMMENT '优先级',
-  status ENUM('todo', 'in_progress', 'done') NOT NULL DEFAULT 'todo' COMMENT '任务状态',
-  due_at DATETIME NULL COMMENT '截止时间',
-  completed_at DATETIME NULL COMMENT '完成时间',
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (id),
-  KEY idx_tasks_meeting_id (meeting_id),
-  KEY idx_tasks_transcript_id (transcript_id),
-  KEY idx_tasks_assignee_id (assignee_id),
-  KEY idx_tasks_reporter_id (reporter_id),
-  KEY idx_tasks_status (status),
-  KEY idx_tasks_due_at (due_at),
+  id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  meeting_id BIGINT NOT NULL,
+  transcript_id BIGINT NULL,
+  title VARCHAR(200) NOT NULL,
+  description TEXT NULL,
+  assignee_id BIGINT NULL,
+  reporter_id BIGINT NULL,
+  priority VARCHAR(20) NOT NULL DEFAULT 'medium' CHECK (priority IN ('high', 'medium', 'low')),
+  status VARCHAR(20) NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'done')),
+  due_at TIMESTAMP NULL,
+  completed_at TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_tasks_meeting_id
     FOREIGN KEY (meeting_id) REFERENCES meetings(id)
-    ON UPDATE CASCADE
-    ON DELETE CASCADE,
+    ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT fk_tasks_transcript_id
     FOREIGN KEY (transcript_id) REFERENCES meeting_transcripts(id)
-    ON UPDATE CASCADE
-    ON DELETE SET NULL,
+    ON UPDATE CASCADE ON DELETE SET NULL,
   CONSTRAINT fk_tasks_assignee_id
     FOREIGN KEY (assignee_id) REFERENCES users(id)
-    ON UPDATE CASCADE
-    ON DELETE SET NULL,
+    ON UPDATE CASCADE ON DELETE SET NULL,
   CONSTRAINT fk_tasks_reporter_id
     FOREIGN KEY (reporter_id) REFERENCES users(id)
-    ON UPDATE CASCADE
-    ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='任务表';
+    ON UPDATE CASCADE ON DELETE SET NULL
+);
+
+CREATE INDEX idx_tasks_meeting_id ON tasks (meeting_id);
+CREATE INDEX idx_tasks_transcript_id ON tasks (transcript_id);
+CREATE INDEX idx_tasks_assignee_id ON tasks (assignee_id);
+CREATE INDEX idx_tasks_reporter_id ON tasks (reporter_id);
+CREATE INDEX idx_tasks_status ON tasks (status);
+CREATE INDEX idx_tasks_due_at ON tasks (due_at);
+
+CREATE TRIGGER trg_tasks_updated_at
+  BEFORE UPDATE ON tasks
+  FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();

@@ -1,5 +1,2 @@
-USE smartmeeting;
-
--- Fix hotwords.user_id type: INT -> BIGINT UNSIGNED to match users.id
-ALTER TABLE hotwords
-  MODIFY user_id BIGINT UNSIGNED NOT NULL;
+-- hotwords.user_id 在 011 中已定义为 BIGINT，此迁移保留兼容性
+-- 原 MySQL 迁移是 INT -> BIGINT UNSIGNED，PostgreSQL 无需此修正
