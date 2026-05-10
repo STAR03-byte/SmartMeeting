@@ -108,9 +108,9 @@ onMounted(loadDecisions);
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto p-6">
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold">决策管理</h1>
+  <div class="max-w-5xl mx-auto p-4 sm:p-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+      <h1 class="text-xl sm:text-2xl font-bold">决策管理</h1>
       <div class="flex items-center gap-2">
         <button
           v-if="decisions.length > 0"
@@ -119,7 +119,7 @@ onMounted(loadDecisions);
         >
           导出 Markdown
         </button>
-        <select v-model="statusFilter" class="px-3 py-2 border rounded-lg" @change="loadDecisions">
+        <select v-model="statusFilter" class="px-3 py-2 border rounded-lg text-sm" @change="loadDecisions">
           <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
         </select>
       </div>
@@ -139,7 +139,7 @@ onMounted(loadDecisions);
         :key="d.id"
         class="border rounded-lg p-4 hover:shadow-md transition-shadow"
       >
-        <div class="flex items-start justify-between gap-3 mb-2">
+        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-2">
           <div class="flex items-center gap-2 flex-wrap">
             <span
               class="px-2 py-0.5 text-xs rounded-full"
@@ -191,7 +191,7 @@ onMounted(loadDecisions);
           背景：{{ d.context }}
         </div>
 
-        <div class="flex items-center gap-4 text-xs text-gray-400">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-gray-400">
           <span v-if="d.proposer_name">提出者：{{ d.proposer_name }}</span>
           <span>会议 #{{ d.meeting_id }}</span>
           <button class="text-blue-500 hover:underline" @click="goToMeeting(d.meeting_id)">查看会议</button>

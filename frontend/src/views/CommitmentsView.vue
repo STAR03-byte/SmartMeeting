@@ -115,9 +115,9 @@ onMounted(loadCommitments);
 </script>
 
 <template>
-  <div class="max-w-5xl mx-auto p-6">
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold">承诺追踪</h1>
+  <div class="max-w-5xl mx-auto p-4 sm:p-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+      <h1 class="text-xl sm:text-2xl font-bold">承诺追踪</h1>
       <div class="flex items-center gap-2">
         <button
           v-if="commitments.length > 0"
@@ -126,7 +126,7 @@ onMounted(loadCommitments);
         >
           导出 Markdown
         </button>
-        <select v-model="statusFilter" class="px-3 py-2 border rounded-lg" @change="loadCommitments">
+        <select v-model="statusFilter" class="px-3 py-2 border rounded-lg text-sm" @change="loadCommitments">
           <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
         </select>
       </div>
@@ -146,7 +146,7 @@ onMounted(loadCommitments);
         :key="c.id"
         class="border rounded-lg p-4 hover:shadow-md transition-shadow"
       >
-        <div class="flex items-start justify-between gap-3 mb-2">
+        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-2">
           <div class="flex items-center gap-2 flex-wrap">
             <span
               class="px-2 py-0.5 text-xs rounded-full"
@@ -193,7 +193,7 @@ onMounted(loadCommitments);
 
         <p class="text-gray-800 mb-2">{{ c.content }}</p>
 
-        <div class="flex items-center gap-4 text-xs text-gray-400">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-gray-400">
           <span>会议 #{{ c.meeting_id }}</span>
           <button class="text-blue-500 hover:underline" @click="goToMeeting(c.meeting_id)">查看会议</button>
           <span v-if="c.linked_task_id">关联任务 #{{ c.linked_task_id }}</span>
