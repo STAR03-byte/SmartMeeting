@@ -25,6 +25,7 @@ from app.schemas.ai_assistant import (
 )
 from app.schemas.auth import CurrentUserOut
 from app.services.ai.ai_assistant_service import AIAssistantService
+from app.services.ai import chat_service
 from app.services.ai.llm_service import llm_client
 from app.services.business.meeting_service import get_meeting
 from .auth import get_current_user
@@ -76,12 +77,12 @@ def _build_chat_stream(
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-async def _require_conversation_owner(
+def _require_conversation_owner(
     db: Session,
     conversation_id: int,
     current_user: CurrentUserOut,
 ) -> None:
-    conversation = await ai_service.get_conversation(db, conversation_id, current_user.id)
+    conversation = chat_service.get_conversation(db, conversation_id, current_user.id)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
@@ -158,7 +159,7 @@ async def list_conversations(
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[ConversationResponse]:
     """获取用户对话列表。"""
-    conversations = await ai_service.get_conversations(db, current_user.id, limit=limit, offset=offset)
+    conversations = chat_service.get_conversations(db, current_user.id, limit=limit, offset=offset)
     return [ConversationResponse.model_validate(item) for item in conversations]
 
 
@@ -174,7 +175,7 @@ async def create_conversation(
 ) -> ConversationResponse:
     """创建新对话。"""
     title = (payload.title or "新对话").strip() or "新对话"
-    conversation = await ai_service.create_conversation(db, user_id=current_user.id, title=title)
+    conversation = chat_service.create_conversation(db, user_id=current_user.id, title=title)
     return ConversationResponse.model_validate(conversation)
 
 
@@ -185,8 +186,8 @@ async def delete_conversation(
     current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> None:
     """删除对话。"""
-    await _require_conversation_owner(db, id, current_user)
-    deleted = await ai_service.delete_conversation(db, conversation_id=id, user_id=current_user.id)
+    _require_conversation_owner(db, id, current_user)
+    deleted = chat_service.delete_conversation(db, conversation_id=id, user_id=current_user.id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Conversation not found")
 
@@ -198,8 +199,8 @@ async def get_conversation_messages(
     current_user: Annotated[CurrentUserOut, Depends(get_current_user)],
 ) -> list[ConversationMessageResponse]:
     """获取对话消息。"""
-    await _require_conversation_owner(db, id, current_user)
-    messages = await ai_service.get_messages(db, conversation_id=id)
+    _require_conversation_owner(db, id, current_user)
+    messages = chat_service.get_messages(db, conversation_id=id)
     return [ConversationMessageResponse.model_validate(msg) for msg in messages]
 
 
@@ -214,7 +215,7 @@ async def chat(
         raise HTTPException(status_code=400, detail="message cannot be empty")
 
     if payload.conversation_id is not None:
-        await _require_conversation_owner(db, payload.conversation_id, current_user)
+        _require_conversation_owner(db, payload.conversation_id, current_user)
 
     meeting_id = payload.context.meeting_id if payload.context is not None else None
     task_id = payload.context.task_ids[0] if payload.context is not None and payload.context.task_ids else None
@@ -241,7 +242,7 @@ async def chat_get(
 ) -> StreamingResponse:
     """兼容 EventSource 的 GET SSE 聊天入口。"""
     if conversation_id is not None:
-        await _require_conversation_owner(db, conversation_id, current_user)
+        _require_conversation_owner(db, conversation_id, current_user)
     _require_ai_context_access(db, current_user, meeting_id=meeting_id, task_id=task_id)
 
     return _build_chat_stream(
