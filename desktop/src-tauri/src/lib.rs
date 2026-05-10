@@ -4,6 +4,7 @@ mod meeting_session;
 mod transcription;
 
 use meeting_session::{MeetingSession, MeetingSessionManager};
+use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::State;
 use transcription::{TranscriptResult, WhisperConfig};
@@ -114,9 +115,13 @@ fn set_server_config(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // 初始使用临时路径，setup 中会更新为 Tauri app data 目录
+    let data_dir = std::env::current_dir()
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .join(".smartmeeting");
     let app_state = AppState {
         whisper_config: Mutex::new(WhisperConfig::default()),
-        session_manager: MeetingSessionManager::new(),
+        session_manager: MeetingSessionManager::new(data_dir),
     };
 
     tauri::Builder::default()
