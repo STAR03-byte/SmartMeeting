@@ -408,7 +408,8 @@ def update_meeting(db: Session, meeting: Meeting, payload: MeetingUpdate) -> Mee
 
 def delete_meeting(db: Session, meeting: Meeting) -> None:
     """删除会议。participants 需手动删除（无 cascade），其余由 ORM cascade 级联删除。"""
-    db.query(MeetingParticipant).filter(MeetingParticipant.meeting_id == meeting.id).delete(synchronize_session=False)
+    db.query(MeetingParticipant).filter(MeetingParticipant.meeting_id == meeting.id).delete(synchronize_session="fetch")
+    db.expire(meeting, ["participants"])
     db.delete(meeting)
     db.commit()
 

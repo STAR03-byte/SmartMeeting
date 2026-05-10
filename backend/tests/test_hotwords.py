@@ -59,7 +59,7 @@ def test_hotword_terms_cache_hits_once(monkeypatch: MonkeyPatch) -> None:
         item.word = "SmartMeeting"
         return [item]
 
-    from app.services import hotword_service
+    from app.services.business import hotword_service
 
     monkeypatch.setattr(hotword_service, "list_hotwords", fake_list_hotwords)
 

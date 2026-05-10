@@ -83,11 +83,11 @@ def test_postprocess_extracted_tasks_start_as_drafts_and_can_be_confirmed() -> N
 
         async def run() -> tuple[list[Task], str]:
             with patch(
-                "app.services.meeting_service.llm_extract_action_items_for_batch",
+                "app.services.business.meeting_service.llm_extract_action_items_for_batch",
                 new_callable=AsyncMock,
                 return_value=[],
             ), patch(
-                "app.services.meeting_service.llm_extract_action_items",
+                "app.services.business.meeting_service.llm_extract_action_items",
                 new_callable=AsyncMock,
                 return_value=[
                     {
@@ -98,7 +98,7 @@ def test_postprocess_extracted_tasks_start_as_drafts_and_can_be_confirmed() -> N
                         "due_hint": "Friday",
                     }
                 ],
-            ), patch("app.services.meeting_service.is_actionable_task_text", return_value=True):
+            ), patch("app.services.business.meeting_service.is_actionable_task_text", return_value=True):
                 return await generate_tasks_from_transcripts_with_llm(
                     db,
                     meeting.id,

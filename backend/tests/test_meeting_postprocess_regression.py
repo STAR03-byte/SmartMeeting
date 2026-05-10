@@ -93,7 +93,7 @@ def test_build_meeting_summary_with_llm_falls_back_to_rules() -> None:
 
     async def run() -> tuple[str, str]:
         with patch(
-            "app.services.meeting_service.llm_generate_meeting_summary",
+            "app.services.business.meeting_service.llm_generate_meeting_summary",
             new_callable=AsyncMock,
             side_effect=LLMServiceError("boom"),
         ):
@@ -121,7 +121,7 @@ def test_build_meeting_summary_with_llm_returns_llm_summary_on_success() -> None
 
     async def run() -> tuple[str, str]:
         with patch(
-            "app.services.meeting_service.llm_generate_meeting_summary",
+            "app.services.business.meeting_service.llm_generate_meeting_summary",
             new_callable=AsyncMock,
             return_value="LLM 生成的摘要",
         ):
@@ -250,7 +250,7 @@ def test_generate_tasks_from_transcripts_with_llm_falls_back_to_rules() -> None:
 
         async def run() -> tuple[list[Task], str]:
             with patch(
-                "app.services.meeting_service.llm_extract_action_items",
+                "app.services.business.meeting_service.llm_extract_action_items",
                 new_callable=AsyncMock,
                 side_effect=LLMServiceError("boom"),
             ):
@@ -283,7 +283,7 @@ def test_generate_tasks_from_transcripts_with_llm_uses_llm_result() -> None:
 
         async def run() -> tuple[list[Task], str]:
             with patch(
-                "app.services.meeting_service.llm_extract_action_items",
+                "app.services.business.meeting_service.llm_extract_action_items",
                 new_callable=AsyncMock,
                 return_value=[
                     {
@@ -326,7 +326,7 @@ def test_generate_tasks_from_transcripts_with_llm_filters_colloquial_titles() ->
 
         async def run() -> tuple[list[Task], str]:
             with patch(
-                "app.services.meeting_service.llm_extract_action_items",
+                "app.services.business.meeting_service.llm_extract_action_items",
                 new_callable=AsyncMock,
                 return_value=[
                     {
@@ -365,7 +365,7 @@ def test_generate_tasks_from_transcripts_with_llm_falls_back_when_llm_returns_em
 
         async def run() -> tuple[list[Task], str]:
             with patch(
-                "app.services.meeting_service.llm_extract_action_items",
+                "app.services.business.meeting_service.llm_extract_action_items",
                 new_callable=AsyncMock,
                 return_value=[],
             ):
@@ -398,7 +398,7 @@ def test_generate_tasks_from_transcripts_with_llm_reuses_existing_tasks() -> Non
 
         async def seed() -> tuple[list[Task], str]:
             with patch(
-                "app.services.meeting_service.llm_extract_action_items",
+                "app.services.business.meeting_service.llm_extract_action_items",
                 new_callable=AsyncMock,
                 return_value=[
                     {
@@ -455,7 +455,7 @@ def test_generate_tasks_from_transcripts_with_llm_uses_batched_extraction() -> N
 
         async def run() -> tuple[list[Task], str]:
             with patch(
-                "app.services.meeting_service.llm_extract_action_items_for_batch",
+                "app.services.business.meeting_service.llm_extract_action_items_for_batch",
                 new_callable=AsyncMock,
                 return_value=[
                     {
@@ -476,7 +476,7 @@ def test_generate_tasks_from_transcripts_with_llm_uses_batched_extraction() -> N
                     },
                 ],
             ) as batched_mock, patch(
-                "app.services.meeting_service.llm_extract_action_items",
+                "app.services.business.meeting_service.llm_extract_action_items",
                 new_callable=AsyncMock,
                 return_value=[],
             ) as single_mock:

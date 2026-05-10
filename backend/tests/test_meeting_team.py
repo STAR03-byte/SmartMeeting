@@ -41,7 +41,7 @@ def test_create_personal_meeting_without_team_id(auth_client: TestClient) -> Non
     participants = participants_resp.json()
     assert len(participants) == 1
     assert participants[0]["user_id"] == organizer_id
-    assert participants[0]["role"] == "organizer"
+    assert participants[0]["participant_role"] == "required"
 
 
 def test_create_team_meeting_with_valid_team_member(auth_client: TestClient) -> None:
@@ -118,7 +118,7 @@ def test_create_team_meeting_with_valid_team_member(auth_client: TestClient) -> 
     participants = participants_resp.json()
     assert len(participants) == 1
     assert participants[0]["user_id"] == organizer_id
-    assert participants[0]["role"] == "organizer"
+    assert participants[0]["participant_role"] == "required"
 
     list_resp = auth_client.get(f"/api/v1/meetings?team_id={team_id}")
     assert list_resp.status_code == 200

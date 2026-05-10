@@ -418,12 +418,14 @@ class JobManager:
         # 标记所有未完成任务为 interrupted
         db = SessionLocal()
         try:
+            from datetime import datetime
             db.execute(
                 text(
                     "UPDATE processing_jobs SET status = 'interrupted', error = '服务器关闭', "
-                    "completed_at = NOW() WHERE status IN "
+                    "completed_at = :now WHERE status IN "
                     "('pending', 'queued', 'transcribing', 'diarizing', 'generating_summary', 'extracting_tasks')"
-                )
+                ),
+                {"now": datetime.now()},
             )
             db.commit()
         except Exception:
@@ -440,12 +442,14 @@ class JobManager:
         """启动时恢复僵死任务。"""
         db = SessionLocal()
         try:
+            from datetime import datetime
             result = db.execute(
                 text(
                     "UPDATE processing_jobs SET status = 'failed', error = '服务器重启导致任务中断', "
-                    "completed_at = NOW() WHERE status IN "
+                    "completed_at = :now WHERE status IN "
                     "('pending', 'queued', 'transcribing', 'diarizing', 'generating_summary', 'extracting_tasks')"
-                )
+                ),
+                {"now": datetime.now()},
             )
             db.commit()
             if result.rowcount > 0:

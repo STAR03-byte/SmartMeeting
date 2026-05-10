@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib as real_importlib
+import shutil
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,11 +12,12 @@ from app.services.ai.whisper_service import WhisperServiceError
 @pytest.fixture
 def mock_faster_whisper():
     real_import = real_importlib.import_module
-    with patch("app.services.faster_whisper_service.importlib.import_module") as mock_import:
+    with patch("app.services.ai.faster_whisper_service.importlib.import_module") as mock_import, \
+         patch.object(shutil, "which", return_value="ffmpeg"):
         mock_fw = MagicMock()
         mock_model = MagicMock()
         mock_fw.WhisperModel.return_value = mock_model
-        
+
         def side_effect(name, *args, **kwargs):
             if name == "faster_whisper":
                 return mock_fw
@@ -24,14 +26,14 @@ def mock_faster_whisper():
                 mock_torch.cuda.is_available.return_value = True
                 return mock_torch
             return real_import(name, *args, **kwargs)
-            
+
         mock_import.side_effect = side_effect
         yield mock_fw, mock_model
 
 def test_faster_whisper_transcriber_gpu_load(mock_faster_whisper):
     mock_fw, mock_model = mock_faster_whisper
     
-    with patch("app.services.faster_whisper_service.settings") as mock_settings:
+    with patch("app.services.ai.faster_whisper_service.settings") as mock_settings:
         mock_settings.whisper_device = "auto"
         mock_settings.whisper_model = "small"
         mock_settings.faster_whisper_compute_type = "int8_float16"
@@ -47,8 +49,9 @@ def test_faster_whisper_transcriber_gpu_load(mock_faster_whisper):
 
 def test_faster_whisper_cpu_fallback():
     real_import = real_importlib.import_module
-    with patch("app.services.faster_whisper_service.importlib.import_module") as mock_import, \
-         patch("app.services.faster_whisper_service.settings") as mock_settings:
+    with patch("app.services.ai.faster_whisper_service.importlib.import_module") as mock_import, \
+         patch.object(shutil, "which", return_value="ffmpeg"), \
+         patch("app.services.ai.faster_whisper_service.settings") as mock_settings:
         mock_settings.whisper_device = "auto"
         mock_settings.whisper_model = "small"
         
@@ -75,10 +78,10 @@ def test_faster_whisper_cpu_fallback():
 
 def test_faster_whisper_raises_when_model_load_fails():
     real_import = real_importlib.import_module
-    with patch("app.services.faster_whisper_service.importlib.import_module") as mock_import, patch(
-        "app.services.faster_whisper_service.shutil.which",
+    with patch("app.services.ai.faster_whisper_service.importlib.import_module") as mock_import, patch.object(
+        shutil, "which",
         return_value="ffmpeg",
-    ), patch("app.services.faster_whisper_service.settings") as mock_settings:
+    ), patch("app.services.ai.faster_whisper_service.settings") as mock_settings:
         mock_settings.whisper_device = "cpu"
         mock_settings.whisper_model = "small"
 
