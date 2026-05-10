@@ -5,14 +5,8 @@
 """
 
 import logging
-from typing import TYPE_CHECKING
-
-import numpy as np
 
 from app.core.config import settings
-
-if TYPE_CHECKING:
-    from numpy.typing import NDArray
 
 logger = logging.getLogger(__name__)
 

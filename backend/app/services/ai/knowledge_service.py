@@ -209,6 +209,116 @@ def search_participants(
             break
 
 
+def search_decisions(
+    db: Session,
+    user_id: int,
+    terms: list[str],
+    team_id: int | None,
+    is_admin: bool,
+    limit: int,
+    sources: list[dict[str, object]],
+    seen: set[tuple[int, str, str]],
+) -> None:
+    """搜索匹配的决策。"""
+    from app.models.decision import Decision
+
+    query = (
+        db.query(Decision, Meeting)
+        .join(Meeting, Meeting.id == Decision.meeting_id)
+        .outerjoin(MeetingParticipant, MeetingParticipant.meeting_id == Meeting.id)
+        .outerjoin(TeamMember, TeamMember.team_id == Meeting.team_id)
+        .filter(Decision.status == "confirmed")
+    )
+    if not is_admin:
+        query = query.filter(or_(Meeting.organizer_id == user_id, MeetingParticipant.user_id == user_id, TeamMember.user_id == user_id))
+    if team_id is not None:
+        query = query.filter(Meeting.team_id == team_id)
+    if terms:
+        query = query.filter(or_(*(Decision.content.ilike(f"%{term}%") for term in terms)))
+    rows = query.order_by(Decision.created_at.desc()).limit(limit * 2).all()
+    for decision, meeting in rows:
+        _append_source(sources, seen, meeting=meeting, source_type="decision", snippet=decision.content)
+        if len(sources) >= limit:
+            break
+
+
+def search_commitments(
+    db: Session,
+    user_id: int,
+    terms: list[str],
+    team_id: int | None,
+    is_admin: bool,
+    limit: int,
+    sources: list[dict[str, object]],
+    seen: set[tuple[int, str, str]],
+) -> None:
+    """搜索匹配的承诺。"""
+    from app.models.commitment import Commitment
+
+    query = (
+        db.query(Commitment, Meeting)
+        .join(Meeting, Meeting.id == Commitment.meeting_id)
+        .outerjoin(MeetingParticipant, MeetingParticipant.meeting_id == Meeting.id)
+        .outerjoin(TeamMember, TeamMember.team_id == Meeting.team_id)
+        .filter(Commitment.status.in_(["confirmed", "in_progress", "done"]))
+    )
+    if not is_admin:
+        query = query.filter(or_(Meeting.organizer_id == user_id, MeetingParticipant.user_id == user_id, TeamMember.user_id == user_id))
+    if team_id is not None:
+        query = query.filter(Meeting.team_id == team_id)
+    if terms:
+        query = query.filter(or_(*(Commitment.content.ilike(f"%{term}%") for term in terms)))
+    rows = query.order_by(Commitment.created_at.desc()).limit(limit * 2).all()
+    for commitment, meeting in rows:
+        snippet = commitment.content
+        if commitment.assignee_name:
+            snippet = f"[{commitment.assignee_name}] {snippet}"
+        _append_source(sources, seen, meeting=meeting, source_type="commitment", snippet=snippet)
+        if len(sources) >= limit:
+            break
+
+
+def _try_semantic_search(
+    db: Session,
+    user_id: int,
+    question: str,
+    limit: int,
+    sources: list[dict[str, object]],
+    seen: set[tuple[int, str, str]],
+) -> bool:
+    """尝试语义搜索，成功返回 True。"""
+    from app.services.ai.embedding_service import is_available, encode_single
+    from app.services.ai.vector_store import search as vector_search
+
+    if not is_available():
+        return False
+
+    query_embedding = encode_single(question)
+    if not query_embedding:
+        return False
+
+    results = vector_search(db=db, user_id=user_id, query_embedding=query_embedding, query_text=question, limit=limit)
+    if not results:
+        return False
+
+    meeting_ids = list({r["meeting_id"] for r in results})
+    meetings = {}
+    for m in db.query(Meeting).filter(Meeting.id.in_(meeting_ids)).all():
+        meetings[m.id] = m
+
+    for r in results:
+        meeting = meetings.get(r["meeting_id"])
+        if not meeting:
+            continue
+        _append_source(
+            sources, seen, meeting=meeting,
+            source_type=r["source_type"],
+            snippet=r["content"],
+        )
+
+    return len(sources) > 0
+
+
 async def query_meeting_knowledge(
     db: Session,
     user_id: int,
@@ -223,18 +333,29 @@ async def query_meeting_knowledge(
     sources: list[dict[str, object]] = []
     seen: set[tuple[int, str, str]] = set()
 
-    meeting_query = visible_meeting_query(db, user_id, is_admin=is_admin)
+    # 优先尝试语义搜索
+    semantic_ok = _try_semantic_search(db, user_id, question, limit, sources, seen)
 
-    search_meetings(db, user_id, terms, meeting_query, team_id, limit, sources, seen)
+    # 语义搜索不足时，回退到关键词搜索
+    if not semantic_ok or len(sources) < limit:
+        meeting_query = visible_meeting_query(db, user_id, is_admin=is_admin)
+        search_meetings(db, user_id, terms, meeting_query, team_id, limit, sources, seen)
+
+        if len(sources) < limit:
+            search_transcripts(db, user_id, terms, team_id, is_admin, limit, sources, seen)
+
+        if len(sources) < limit:
+            search_tasks(db, user_id, terms, team_id, is_admin, limit, sources, seen)
+
+        if len(sources) < limit:
+            search_participants(db, user_id, terms, team_id, is_admin, limit, sources, seen)
+
+    # 始终搜索决策和承诺
+    if len(sources) < limit:
+        search_decisions(db, user_id, terms, team_id, is_admin, limit, sources, seen)
 
     if len(sources) < limit:
-        search_transcripts(db, user_id, terms, team_id, is_admin, limit, sources, seen)
-
-    if len(sources) < limit:
-        search_tasks(db, user_id, terms, team_id, is_admin, limit, sources, seen)
-
-    if len(sources) < limit:
-        search_participants(db, user_id, terms, team_id, is_admin, limit, sources, seen)
+        search_commitments(db, user_id, terms, team_id, is_admin, limit, sources, seen)
 
     if not sources:
         return {"answer": "没有在你有权限访问的会议知识库中找到相关内容。", "sources": [], "used_llm": False}
