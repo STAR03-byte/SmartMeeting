@@ -21,7 +21,7 @@ from app.services.business.meeting_service import (
     generate_tasks_from_transcripts_with_llm,
     normalize_summary_text,
 )
-from app.services import meeting_service
+from app.services.business import meeting_service
 
 class _MetadataOwner(Protocol):
     metadata: MetaData
