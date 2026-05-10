@@ -16,6 +16,8 @@ const TeamDetailView = () => import("../views/TeamDetailView.vue");
 const InvitationsView = () => import("../views/InvitationsView.vue");
 const InviteAcceptView = () => import("../views/InviteAcceptView.vue");
 const SearchView = () => import("../views/SearchView.vue");
+const DecisionsView = () => import("../views/DecisionsView.vue");
+const CommitmentsView = () => import("../views/CommitmentsView.vue");
 
 const router = createRouter({
   history: createWebHistory(),
@@ -62,6 +64,18 @@ const router = createRouter({
       path: "/search",
       name: "search",
       component: SearchView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/decisions",
+      name: "decisions",
+      component: DecisionsView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/commitments",
+      name: "commitments",
+      component: CommitmentsView,
       meta: { requiresAuth: true },
     },
     {

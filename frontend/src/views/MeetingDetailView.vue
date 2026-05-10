@@ -93,6 +93,75 @@
       </splitpanes>
     </div>
 
+    <!-- 决策与承诺 -->
+    <el-card class="base-card" style="margin-top: 24px;">
+      <template #header>
+        <el-tabs v-model="entityTab">
+          <el-tab-pane label="决策" name="decisions" />
+          <el-tab-pane label="承诺" name="commitments" />
+        </el-tabs>
+      </template>
+
+      <!-- 决策列表 -->
+      <div v-if="entityTab === 'decisions'">
+        <div v-if="decisions.length === 0" class="text-gray-400 text-sm py-4 text-center">暂无决策</div>
+        <div v-for="d in decisions" :key="d.id" class="border-b py-3 last:border-b-0">
+          <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 text-xs rounded-full"
+                :class="{
+                  'bg-yellow-100 text-yellow-700': d.status === 'candidate',
+                  'bg-green-100 text-green-700': d.status === 'confirmed',
+                  'bg-red-100 text-red-700': d.status === 'rejected',
+                }">
+                {{ { candidate: '待确认', confirmed: '已确认', rejected: '已拒绝' }[d.status] || d.status }}
+              </span>
+              <span v-if="d.confidence !== null" class="text-xs" :class="d.confidence >= 0.8 ? 'text-green-600' : d.confidence >= 0.5 ? 'text-yellow-600' : 'text-red-600'">
+                {{ (d.confidence * 100).toFixed(0) }}%
+              </span>
+            </div>
+            <div class="flex gap-1">
+              <button v-if="d.status === 'candidate'" class="text-xs text-green-600 hover:underline" @click="confirmDecision(d)">确认</button>
+              <button v-if="d.status === 'candidate'" class="text-xs text-red-600 hover:underline" @click="rejectDecision(d)">拒绝</button>
+              <button class="text-xs text-gray-400 hover:underline" @click="removeDecision(d)">删除</button>
+            </div>
+          </div>
+          <p class="text-sm text-gray-700">{{ d.content }}</p>
+          <p v-if="d.context" class="text-xs text-gray-400 mt-1">背景：{{ d.context }}</p>
+        </div>
+      </div>
+
+      <!-- 承诺列表 -->
+      <div v-if="entityTab === 'commitments'">
+        <div v-if="commitments.length === 0" class="text-gray-400 text-sm py-4 text-center">暂无承诺</div>
+        <div v-for="c in commitments" :key="c.id" class="border-b py-3 last:border-b-0">
+          <div class="flex items-center justify-between mb-1">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 text-xs rounded-full"
+                :class="{
+                  'bg-yellow-100 text-yellow-700': c.status === 'candidate',
+                  'bg-blue-100 text-blue-700': c.status === 'confirmed',
+                  'bg-indigo-100 text-indigo-700': c.status === 'in_progress',
+                  'bg-green-100 text-green-700': c.status === 'done',
+                  'bg-gray-100 text-gray-600': c.status === 'abandoned',
+                }">
+                {{ { candidate: '待确认', confirmed: '已确认', in_progress: '进行中', done: '已完成', abandoned: '已放弃' }[c.status] || c.status }}
+              </span>
+              <span v-if="c.assignee_name" class="text-xs text-gray-500">{{ c.assignee_name }}</span>
+              <span v-if="c.due_hint" class="text-xs text-orange-600">截止：{{ c.due_hint }}</span>
+            </div>
+            <div class="flex gap-1">
+              <button v-if="c.status === 'candidate'" class="text-xs text-green-600 hover:underline" @click="advanceCommitment(c)">确认</button>
+              <button v-if="c.status === 'confirmed'" class="text-xs text-blue-600 hover:underline" @click="advanceCommitment(c)">开始</button>
+              <button v-if="c.status === 'in_progress'" class="text-xs text-green-600 hover:underline" @click="advanceCommitment(c)">完成</button>
+              <button class="text-xs text-gray-400 hover:underline" @click="removeCommitment(c)">删除</button>
+            </div>
+          </div>
+          <p class="text-sm text-gray-700">{{ c.content }}</p>
+        </div>
+      </div>
+    </el-card>
+
     <el-dialog v-model="clearDialogVisible" :title="$t('meeting.clearContentSelectiveTitle')" width="460px">
       <el-checkbox-group v-model="selectedClearOptions" class="clear-options">
         <el-checkbox label="transcripts">{{ $t('meeting.clearTranscripts') }}</el-checkbox>
@@ -130,6 +199,10 @@ import ParticipantManager from "../components/meeting/ParticipantManager.vue";
 
 import { createMeetingShareLink, exportMeetingSummary, listMeetingAudios, revokeMeetingShareLink } from "../api/meetings";
 import { getMeetingParticipants } from "../api/participants";
+import { listDecisions, updateDecision, deleteDecision } from "../api/decisions";
+import { listCommitments, updateCommitment, deleteCommitment } from "../api/commitments";
+import type { Decision } from "../api/decisions";
+import type { Commitment } from "../api/commitments";
 import { useAuthStore } from "../stores/authStore";
 import { useMeetingStore } from "../stores/meetingStore";
 import type { TaskCreatePayload } from "../api/types";
@@ -155,6 +228,49 @@ const selectedClearOptions = ref<Array<'transcripts' | 'tasks' | 'summary' | 'au
   'audios',
   'resetStatus',
 ]);
+
+// 决策与承诺
+const entityTab = ref("decisions");
+const decisions = ref<Decision[]>([]);
+const commitments = ref<Commitment[]>([]);
+
+async function loadEntities() {
+  const [dRes, cRes] = await Promise.all([
+    listDecisions({ meeting_id: meetingId, limit: 100 }),
+    listCommitments({ meeting_id: meetingId, limit: 100 }),
+  ]);
+  decisions.value = dRes.items;
+  commitments.value = cRes.items;
+}
+
+async function confirmDecision(d: Decision) {
+  await updateDecision(d.id, { status: "confirmed" });
+  await loadEntities();
+}
+
+async function rejectDecision(d: Decision) {
+  await updateDecision(d.id, { status: "rejected" });
+  await loadEntities();
+}
+
+async function removeDecision(d: Decision) {
+  await deleteDecision(d.id);
+  await loadEntities();
+}
+
+async function advanceCommitment(c: Commitment) {
+  const next: Record<string, string> = { candidate: "confirmed", confirmed: "in_progress", in_progress: "done" };
+  const n = next[c.status];
+  if (n) {
+    await updateCommitment(c.id, { status: n });
+    await loadEntities();
+  }
+}
+
+async function removeCommitment(c: Commitment) {
+  await deleteCommitment(c.id);
+  await loadEntities();
+}
 
 const canCreateTask = computed(() => {
   const currentUser = authStore.currentUser;
@@ -255,6 +371,7 @@ onMounted(async () => {
     return;
   }
   await reloadMeeting();
+  await loadEntities();
 });
 
 async function reloadMeeting() {
