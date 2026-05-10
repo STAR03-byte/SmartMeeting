@@ -11,6 +11,7 @@ from app.api.v1.endpoints.jobs import router as jobs_router
 from app.api.v1.endpoints.meeting_shares import router as meeting_shares_router
 from app.api.v1.endpoints.meeting_topics import router as meeting_topics_router
 from app.api.v1.endpoints.search import router as search_router
+from app.api.v1.endpoints.streaming_transcript import router as streaming_transcript_router
 from app.api.v1.endpoints.meetings import router as meetings_router
 from app.api.v1.endpoints.shared_meetings import router as shared_meetings_router
 from app.api.v1.endpoints.participants import router as participants_router
@@ -39,3 +40,4 @@ api_router.include_router(decisions_router)
 api_router.include_router(commitments_router)
 api_router.include_router(meeting_topics_router)
 api_router.include_router(search_router)
+api_router.include_router(streaming_transcript_router)
