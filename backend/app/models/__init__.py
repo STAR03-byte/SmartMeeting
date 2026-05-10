@@ -18,6 +18,7 @@ from app.models.llm_usage import LLMUsage
 from app.models.decision import Decision
 from app.models.commitment import Commitment
 from app.models.meeting_topic import MeetingTopic
+from app.models.embedding import Embedding
 
 __all__ = [
     "User",
@@ -39,4 +40,5 @@ __all__ = [
     "Decision",
     "Commitment",
     "MeetingTopic",
+    "Embedding",
 ]

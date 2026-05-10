@@ -15,6 +15,7 @@ const TeamsView = () => import("../views/TeamsView.vue");
 const TeamDetailView = () => import("../views/TeamDetailView.vue");
 const InvitationsView = () => import("../views/InvitationsView.vue");
 const InviteAcceptView = () => import("../views/InviteAcceptView.vue");
+const SearchView = () => import("../views/SearchView.vue");
 
 const router = createRouter({
   history: createWebHistory(),
@@ -55,6 +56,12 @@ const router = createRouter({
       path: "/ai-assistant",
       name: "ai-assistant",
       component: AIAssistantView,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/search",
+      name: "search",
+      component: SearchView,
       meta: { requiresAuth: true },
     },
     {

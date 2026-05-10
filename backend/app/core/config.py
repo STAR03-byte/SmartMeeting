@@ -41,6 +41,12 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 2000
     llm_timeout: int = 60  # seconds
     llm_fallback_provider: str = "ollama"  # ollama | mock | none
+
+    # Embedding Settings
+    embedding_model: str = "BAAI/bge-small-zh-v1.5"
+    embedding_dimension: int = 384
+    embedding_device: str = "cpu"  # cpu | cuda
+    embedding_cache_dir: str = "backend/storage/models/hf-cache"
     hf_endpoint: str = ""
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_model: str = "llama3.1"

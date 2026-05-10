@@ -13,6 +13,7 @@ from app.core.database import Base  # pyright: ignore[reportAny]
 if TYPE_CHECKING:
     from app.models.commitment import Commitment
     from app.models.decision import Decision
+    from app.models.embedding import Embedding
     from app.models.meeting_audio import MeetingAudio
     from app.models.meeting_participant import MeetingParticipant
     from app.models.meeting_topic import MeetingTopic
@@ -65,3 +66,4 @@ class Meeting(TypedBase):
     decisions: Mapped[list["Decision"]] = relationship("Decision", back_populates="meeting", cascade="all, delete-orphan", lazy="selectin")
     commitments: Mapped[list["Commitment"]] = relationship("Commitment", back_populates="meeting", cascade="all, delete-orphan", lazy="selectin")
     topics: Mapped[list["MeetingTopic"]] = relationship("MeetingTopic", back_populates="meeting", cascade="all, delete-orphan", lazy="selectin")
+    embeddings: Mapped[list["Embedding"]] = relationship("Embedding", cascade="all, delete-orphan", lazy="selectin")

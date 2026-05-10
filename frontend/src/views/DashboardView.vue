@@ -14,6 +14,22 @@
       </div>
     </header>
 
+    <section class="search-bar-section">
+      <form class="search-bar" @submit.prevent="goSearch">
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="搜索会议内容、决策、承诺..."
+          class="search-input"
+        />
+        <button type="submit" class="search-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+        </button>
+      </form>
+    </section>
+
     <section class="stats-grid">
       <el-card class="stat-card">
         <div class="stat-icon stat-icon--blue">
@@ -130,6 +146,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useRouter } from "vue-router";
 
 import { useAuthStore } from "../stores/authStore";
 import { useMeetingStore } from "../stores/meetingStore";
@@ -137,9 +154,18 @@ import type { MeetingStatus } from "../api/types";
 import { getPendingInvitationsCount } from "../api/teamInvitations";
 
 const { t } = useI18n();
+const router = useRouter();
 const authStore = useAuthStore();
 const store = useMeetingStore();
 const pendingInvitationsCount = ref(0);
+const searchQuery = ref("");
+
+function goSearch() {
+  const q = searchQuery.value.trim();
+  if (q) {
+    router.push({ name: "search", query: { q } });
+  }
+}
 
 const greeting = computed(() => {
   const hour = new Date().getHours();
@@ -265,6 +291,44 @@ onMounted(async () => {
 
 .hero-actions :deep(.el-button--primary:hover) {
   background: var(--el-color-primary-light-9);
+}
+
+.search-bar-section {
+  margin-top: -16px;
+}
+
+.search-bar {
+  display: flex;
+  max-width: 640px;
+  margin: 0 auto;
+  background: var(--el-bg-color);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  padding: 14px 20px;
+  font-size: 15px;
+  outline: none;
+  background: transparent;
+}
+
+.search-btn {
+  padding: 14px 20px;
+  background: var(--el-color-primary);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.2s;
+}
+
+.search-btn:hover {
+  background: var(--el-color-primary-light-3);
 }
 
 .stats-grid {

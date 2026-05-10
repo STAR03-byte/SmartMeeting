@@ -30,6 +30,7 @@
 \i database/migrations/029_fix_team_tables_types.sql
 \i database/migrations/030_add_tsvector_columns.sql
 \i database/migrations/031_create_decisions_commitments_topics.sql
+\i database/migrations/032_create_embeddings.sql
 
 \i database/seeds/001_seed_basic_data.sql
 \i database/seeds/002_seed_participants.sql

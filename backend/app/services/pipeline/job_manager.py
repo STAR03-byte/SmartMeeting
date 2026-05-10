@@ -352,6 +352,73 @@ class JobManager:
                 "summary_length": len(summary) if summary else 0,
                 "task_count": len(tasks) if tasks else 0,
             }
+
+            # ── 实体提取（决策 / 承诺 / 主题） ─────────────────────
+            try:
+                from app.services.ai.entity_extraction_service import extract_entities
+                from app.services.ai.llm_service import llm_client
+
+                self._update_job_progress(job_id, "extracting_entities", 0.75, "正在提取决策与承诺...")
+                entities = await extract_entities(db, meeting, transcripts, llm_client)
+                result["decision_count"] = len(entities.get("decisions", []))
+                result["commitment_count"] = len(entities.get("commitments", []))
+                result["topic_count"] = len(entities.get("topics", []))
+            except Exception:
+                logger.exception("Entity extraction failed for meeting %s (non-fatal)", meeting_id)
+
+            # ── 生成 Embedding ──────────────────────────────────
+            try:
+                from app.services.ai.embedding_service import is_available, encode_texts, encode_single
+                from app.services.ai.vector_store import upsert_embedding
+                from sqlalchemy import text as sql_text
+
+                if is_available():
+                    self._update_job_progress(job_id, "indexing", 0.85, "正在生成向量索引...")
+
+                    # 会议标题
+                    title_emb = encode_single(meeting.title)
+                    upsert_embedding(db, meeting.id, "title", meeting.title, title_emb)
+
+                    # 摘要
+                    if summary:
+                        summary_emb = encode_single(summary)
+                        upsert_embedding(db, meeting.id, "summary", summary, summary_emb)
+
+                    # 转写段落（批量）
+                    batch_texts = [f"[{t.speaker_name or '未知'}]: {t.content}" for t in transcripts]
+                    batch_embs = encode_texts(batch_texts)
+                    for t, emb in zip(transcripts, batch_embs):
+                        if emb:
+                            upsert_embedding(
+                                db, meeting.id, "transcript", t.content, emb,
+                                source_id=t.id,
+                                metadata={"speaker": t.speaker_name, "segment_index": t.segment_index},
+                            )
+
+                    # 决策 embedding
+                    for d in entities.get("decisions", []):
+                        d_emb = encode_single(d.content)
+                        if d_emb:
+                            vec_str = f"[{','.join(str(v) for v in d_emb)}]"
+                            db.execute(
+                                sql_text("UPDATE decisions SET embedding = :vec::vector WHERE id = :id"),
+                                {"vec": vec_str, "id": d.id},
+                            )
+
+                    # 承诺 embedding
+                    for c in entities.get("commitments", []):
+                        c_emb = encode_single(c.content)
+                        if c_emb:
+                            vec_str = f"[{','.join(str(v) for v in c_emb)}]"
+                            db.execute(
+                                sql_text("UPDATE commitments SET embedding = :vec::vector WHERE id = :id"),
+                                {"vec": vec_str, "id": c.id},
+                            )
+
+                    db.commit()
+                    result["indexed_items"] = 2 + len(transcripts)  # title + summary + transcripts
+            except Exception:
+                logger.exception("Embedding generation failed for meeting %s (non-fatal)", meeting_id)
             self._update_job_progress(
                 job_id, "completed", 1.0, "后处理完成",
                 result_json=json.dumps(result),
