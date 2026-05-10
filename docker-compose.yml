@@ -1,21 +1,20 @@
 services:
   db:
-    image: mysql:8.0
+    image: pgvector/pgvector:pg16
     container_name: smartmeeting-db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
-      MYSQL_DATABASE: ${DB_NAME:-smartmeeting}
-      MYSQL_USER: ${DB_USER:-smartmeeting}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-smartmeeting}
+      POSTGRES_DB: ${DB_NAME:-smartmeeting}
+      POSTGRES_USER: ${DB_USER:-smartmeeting}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-smartmeeting}
     ports:
-      - "3307:3306"
+      - "5433:5432"
     volumes:
-      - db_data:/var/lib/mysql
+      - db_data:/var/lib/postgresql/data
       - ./database/docker-init.sh:/docker-entrypoint-initdb.d/00_run_migrations.sh
       - ./database/migrations:/docker-entrypoint-initdb.d/migrations:ro
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -p$$MYSQL_ROOT_PASSWORD"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-smartmeeting} -d ${DB_NAME:-smartmeeting}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -28,10 +27,10 @@ services:
     restart: unless-stopped
     environment:
       DB_HOST: db
-      DB_PORT: 3306
+      DB_PORT: 5432
       DB_USER: smartmeeting
       DB_PASSWORD: smartmeeting
-      DB_BACKEND: mysql
+      DB_BACKEND: postgresql
       DB_AUTO_FALLBACK_SQLITE: "false"
       SQLITE_PATH: /app/data/dev.db
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}

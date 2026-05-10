@@ -14,11 +14,11 @@ class Settings(BaseSettings):
 
     # Database
     db_host: str = "127.0.0.1"
-    db_port: int = 3306
-    db_user: str = "root"
-    db_password: str = "root"
+    db_port: int = 5432
+    db_user: str = "smartmeeting"
+    db_password: str = "smartmeeting"
     db_name: str = "smartmeeting"
-    db_backend: str = "mysql"
+    db_backend: str = "postgresql"              # postgresql | sqlite
     db_auto_fallback_sqlite: bool = True
     sqlite_path: str = "backend/dev.db"
 
@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     db_pool_size: int = 10                      # 连接池大小（默认 10）
     db_max_overflow: int = 20                   # 超出连接池大小时的最大连接数
     db_pool_timeout: int = 30                   # 获取连接超时时间（秒）
-    db_pool_recycle: int = 3600                 # 连接回收时间（秒），防止 MySQL 超时断开
+    db_pool_recycle: int = 3600                 # 连接回收时间（秒）
 
     # Task extraction keywords (fallback when LLM unavailable)
     action_keywords: str = "请,负责,需要,完成,提交,跟进"
@@ -103,11 +103,11 @@ class Settings(BaseSettings):
 
     @property
     def sqlalchemy_database_uri(self) -> str:
-        """返回 SQLAlchemy MySQL 连接串。"""
+        """返回 SQLAlchemy PostgreSQL 连接串。"""
 
         return (
-            f"mysql+pymysql://{self.db_user}:{self.db_password}@"
-            f"{self.db_host}:{self.db_port}/{self.db_name}?charset=utf8mb4"
+            f"postgresql+psycopg2://{self.db_user}:{self.db_password}@"
+            f"{self.db_host}:{self.db_port}/{self.db_name}"
         )
 
     @property

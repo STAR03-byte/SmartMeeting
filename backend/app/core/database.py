@@ -29,14 +29,14 @@ def _build_engine():
             **pool_kwargs,
         )
 
-    mysql_engine = create_engine(settings.sqlalchemy_database_uri, **pool_kwargs)
+    pg_engine = create_engine(settings.sqlalchemy_database_uri, **pool_kwargs)
     if not settings.db_auto_fallback_sqlite:
-        return mysql_engine
+        return pg_engine
 
     try:
-        with mysql_engine.connect() as conn:
+        with pg_engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        return mysql_engine
+        return pg_engine
     except SQLAlchemyError:
         sqlite_file = Path(settings.sqlite_path)
         if sqlite_file.parent:
