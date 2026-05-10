@@ -69,8 +69,17 @@ export interface MeetingListResult {
   total: number;
 }
 
+export interface MeetingTopic {
+  id: number;
+  meeting_id: number;
+  topic: string;
+  relevance_score: number | null;
+  created_at: string;
+}
+
 export interface MeetingDetail extends Meeting {
   organizer: UserItem;
+  topics: MeetingTopic[];
 }
 
 export interface MeetingShareCreateResult {

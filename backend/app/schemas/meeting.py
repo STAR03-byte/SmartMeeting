@@ -6,6 +6,7 @@ from typing import ClassVar, Literal
 from pydantic import BaseModel, Field, field_validator
 from pydantic.config import ConfigDict
 
+from app.schemas.meeting_topic import MeetingTopicOut
 from app.schemas.meeting_transcript import MeetingTranscriptOut
 from app.schemas.structured_summary import StructuredSummary
 from app.schemas.task import TaskOut
@@ -97,6 +98,7 @@ class MeetingListOut(BaseModel):
 
 class MeetingDetailOut(MeetingOut):
     organizer: UserOut
+    topics: list[MeetingTopicOut] = []
 
 
 class MeetingShareOut(BaseModel):

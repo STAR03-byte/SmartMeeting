@@ -68,6 +68,21 @@
           </div>
 
           <StatsOverview />
+
+          <!-- 主题标签 -->
+          <div v-if="store.currentMeeting.topics?.length" class="topics-strip">
+            <span class="topics-label">主题：</span>
+            <el-tag
+              v-for="topic in store.currentMeeting.topics"
+              :key="topic.id"
+              size="small"
+              :type="topic.relevance_score != null && topic.relevance_score >= 0.8 ? '' : 'info'"
+              class="topic-tag"
+            >
+              {{ topic.topic }}
+              <span v-if="topic.relevance_score != null" class="topic-score">{{ (topic.relevance_score * 100).toFixed(0) }}%</span>
+            </el-tag>
+          </div>
           <AudioFiles :meeting-id="meetingId" />
           <AudioRecorder :meetingId="meetingId" @processed="reloadMeeting" />
           <SummaryPanel :meetingId="meetingId" />
@@ -576,6 +591,30 @@ function statusLabel(status: string): string {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.topics-strip {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.topics-label {
+  font-size: 14px;
+  color: var(--el-text-color-secondary);
+  font-weight: 500;
+}
+
+.topic-tag {
+  cursor: default;
+}
+
+.topic-score {
+  margin-left: 4px;
+  font-size: 11px;
+  opacity: 0.7;
 }
 
 .workflow-strip {

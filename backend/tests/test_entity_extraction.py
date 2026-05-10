@@ -83,15 +83,46 @@ class TestParseLLMResponse:
 class TestResolveUserId:
     """_resolve_user_id 测试。"""
 
-    def test_none_name_returns_none(self, client):
-        # 使用 client fixture 获取 db session
-        pass
+    @pytest.fixture()
+    def db(self):
+        """创建内存 SQLite 会话并插入测试用户。"""
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from sqlalchemy.pool import StaticPool
+        from app.core.database import Base
 
-    def test_exact_match(self, client):
-        pass
+        engine = create_engine(
+            "sqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        Base.metadata.create_all(bind=engine)
+        SessionLocal = sessionmaker(bind=engine)
+        db = SessionLocal()
 
-    def test_fuzzy_match(self, client):
-        pass
+        user1 = User(username="zhang3", email="zhang@example.com", full_name="张三", password_hash="x", is_active=True)
+        user2 = User(username="li4", email="li@example.com", full_name="李四", password_hash="x", is_active=True)
+        user3 = User(username="wang5", email="wang@example.com", full_name="王大明", password_hash="x", is_active=True)
+        db.add_all([user1, user2, user3])
+        db.commit()
 
-    def test_no_match_returns_none(self, client):
-        pass
+        yield db
+        db.close()
+
+    def test_none_name_returns_none(self, db):
+        assert _resolve_user_id(db, None, 1) is None
+
+    def test_exact_match(self, db):
+        result = _resolve_user_id(db, "张三", 1)
+        assert result is not None
+        user = db.query(User).filter(User.id == result).first()
+        assert user.full_name == "张三"
+
+    def test_fuzzy_match(self, db):
+        result = _resolve_user_id(db, "大明", 1)
+        assert result is not None
+        user = db.query(User).filter(User.id == result).first()
+        assert user.full_name == "王大明"
+
+    def test_no_match_returns_none(self, db):
+        assert _resolve_user_id(db, "不存在的人", 1) is None
