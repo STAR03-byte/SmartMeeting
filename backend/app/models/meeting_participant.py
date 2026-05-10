@@ -5,7 +5,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -25,7 +25,7 @@ class MeetingParticipant(Base):
     meeting_id: Mapped[int] = mapped_column(ForeignKey("meetings.id"), nullable=False, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     role: Mapped[str | None] = mapped_column(  # DEPRECATED: use participant_role + meeting.organizer_id
-        Enum("organizer", "participant", name="meeting_participant_role"),
+        String(20),
         nullable=True,
         default="participant",
     )

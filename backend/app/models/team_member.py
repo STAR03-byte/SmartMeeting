@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, cast
 
-from sqlalchemy import DateTime, Enum, ForeignKey, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.core.database import Base  # pyright: ignore[reportAny]
@@ -33,7 +33,7 @@ class TeamMember(TypedBase):
         index=True,
     )
     role: Mapped[str] = mapped_column(
-        Enum("owner", "admin", "member", name="team_member_role"),
+        String(20),
         nullable=False,
         default="member",
         server_default="member",
