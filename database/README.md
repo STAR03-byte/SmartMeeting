@@ -1,29 +1,47 @@
 # SmartMeeting 数据库模块说明
 
-本目录用于管理 SmartMeeting 的 MySQL 数据库结构、种子数据和后续迁移。
+本目录用于管理 SmartMeeting 的 PostgreSQL 16 数据库结构、种子数据和后续迁移。
 
 ## 目录说明
 
-- `migrations/`: 建表与结构演进脚本
+- `migrations/`: 建表与结构演进脚本（PostgreSQL 语法）
 - `seeds/`: 初始化测试数据脚本
 - `rollback/`: 回滚脚本（按版本逆向回退）
 - `backups/`: 备份文件目录（不建议提交大体积备份）
 
+## 技术栈
+
+- PostgreSQL 16 + pgvector 扩展
+- tsvector + GIN 索引（全文搜索预埋，Phase 2 使用）
+- 测试环境可回退 SQLite（`DB_AUTO_FALLBACK_SQLITE=true`）
+
 ## 初始化顺序
 
-按以下顺序执行：
+按以下顺序执行（共 30 个迁移文件）：
 
-1. `database/migrations/001_init_smartmeeting.sql`
-2. `database/migrations/002_enhance_smartmeeting.sql`
-3. `database/migrations/003_sp_task_query.sql`
-4. `database/migrations/004_indexes_perf.sql`
-5. `database/migrations/005_audit_and_participants.sql`
-6. `database/migrations/006_collaboration_share_fields.sql`
-7. `database/migrations/007_fix_meeting_audio_cascade.sql`
-8. `database/migrations/008_participant_unique_guard.sql`
-9. `database/migrations/009_extend_audit_logs_for_auth_events.sql`
-10. `database/seeds/001_seed_basic_data.sql`（可选）
-11. `database/seeds/002_seed_participants.sql`（可选）
+1. `database/migrations/001_init_smartmeeting.sql` — 核心表 + `fn_set_updated_at()` 触发器函数
+2. `database/migrations/002_enhance_smartmeeting.sql` — CHECK 约束、视图、completed_at 触发器
+3. `database/migrations/003_sp_task_query.sql` — `sp_list_tasks_by_user()` 函数
+4. `database/migrations/004_indexes_perf.sql` — 性能索引
+5. `database/migrations/005_audit_and_participants.sql` — 审计日志 + 参与者表
+6. `database/migrations/006_collaboration_share_fields.sql` — 协作字段
+7. `database/migrations/007_fix_meeting_audio_cascade.sql` — 级联修复
+8. `database/migrations/008_participant_unique_guard.sql` — 唯一约束
+9. `database/migrations/009_extend_audit_logs_for_auth_events.sql` — 认证审计
+10. `database/migrations/010_speaker_fields.sql` — 说话人字段
+11. `database/migrations/011_hotwords_table.sql` — 热词表
+12. `database/migrations/012_create_teams.sql` — 团队表
+13. `database/migrations/013_create_team_members.sql` — 团队成员表
+14. `database/migrations/014_add_team_id_to_meetings.sql` — 会议关联团队
+15. `database/migrations/015_add_role_to_participants.sql` — 参与者角色
+16. `database/migrations/016_clear_test_data.sql` — 清理测试数据
+17. `database/migrations/018_create_team_invite_links.sql` — 团队邀请链接
+18. `database/migrations/030_add_tsvector_columns.sql` — tsvector 预埋（Phase 2）
+
+种子数据（可选）：
+
+- `database/seeds/001_seed_basic_data.sql`
+- `database/seeds/002_seed_participants.sql`
 
 也可直接一键执行:
 
@@ -32,80 +50,51 @@
 ## 执行命令示例
 
 ```bash
-mysql -u <user> -p < database/migrations/001_init_smartmeeting.sql
-mysql -u <user> -p < database/migrations/002_enhance_smartmeeting.sql
-mysql -u <user> -p < database/migrations/003_sp_task_query.sql
-mysql -u <user> -p < database/migrations/004_indexes_perf.sql
-mysql -u <user> -p < database/migrations/005_audit_and_participants.sql
-mysql -u <user> -p < database/migrations/006_collaboration_share_fields.sql
-mysql -u <user> -p < database/migrations/007_fix_meeting_audio_cascade.sql
-mysql -u <user> -p < database/migrations/008_participant_unique_guard.sql
-mysql -u <user> -p < database/migrations/009_extend_audit_logs_for_auth_events.sql
-mysql -u <user> -p < database/seeds/001_seed_basic_data.sql
-mysql -u <user> -p < database/seeds/002_seed_participants.sql
-```
+# 单个迁移
+psql -U <user> -d smartmeeting -f database/migrations/001_init_smartmeeting.sql
 
-或使用 SOURCE 一键执行:
+# 一键执行所有迁移
+psql -U <user> -d smartmeeting -f scripts/db/run_all.sql
 
-```bash
-mysql -u <user> -p < scripts/db/run_all.sql
+# Docker 方式（推荐）
+docker compose up --build
 ```
 
 ## 校验建议
 
 ```sql
-USE smartmeeting;
+-- 查看所有表
+\dt
 
-SHOW TABLES;
-SHOW FULL TABLES WHERE TABLE_TYPE = 'VIEW';
-SHOW TRIGGERS LIKE 'tasks';
-SHOW PROCEDURE STATUS WHERE Db = 'smartmeeting';
+-- 查看所有视图
+\dv
 
-SELECT COUNT(*) AS audit_log_count FROM audit_logs;
-SELECT COUNT(*) AS participant_count FROM meeting_participants;
+-- 查看触发器
+SELECT tgname, tgrelid::regclass FROM pg_trigger WHERE NOT tgisinternal;
 
-SHOW INDEX FROM users;
-SHOW INDEX FROM meetings;
-SHOW INDEX FROM meeting_transcripts;
-SHOW INDEX FROM tasks;
+-- 查看函数
+\df
 
+-- 查看索引
+\di
+
+-- 查看 tsvector 索引
+SELECT indexname, tablename FROM pg_indexes WHERE indexname LIKE '%search_vector%';
+
+-- 测试视图
 SELECT * FROM v_meeting_overview LIMIT 10;
-CALL sp_list_tasks_by_user(4002, NULL);
+SELECT * FROM sp_list_tasks_by_user(1, NULL);
 
-EXPLAIN SELECT * FROM meetings
-WHERE status = 'planned'
-ORDER BY scheduled_start_at DESC
-LIMIT 20;
-
-EXPLAIN SELECT * FROM tasks
-WHERE assignee_id = 4002 AND status IN ('todo', 'in_progress')
-ORDER BY due_at ASC;
-
-EXPLAIN SELECT * FROM meeting_transcripts
-WHERE meeting_id = 3001
-ORDER BY start_time_sec ASC;
+-- 测试全文搜索（Phase 2）
+SELECT * FROM meetings WHERE search_vector @@ plainto_tsquery('simple', '测试');
 ```
-
-也可直接执行:
-
-- `scripts/db/check_health.sql`
-- `scripts/db/check_performance.sql`
 
 ## 回滚说明
 
-回滚脚本位于 `database/rollback/`，建议按以下顺序执行:
-
-1. `rollback_009_to_008.sql`
-2. `rollback_008_to_007.sql`
-3. `rollback_007_to_006.sql`
-4. `rollback_006_to_005.sql`
-5. `rollback_005_to_004.sql`
-6. `rollback_004_to_003.sql`
-7. `rollback_003_to_002.sql`
-8. `rollback_002_to_001.sql`
-
-可直接执行:
+回滚脚本位于 `database/rollback/`，按版本逆序执行:
 
 ```bash
-mysql -u <user> -p < scripts/db/run_rollbacks.sql
+psql -U <user> -d smartmeeting -f database/rollback/rollback_030_to_029.sql
+psql -U <user> -d smartmeeting -f database/rollback/rollback_029_to_028.sql
+# ... 依此类推
 ```
