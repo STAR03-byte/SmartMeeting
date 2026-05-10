@@ -1,0 +1,33 @@
+[package]
+name = "smartmeeting-desktop"
+version = "0.1.0"
+description = "SmartMeeting Desktop - 无 Bot 会议采集客户端"
+authors = ["SmartMeeting"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.77.2"
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[features]
+default = []
+audio-capture = ["dep:cpal", "dep:hound"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.1" }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.11.1" }
+tauri-plugin-log = "2"
+reqwest = { version = "0.12", features = ["multipart", "json", "native-tls-vendored"] }
+tokio = { version = "1", features = ["full"] }
+openssl = { version = "0.10", features = ["vendored"] }
+
+# 音频采集依赖（需要系统库：libasound2-dev, pkg-config）
+cpal = { version = "0.15", optional = true }
+hound = { version = "3.5", optional = true }
