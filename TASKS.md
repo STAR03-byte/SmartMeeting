@@ -29,37 +29,8 @@
 
 ### T1: 后处理管线接入实体提取和 Embedding
 
-**状态：** `待认领`
-**分支：** （认领后填写）
-
-**Claude 规格：**
-
-`job_manager.py` 的 `_postprocess_meeting()` 函数（约第 369-421 行）目前只调用了摘要生成和任务草案提取。需要在摘要生成完成后，依次接入：
-
-1. **实体提取** — 调用 `entity_extraction_service.extract_entities(db, meeting, transcripts, llm_service)`，将返回的 decisions/commitments/topics 写入对应表。失败时 log warning，不中断流程。
-2. **Embedding 生成** — 调用 `embedding_service` 为会议标题、摘要、转写段落生成向量，写入 embeddings 表。失败时 log warning，不中断流程。
-
-**要改的文件：**
-- `backend/app/services/pipeline/job_manager.py` — 主改动
-- `backend/tests/test_meeting_postprocess_regression.py` — 补充测试
-
-**不要改的文件：**
-- `entity_extraction_service.py` — 不动
-- `embedding_service.py` — 不动
-- `vector_store.py` — 不动
-
-**验收标准：**
-- [ ] 后处理完成后，decisions/commitments/meeting_topics 表有数据
-- [ ] 后处理完成后，embeddings 表有对应向量
-- [ ] 实体提取失败不导致后处理失败
-- [ ] `npm run test:backend` 通过
-
-**Codex 完成报告：**（完成后填写）
-```
-- 改了什么：
-- 测试结果：
-- 遗留问题：
-```
+**状态：** `已完成`
+**实际完成：** `job_manager.py` 第 357-421 行已接入实体提取（`extract_entities`）和 Embedding（`encode_single`/`encode_texts`），在 v3.0 之前已实现。
 
 ---
 
