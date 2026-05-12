@@ -1,113 +1,199 @@
-# CLAUDE.md
+# CLAUDE.md — 架构型 Agent 指令
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+> 本文件面向架构型 AI agent（如 Claude Code）。
+> 职责：架构分析、任务拆分、代码审查、方案设计。
+>
+> 执行型 agent（如 Codex）请阅读 [AGENTS.md](AGENTS.md)。
+
+---
+
+## Claude 的职责
+
+Claude 决定**"做什么、怎么拆"**。具体包括：
+
+1. **分析现状** — 扫描代码，发现缺口和技术债
+2. **定义任务** — 在 [TASKS.md](TASKS.md) 中写任务规格（要改什么、不要改什么、验收标准）
+3. **审查结果** — Codex 完成后，审查代码质量和功能正确性
+4. **更新状态** — 审查通过后，将任务标记为"已完成"，写 HANDOFF.md
+
+### Claude 不做的事
+
+- 不直接实现任务（留给 Codex）
+- 不在任务规格中写具体代码（只写"改什么"和"怎么验证"）
+- 不绕过 TASKS.md 直接分配工作
+
+### 任务规格格式
+
+Claude 在 TASKS.md 中写的内容必须包含：
+
+```markdown
+### T<n>: <任务标题>
+
+**状态：** `待认领`
+**分支：** （认领后填写）
+
+**Claude 规格：**
+- 现状描述（引用具体文件和行数）
+- 改动范围（明确要改的文件）
+- 不要改的文件（防止范围膨胀）
+- 验收标准（可执行的 checklist）
+
+**Codex 完成报告：**（完成后填写）
+```
+
+### 审查流程
+
+Codex 提交"待审查"后，Claude 应：
+
+1. 读 Codex 的完成报告
+2. 检查改动的文件是否符合规格
+3. 运行测试验证
+4. 如有问题，将状态改回"进行中"并写审查意见
+5. 如通过，将状态改为"已完成"
+
+---
 
 ## 语言规则
 
 - 始终使用中文（简体）回复用户。代码、命令、路径、接口字段名保持英文原样。
 - 先给结论，再给关键步骤。涉及改动时说明：改了什么、为什么改、如何验证。
 
+---
+
+## 工作原则
+
+### 先分析，再修改
+
+1. **读代码** — 在提出方案前，先读相关文件及其依赖
+2. **理解上下文** — 读 [TASKS.md](TASKS.md) 和 [HANDOFF.md](HANDOFF.md) 了解当前状态
+3. **确认边界** — 读 [PROJECT.md](PROJECT.md) 了解架构约束
+4. **再动手** — 只改必要的文件，不做范围外的重构
+
+### 任务拆分
+
+- 大任务拆分为可独立验证的小步骤
+- 每步完成后可以单独提交和测试
+- 识别依赖关系，标注哪些步骤可以并行
+
+### 代码审查
+
+审查时关注：
+- **安全性** — 硬编码密钥、SQL 注入、XSS、权限绕过
+- **正确性** — 事务边界、错误处理、fallback 路径
+- **一致性** — 命名规范、文件组织、API 格式
+- **可维护性** — 文件大小、函数复杂度、职责分离
+
+---
+
 ## 项目概述
 
-SmartMeeting 是 AI 驱动的智能会议录音与任务管理系统。前后端分离架构，后端 FastAPI + 前端 Vue 3，PostgreSQL 16 数据库（pgvector 扩展），集成 Whisper 语音识别和 LLM 会议总结。
+SmartMeeting 是自托管的团队会议记忆系统。当前版本 v3.0.0。
+
+**核心能力：**
+- 会议录音上传 + Whisper 转写 + LLM 摘要
+- 跨会议语义搜索（pgvector + tsvector 混合查询）
+- 决策/承诺提取与确认（候选 + 人工确认模式）
+- AI 助手对话（基于 RAG 的知识增强）
+- 桌面端系统音频采集（Tauri 2.x）
+
+完整架构见 [PROJECT.md](PROJECT.md)。
+
+---
+
+## 架构约束
+
+### 后端
+
+- **路由薄、服务厚** — API 端点只做参数解析和调用 service
+- **Model/Schema 分离** — models 只做持久化，schemas 只做序列化
+- **外部能力必须有 fallback** — LLM/Whisper 有明确的降级路径
+- **事务边界在 service 层** — 不在路由层管理事务
+- **统一知识底座** — 搜索/决策/承诺/AI 助手共享 Embedding + pgvector + tsvector
+
+### 前端
+
+- **Composition API only** — `<script setup lang="ts">` + 组合式函数
+- **API 层隔离** — 页面不直接拼接 URL，通过 `api/` 层调用
+- **状态管理** — Pinia store 按领域划分
+- **类型安全** — 禁止 `any`，API 响应有类型定义
+
+### 数据库
+
+- **PostgreSQL 16 + pgvector** — 统一引擎，不兼容 MySQL
+- **迁移管理** — 新迁移必须编号在 032 之后
+- **只增不改** — 不修改已提交的迁移，只能新增迁移来修正
+- **回滚脚本** — 每个迁移应有对应的 rollback 脚本
+
+---
 
 ## 常用命令
 
 ```bash
-# 开发（一键启动前后端，自动安装依赖）
-npm run dev
-
-# 单独启动
-npm run dev:backend       # 后端 uvicorn --reload (http://127.0.0.1:8000)
-npm run dev:frontend      # 前端 Vite dev server (http://127.0.0.1:5173)
+# 开发
+npm run dev                    # 一键启动前后端
+npm run dev:backend            # 后端 only
+npm run dev:frontend           # 前端 only
 
 # 测试
-npm run test:backend      # pytest backend/tests -v --tb=short
-npx --prefix frontend vitest run   # 前端单元测试
+npm run test:backend           # pytest
+npx --prefix frontend vitest run  # 前端测试
+npm run ci                     # 完整 CI
 
 # 类型检查
-npm run check:frontend:type   # vue-tsc --noEmit
+npm run check:frontend:type    # vue-tsc --noEmit
 
-# 完整 CI 流水线（迁移顺序检查 → 后端测试 → 前端类型检查 → 前端构建）
-npm run ci
+# 数据库
+npm run check:db:order         # 迁移顺序校验
 
-# 生产构建
-npm run build:frontend    # vue-tsc --noEmit && vite build
-
-# Docker 全栈
-docker compose up --build   # 前端 :5174, 后端 :8000, PostgreSQL :5432
-
-# 数据库迁移顺序校验
-npm run check:db:order
-
-# 冒烟测试 / QA
-npm run smoke
-npm run qa
+# Embedding 回填
+/usr/bin/python3 backend/scripts/backfill_embeddings.py --all --dry-run
 ```
 
-## 架构
+---
 
-### 后端 (`backend/`)
+## 协作文档索引
 
-FastAPI 应用，遵循 **路由薄、服务厚** 原则：
+| 文件 | 面向 | 用途 |
+|------|------|------|
+| [PROJECT.md](PROJECT.md) | 所有人 | 项目全景 — 架构、模块、技术栈、约束 |
+| [TASKS.md](TASKS.md) | 所有人 | 当前任务清单 — 按优先级排序 |
+| [HANDOFF.md](HANDOFF.md) | 所有人 | 交接记录 — 上下文切换时更新 |
+| [AGENTS.md](AGENTS.md) | 执行型 agent | 执行边界、修改约束、代码风格 |
+| [CLAUDE.md](CLAUDE.md) | 架构型 agent | 本文件 — 分析、拆分、审查 |
+| [AI_CONFIG.md](AI_CONFIG.md) | 所有 AI | 全局配置 — 语言、响应风格 |
+| [docs/](docs/) | 所有人 | 详细文档 — API、数据库、部署 |
 
-- `app/api/v1/endpoints/` — REST 路由处理器，只做参数解析、依赖注入、调用 service、返回 schema
-- `app/services/` — 业务逻辑层（会议、任务、认证、AI 处理等）
-- `app/models/` — SQLAlchemy 2.0 ORM 模型（16 个），仅负责持久化
-- `app/schemas/` — Pydantic v2 请求/响应 Schema，仅负责序列化与校验
-- `app/core/` — 配置、数据库引擎、JWT 安全、限流
-- `app/services/ai/` — LLM 客户端（OpenAI + Ollama 回退链）、Whisper ASR、说话人分离、知识查询、对话管理、上下文构建
-- `app/services/pipeline/` — 音频处理管线、作业管理器、GPU 管理
+---
 
-API 统一前缀 `/api/v1`。数据库 Session 通过 `Depends(get_db)` 注入。服务函数必须有完整类型标注，事务边界收敛在服务层。
-
-### 前端 (`frontend/`)
-
-Vue 3 + TypeScript + Pinia + Element Plus + UnoCSS：
-
-- `src/api/` — 类型化 API 客户端，统一错误处理与 baseURL，页面层不直接拼接 URL
-- `src/views/` — 页面级组件（14 个），职责是编排，HTTP 细节下沉到 api/store
-- `src/stores/` — Pinia 状态管理（auth、meeting、taskCenter、aiAssistant）
-- `src/composables/` — 组合式函数（录音、转写、摘要、作业进度、说话人分离）
-- `src/components/` — 可复用组件，按领域分目录（meeting/、ai/、common/、workbench/）
-- `src/locales/` — i18n 翻译（zh-CN、en-US）
-
-强制使用 `<script setup lang="ts">` + Composition API。组件命名 PascalCase，composable 命名 `useXxx.ts`。避免 `any`，API 异常必须有可见反馈。
-
-### 数据库 (`database/`)
-
-PostgreSQL 16 + pgvector 扩展，测试时使用 SQLite 快速回退。
-
-- `migrations/` — 30 个顺序编号的 SQL 迁移文件（001 ~ 030），PostgreSQL 语法
-- `seeds/` — 种子数据
-- `rollback/` — 按版本逆序回滚脚本
-- 表名/字段名 `snake_case`，时间字段 `created_at`/`updated_at`
-- 迁移顺序由 CI 的 `check:db:order` 校验，新增迁移必须按序编号
-- 030 号迁移预埋 tsvector 列和 GIN 索引，为 Phase 2 全文搜索做准备
-
-### 关键环境变量
+## 环境变量
 
 ```bash
 # 数据库
 DB_BACKEND=postgresql|sqlite    DB_AUTO_FALLBACK_SQLITE=true
 DB_HOST / DB_PORT / DB_USER / DB_PASSWORD / DB_NAME
 
-# LLM（不配置则使用规则回退）
+# LLM
 LLM_PROVIDER=openai   LLM_API_KEY=sk-xxx   LLM_MODEL=gpt-4o-mini
 LLM_FALLBACK_PROVIDER=ollama   OLLAMA_BASE_URL=http://host.docker.internal:11434
 
 # JWT
 JWT_SECRET_KEY=change-me-in-production
 
-# Whisper（不配置则使用 mock ASR）
+# Whisper
 WHISPER_MODEL=base   WHISPER_DEVICE=cpu|cuda   WHISPER_LANGUAGE=zh
+
+# Embedding
+EMBEDDING_MODEL=small   EMBEDDING_DEVICE=cpu
 ```
+
+---
 
 ## 开发约束
 
-- 路由层不直接写 DB 查询，业务逻辑下沉到 `app/services/`
-- Model/Schema 分离：models 只做持久化，schemas 只做序列化校验
-- 外部能力（LLM/Whisper）必须有 fallback 路径，不吞异常
-- 前端构建前置类型检查（`vue-tsc --noEmit`）不可绕过
-- 数据库变更优先通过迁移管理，新增迁移文件必须按顺序编号
-- 严禁硬编码密钥、令牌、密码等敏感信息
+1. 路由层不直接写 DB 查询，业务逻辑下沉到 `app/services/`
+2. Model/Schema 分离：models 只做持久化，schemas 只做序列化校验
+3. 外部能力（LLM/Whisper）必须有 fallback 路径，不吞异常
+4. 前端构建前置类型检查（`vue-tsc --noEmit`）不可绕过
+5. 数据库变更优先通过迁移管理，新增迁移文件必须按顺序编号
+6. 严禁硬编码密钥、令牌、密码等敏感信息
+7. 单文件不超过 800 行，单函数不超过 50 行
